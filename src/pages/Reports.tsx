@@ -5,6 +5,7 @@ import { FileSpreadsheet, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import jsPDF from "jspdf";
 import * as XLSX from "xlsx";
+import { useNavigate } from "react-router-dom";
 
 interface Seat {
   id: number;
@@ -15,23 +16,18 @@ interface Seat {
 
 const Reports = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  // Mock seating data - in a real app, this would come from your state or API
-  const mockSeatingData: Seat[] = [
-    {
-      id: 1,
-      studentName: "Computer Science - A001",
-      regNo: "001",
-      department: "Computer Science"
-    },
-    {
-      id: 2,
-      studentName: "Electronics - A001",
-      regNo: "001",
-      department: "Electronics"
-    },
-    // ... Add more mock data as needed
-  ];
+  // Get seating data from localStorage if available
+  const getSeatingData = (): Seat[] => {
+    const storedData = localStorage.getItem('seatingArrangement');
+    if (storedData) {
+      return JSON.parse(storedData);
+    }
+    return [];
+  };
+
+  const seatingData = getSeatingData();
 
   const generatePDF = () => {
     try {
@@ -54,7 +50,7 @@ const Reports = () => {
       doc.text(headers.join("    "), xPos, yPos);
       
       // Add table content
-      mockSeatingData.forEach((seat, index) => {
+      seatingData.forEach((seat, index) => {
         yPos += 10;
         if (yPos > 280) {
           doc.addPage();
@@ -90,7 +86,7 @@ const Reports = () => {
   const generateExcel = () => {
     try {
       // Prepare data for Excel
-      const excelData = mockSeatingData.map(seat => ({
+      const excelData = seatingData.map(seat => ({
         "Seat No": seat.id,
         "Student Name": seat.studentName || "Empty",
         "Registration No": seat.regNo || "-",
@@ -130,44 +126,55 @@ const Reports = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-4">
-          <Button onClick={generatePDF} className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Export as PDF
-          </Button>
-          
-          <Button onClick={generateExcel} variant="outline" className="flex items-center gap-2">
-            <FileSpreadsheet className="h-4 w-4" />
-            Export as Excel
-          </Button>
-        </div>
-
-        {/* Preview section */}
-        <div className="mt-8">
-          <h3 className="text-xl font-semibold mb-4">Preview</h3>
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-2 text-left">Seat No</th>
-                  <th className="px-4 py-2 text-left">Student Name</th>
-                  <th className="px-4 py-2 text-left">Registration No</th>
-                  <th className="px-4 py-2 text-left">Department</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockSeatingData.map((seat) => (
-                  <tr key={seat.id} className="border-t">
-                    <td className="px-4 py-2">{seat.id}</td>
-                    <td className="px-4 py-2">{seat.studentName || "Empty"}</td>
-                    <td className="px-4 py-2">{seat.regNo || "-"}</td>
-                    <td className="px-4 py-2">{seat.department || "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {seatingData.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground mb-4">No seating arrangement data available</p>
+            <Button onClick={() => navigate('/seating')} variant="outline">
+              Go to Seating Management
+            </Button>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-4">
+              <Button onClick={generatePDF} className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Export as PDF
+              </Button>
+              
+              <Button onClick={generateExcel} variant="outline" className="flex items-center gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                Export as Excel
+              </Button>
+            </div>
+
+            {/* Preview section */}
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold mb-4">Preview</h3>
+              <div className="border rounded-lg overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Seat No</th>
+                      <th className="px-4 py-2 text-left">Student Name</th>
+                      <th className="px-4 py-2 text-left">Registration No</th>
+                      <th className="px-4 py-2 text-left">Department</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {seatingData.map((seat) => (
+                      <tr key={seat.id} className="border-t">
+                        <td className="px-4 py-2">{seat.id}</td>
+                        <td className="px-4 py-2">{seat.studentName || "Empty"}</td>
+                        <td className="px-4 py-2">{seat.regNo || "-"}</td>
+                        <td className="px-4 py-2">{seat.department || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </Layout>
   );
