@@ -12,6 +12,7 @@ import Seating from "./pages/Seating";
 import Subjects from "./pages/Subjects";
 import Exams from "./pages/Exams";
 import ExamAttendance from "./pages/ExamAttendance";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/subjects" element={<Subjects />} />
           <Route path="/exams" element={<Exams />} />
           <Route path="/exam-attendance" element={<ExamAttendance />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
@@ -39,4 +41,3 @@ const App = () => (
 );
 
 export default App;
-
