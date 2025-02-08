@@ -10,6 +10,8 @@ import Teachers from "./pages/Teachers";
 import Classes from "./pages/Classes";
 import Seating from "./pages/Seating";
 import Subjects from "./pages/Subjects";
+import Exams from "./pages/Exams";
+import ExamAttendance from "./pages/ExamAttendance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +29,8 @@ const App = () => (
           <Route path="/classes" element={<Classes />} />
           <Route path="/seating" element={<Seating />} />
           <Route path="/subjects" element={<Subjects />} />
+          <Route path="/exams" element={<Exams />} />
+          <Route path="/exam-attendance" element={<ExamAttendance />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
@@ -35,3 +39,4 @@ const App = () => (
 );
 
 export default App;
+
