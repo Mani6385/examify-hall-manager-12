@@ -11,62 +11,90 @@ import {
 import { useState } from "react";
 import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
 
 interface Seat {
   id: number;
   studentName: string | null;
+  regNo: string | null;
+  department: string | null;
 }
 
 const Seating = () => {
-  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [selectedDept1, setSelectedDept1] = useState<string>("");
+  const [selectedDept2, setSelectedDept2] = useState<string>("");
+  const [startRegNo1, setStartRegNo1] = useState("");
+  const [endRegNo1, setEndRegNo1] = useState("");
+  const [startRegNo2, setStartRegNo2] = useState("");
+  const [endRegNo2, setEndRegNo2] = useState("");
   const [rows, setRows] = useState(5);
   const [cols, setColumns] = useState(6);
   const [seats, setSeats] = useState<Seat[]>([]);
   const { toast } = useToast();
 
-  // Mock data - replace with actual data from your Classes component
-  const classes = [
-    { id: "1", name: "Class A" },
-    { id: "2", name: "Class B" },
-    { id: "3", name: "Class C" },
+  // Mock department data
+  const departments = [
+    { id: "1", name: "Computer Science" },
+    { id: "2", name: "Electronics" },
+    { id: "3", name: "Mechanical" },
   ];
 
-  // Mock student data - replace with actual data from your Students component
-  const students = [
-    "John Doe",
-    "Jane Smith",
-    "Alice Johnson",
-    "Bob Wilson",
-    "Carol Brown",
-    "David Miller",
-    "Emma Davis",
-    "Frank Thomas",
-    "Grace Lee",
-    "Henry White",
-  ];
+  const generateStudentList = (
+    startReg: string,
+    endReg: string,
+    department: string
+  ) => {
+    const students = [];
+    const start = parseInt(startReg);
+    const end = parseInt(endReg);
+    
+    for (let i = start; i <= end; i++) {
+      students.push({
+        name: `${department} - A${i}`,
+        regNo: i.toString().padStart(3, '0'),
+        department: department
+      });
+    }
+    return students;
+  };
 
   const generateSeating = () => {
-    if (!selectedClass) {
+    if (!selectedDept1 || !selectedDept2 || !startRegNo1 || !endRegNo1 || !startRegNo2 || !endRegNo2) {
       toast({
         title: "Error",
-        description: "Please select a class first",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
     }
+
+    // Generate student lists for both departments
+    const dept1Students = generateStudentList(startRegNo1, endRegNo1, selectedDept1);
+    const dept2Students = generateStudentList(startRegNo2, endRegNo2, selectedDept2);
 
     // Create an array of all seats
     const totalSeats = rows * cols;
     const emptySeats: Seat[] = Array.from({ length: totalSeats }, (_, index) => ({
       id: index,
       studentName: null,
+      regNo: null,
+      department: null,
     }));
 
-    // Shuffle students and assign them to seats
-    const shuffledStudents = [...students].sort(() => Math.random() - 0.5);
+    // Arrange students alternately from both departments
+    const allStudents = [];
+    const maxLength = Math.max(dept1Students.length, dept2Students.length);
+    for (let i = 0; i < maxLength; i++) {
+      if (dept1Students[i]) allStudents.push(dept1Students[i]);
+      if (dept2Students[i]) allStudents.push(dept2Students[i]);
+    }
+
+    // Assign students to seats
     const assignedSeats = emptySeats.map((seat, index) => ({
       ...seat,
-      studentName: index < shuffledStudents.length ? shuffledStudents[index] : null,
+      studentName: allStudents[index]?.name || null,
+      regNo: allStudents[index]?.regNo || null,
+      department: allStudents[index]?.department || null,
     }));
 
     setSeats(assignedSeats);
@@ -105,26 +133,73 @@ const Seating = () => {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Seating Arrangement</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Exam Hall Seating Arrangement</h2>
           <p className="text-muted-foreground mt-2">
-            Generate and manage classroom seating arrangements
+            Generate and manage exam hall seating arrangements for multiple departments
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-4 items-center">
-          <Select value={selectedClass} onValueChange={setSelectedClass}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select class" />
-            </SelectTrigger>
-            <SelectContent>
-              {classes.map((cls) => (
-                <SelectItem key={cls.id} value={cls.id}>
-                  {cls.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Department 1 Configuration */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-semibold">Department 1</h3>
+            <Select value={selectedDept1} onValueChange={setSelectedDept1}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select department" />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.name}>
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                placeholder="Start Reg No"
+                value={startRegNo1}
+                onChange={(e) => setStartRegNo1(e.target.value)}
+              />
+              <Input
+                placeholder="End Reg No"
+                value={endRegNo1}
+                onChange={(e) => setEndRegNo1(e.target.value)}
+              />
+            </div>
+          </div>
 
+          {/* Department 2 Configuration */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-semibold">Department 2</h3>
+            <Select value={selectedDept2} onValueChange={setSelectedDept2}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select department" />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.name}>
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                placeholder="Start Reg No"
+                value={startRegNo2}
+                onChange={(e) => setStartRegNo2(e.target.value)}
+              />
+              <Input
+                placeholder="End Reg No"
+                value={endRegNo2}
+                onChange={(e) => setEndRegNo2(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-4 items-center">
           <Button onClick={generateSeating}>
             <Grid3X3 className="mr-2 h-4 w-4" />
             Generate Seating
@@ -167,11 +242,21 @@ const Seating = () => {
                 key={seat.id}
                 className={`p-4 rounded-lg border ${
                   seat.studentName
-                    ? "bg-primary/10 border-primary/20"
+                    ? seat.department === selectedDept1
+                      ? "bg-blue-100 border-blue-200"
+                      : "bg-green-100 border-green-200"
                     : "bg-muted border-muted-foreground/20"
-                } flex items-center justify-center text-center min-h-[100px]`}
+                } flex flex-col items-center justify-center text-center min-h-[120px] text-sm`}
               >
-                {seat.studentName || "Empty"}
+                {seat.studentName ? (
+                  <>
+                    <span className="font-medium">{seat.studentName}</span>
+                    <span className="text-xs text-gray-600">Reg: {seat.regNo}</span>
+                    <span className="text-xs text-gray-500">{seat.department}</span>
+                  </>
+                ) : (
+                  "Empty"
+                )}
               </div>
             ))}
           </div>
@@ -182,3 +267,4 @@ const Seating = () => {
 };
 
 export default Seating;
+
