@@ -9,6 +9,7 @@ import Students from "./pages/Students";
 import Teachers from "./pages/Teachers";
 import Classes from "./pages/Classes";
 import Seating from "./pages/Seating";
+import Subjects from "./pages/Subjects";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/teachers" element={<Teachers />} />
           <Route path="/classes" element={<Classes />} />
           <Route path="/seating" element={<Seating />} />
+          <Route path="/subjects" element={<Subjects />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
