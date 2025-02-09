@@ -8,6 +8,7 @@ import {
   CalendarDays,
   ClipboardList,
   Table,
+  UserCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,6 +29,7 @@ const menuItems = [
   { title: "Classes", icon: BookOpen, path: "/classes" },
   { title: "Subjects", icon: GraduationCap, path: "/subjects" },
   { title: "Exams", icon: CalendarDays, path: "/exams" },
+  { title: "Exam Attendance", icon: UserCheck, path: "/exam-attendance" },
   { title: "Seating", icon: Table, path: "/seating" },
   { title: "Reports", icon: ClipboardList, path: "/reports" },
 ];
