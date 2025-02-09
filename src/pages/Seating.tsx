@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +14,7 @@ import { Input } from "@/components/ui/input";
 
 interface Seat {
   id: number;
+  seatNo: string;
   studentName: string | null;
   regNo: string | null;
   department: string | null;
@@ -42,17 +42,20 @@ const Seating = () => {
   const generateStudentList = (
     startReg: string,
     endReg: string,
-    department: string
+    department: string,
+    prefix: string
   ) => {
     const students = [];
     const start = parseInt(startReg);
     const end = parseInt(endReg);
+    let seatNumber = 1;
     
     for (let i = start; i <= end; i++) {
       students.push({
-        name: `${department} - A${i}`,
+        name: `${department} Student`,
         regNo: i.toString().padStart(3, '0'),
-        department: department
+        department: department,
+        seatNo: `${prefix}${seatNumber++}`
       });
     }
     return students;
@@ -68,14 +71,27 @@ const Seating = () => {
       return;
     }
 
-    // Generate student lists for both departments
-    const dept1Students = generateStudentList(startRegNo1, endRegNo1, selectedDept1);
-    const dept2Students = generateStudentList(startRegNo2, endRegNo2, selectedDept2);
+    // Save seating arrangement to localStorage for Reports
+    const seatingData = {
+      dept1: selectedDept1,
+      dept2: selectedDept2,
+      startRegNo1,
+      endRegNo1,
+      startRegNo2,
+      endRegNo2,
+      timestamp: new Date().toISOString()
+    };
+    localStorage.setItem('seatingArrangement', JSON.stringify(seatingData));
+
+    // Generate student lists for both departments with their respective prefixes
+    const dept1Students = generateStudentList(startRegNo1, endRegNo1, selectedDept1, 'A');
+    const dept2Students = generateStudentList(startRegNo2, endRegNo2, selectedDept2, 'B');
 
     // Create an array of all seats
     const totalSeats = rows * cols;
     const emptySeats: Seat[] = Array.from({ length: totalSeats }, (_, index) => ({
       id: index,
+      seatNo: '',
       studentName: null,
       regNo: null,
       department: null,
@@ -92,6 +108,7 @@ const Seating = () => {
     // Assign students to seats
     const assignedSeats = emptySeats.map((seat, index) => ({
       ...seat,
+      seatNo: allStudents[index]?.seatNo || '',
       studentName: allStudents[index]?.name || null,
       regNo: allStudents[index]?.regNo || null,
       department: allStudents[index]?.department || null,
@@ -142,7 +159,7 @@ const Seating = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Department 1 Configuration */}
           <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-semibold">Department 1</h3>
+            <h3 className="font-semibold">Department 1 (A Series)</h3>
             <Select value={selectedDept1} onValueChange={setSelectedDept1}>
               <SelectTrigger>
                 <SelectValue placeholder="Select department" />
@@ -171,7 +188,7 @@ const Seating = () => {
 
           {/* Department 2 Configuration */}
           <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-semibold">Department 2</h3>
+            <h3 className="font-semibold">Department 2 (B Series)</h3>
             <Select value={selectedDept2} onValueChange={setSelectedDept2}>
               <SelectTrigger>
                 <SelectValue placeholder="Select department" />
@@ -250,6 +267,7 @@ const Seating = () => {
               >
                 {seat.studentName ? (
                   <>
+                    <span className="font-bold text-lg mb-1">{seat.seatNo}</span>
                     <span className="font-medium">{seat.studentName}</span>
                     <span className="text-xs text-gray-600">Reg: {seat.regNo}</span>
                     <span className="text-xs text-gray-500">{seat.department}</span>
@@ -267,4 +285,3 @@ const Seating = () => {
 };
 
 export default Seating;
-
