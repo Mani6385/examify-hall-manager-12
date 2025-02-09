@@ -27,6 +27,10 @@ const Seating = () => {
   const [endRegNo1, setEndRegNo1] = useState("");
   const [startRegNo2, setStartRegNo2] = useState("");
   const [endRegNo2, setEndRegNo2] = useState("");
+  const [centerName, setCenterName] = useState("");
+  const [centerCode, setCenterCode] = useState("");
+  const [roomNo, setRoomNo] = useState("");
+  const [floorNo, setFloorNo] = useState("");
   const [rows, setRows] = useState(5);
   const [cols, setColumns] = useState(6);
   const [seats, setSeats] = useState<Seat[]>([]);
@@ -62,7 +66,8 @@ const Seating = () => {
   };
 
   const generateSeating = () => {
-    if (!selectedDept1 || !selectedDept2 || !startRegNo1 || !endRegNo1 || !startRegNo2 || !endRegNo2) {
+    if (!selectedDept1 || !selectedDept2 || !startRegNo1 || !endRegNo1 || !startRegNo2 || !endRegNo2 || 
+        !centerName || !centerCode || !roomNo || !floorNo) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -110,6 +115,10 @@ const Seating = () => {
       endRegNo1,
       startRegNo2,
       endRegNo2,
+      centerName,
+      centerCode,
+      roomNo,
+      floorNo,
       timestamp: new Date().toISOString(),
       seats: assignedSeats
     };
@@ -155,6 +164,34 @@ const Seating = () => {
           <p className="text-muted-foreground mt-2">
             Generate and manage exam hall seating arrangements for multiple departments
           </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-semibold">Examination Center Details</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                placeholder="Center Name"
+                value={centerName}
+                onChange={(e) => setCenterName(e.target.value)}
+              />
+              <Input
+                placeholder="Center Code"
+                value={centerCode}
+                onChange={(e) => setCenterCode(e.target.value)}
+              />
+              <Input
+                placeholder="Room Number"
+                value={roomNo}
+                onChange={(e) => setRoomNo(e.target.value)}
+              />
+              <Input
+                placeholder="Floor Number"
+                value={floorNo}
+                onChange={(e) => setFloorNo(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

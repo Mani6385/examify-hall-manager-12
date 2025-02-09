@@ -22,6 +22,10 @@ interface SeatingArrangement {
   endRegNo1: string;
   startRegNo2: string;
   endRegNo2: string;
+  centerName: string;
+  centerCode: string;
+  roomNo: string;
+  floorNo: string;
   timestamp: string;
   seats: Seat[];
 }
@@ -54,12 +58,16 @@ const Reports = () => {
       // Add metadata
       doc.setFontSize(12);
       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
-      doc.text(`Department 1: ${seatingData.dept1}`, 20, 40);
-      doc.text(`Department 2: ${seatingData.dept2}`, 20, 50);
+      doc.text(`Center Name: ${seatingData.centerName}`, 20, 40);
+      doc.text(`Center Code: ${seatingData.centerCode}`, 20, 50);
+      doc.text(`Room No: ${seatingData.roomNo}`, 20, 60);
+      doc.text(`Floor No: ${seatingData.floorNo}`, 20, 70);
+      doc.text(`Department 1: ${seatingData.dept1}`, 20, 80);
+      doc.text(`Department 2: ${seatingData.dept2}`, 20, 90);
       
       // Add table headers
       const headers = ["Seat No", "Student Name", "Reg No", "Department"];
-      let yPos = 70;
+      let yPos = 110;
       const xPos = 20;
       
       doc.setFontSize(12);
@@ -112,7 +120,15 @@ const Reports = () => {
       }));
       
       // Create worksheet
-      const ws = XLSX.utils.json_to_sheet(excelData);
+      const ws = XLSX.utils.json_to_sheet([
+        {
+          "Center Name": seatingData.centerName,
+          "Center Code": seatingData.centerCode,
+          "Room No": seatingData.roomNo,
+          "Floor No": seatingData.floorNo
+        },
+        ...excelData
+      ]);
       
       // Create workbook
       const wb = XLSX.utils.book_new();
@@ -153,6 +169,28 @@ const Reports = () => {
           </div>
         ) : (
           <>
+            <div className="bg-muted/50 p-4 rounded-lg mb-6">
+              <h3 className="font-semibold mb-2">Center Details</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <span className="text-sm text-muted-foreground">Center Name:</span>
+                  <p>{seatingData.centerName}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Center Code:</span>
+                  <p>{seatingData.centerCode}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Room No:</span>
+                  <p>{seatingData.roomNo}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Floor No:</span>
+                  <p>{seatingData.floorNo}</p>
+                </div>
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-4">
               <Button onClick={generatePDF} className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
@@ -199,4 +237,3 @@ const Reports = () => {
 };
 
 export default Reports;
-
