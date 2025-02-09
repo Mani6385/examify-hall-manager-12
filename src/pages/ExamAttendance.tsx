@@ -17,13 +17,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
-import { UserCheck, UserX, Save } from "lucide-react";
+import { UserCheck, UserX, Save, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import jsPDF from "jspdf";
 
 interface Student {
   id: string;
   regNo: string;
   name: string;
+  department: string;
   status: "present" | "absent" | null;
 }
 
@@ -33,14 +35,16 @@ interface ExamSession {
   date: string;
   startTime: string;
   venue: string;
+  centerName: string;
+  roomName: string;
 }
 
 const ExamAttendance = () => {
   const [selectedExam, setSelectedExam] = useState<string>("");
   const [students, setStudents] = useState<Student[]>([
-    { id: "1", regNo: "CS001", name: "John Doe", status: null },
-    { id: "2", regNo: "CS002", name: "Jane Smith", status: null },
-    { id: "3", regNo: "CS003", name: "Bob Johnson", status: null },
+    { id: "1", regNo: "CS001", name: "John Doe", department: "Computer Science", status: null },
+    { id: "2", regNo: "CS002", name: "Jane Smith", department: "Computer Science", status: null },
+    { id: "3", regNo: "CS003", name: "Bob Johnson", department: "Computer Science", status: null },
   ]);
   const [examSessions] = useState<ExamSession[]>([
     {
@@ -49,6 +53,8 @@ const ExamAttendance = () => {
       date: "2024-02-15",
       startTime: "09:00",
       venue: "Hall A",
+      centerName: "Main Campus",
+      roomName: "Room 101",
     },
     {
       id: "2",
@@ -56,6 +62,8 @@ const ExamAttendance = () => {
       date: "2024-02-16",
       startTime: "14:00",
       venue: "Hall B",
+      centerName: "Science Block",
+      roomName: "Room 202",
     },
   ]);
   const { toast } = useToast();
@@ -69,7 +77,6 @@ const ExamAttendance = () => {
   };
 
   const handleSaveAttendance = () => {
-    // Here you would typically save the attendance data to a backend
     const unmarkedStudents = students.filter((student) => student.status === null);
     if (unmarkedStudents.length > 0) {
       toast({
@@ -84,6 +91,69 @@ const ExamAttendance = () => {
       title: "Attendance Saved",
       description: "Exam attendance has been recorded successfully.",
     });
+  };
+
+  const downloadAttendanceSheet = () => {
+    const selectedExamSession = examSessions.find((exam) => exam.id === selectedExam);
+    if (!selectedExamSession) return;
+
+    try {
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(16);
+      doc.text("Exam Attendance Sheet", doc.internal.pageSize.width/2, 20, { align: 'center' });
+      
+      // Exam Details
+      doc.setFontSize(12);
+      doc.text(`Center Name: ${selectedExamSession.centerName}`, 20, 40);
+      doc.text(`Room: ${selectedExamSession.roomName}`, 20, 50);
+      doc.text(`Subject: ${selectedExamSession.subject}`, 20, 60);
+      doc.text(`Date: ${selectedExamSession.date}`, 20, 70);
+      doc.text(`Time: ${selectedExamSession.startTime}`, 20, 80);
+
+      // Table Header
+      const headers = ["Reg No", "Name", "Department", "Status", "Student Signature"];
+      let y = 100;
+      doc.line(20, y-5, 190, y-5); // Top line
+      headers.forEach((header, i) => {
+        doc.text(header, 20 + (i * 34), y);
+      });
+      doc.line(20, y+5, 190, y+5); // Bottom line
+
+      // Table Content
+      y += 20;
+      students.forEach((student) => {
+        if (y > 250) { // Check if we need a new page
+          doc.addPage();
+          y = 40;
+        }
+        doc.text(student.regNo, 20, y);
+        doc.text(student.name, 54, y);
+        doc.text(student.department, 88, y);
+        doc.text(student.status || "-", 122, y);
+        doc.line(156, y, 190, y); // Signature line
+        y += 15;
+      });
+
+      // Teacher's Signature
+      y += 20;
+      doc.text("Teacher's Signature: _________________", 20, y);
+      
+      // Save PDF
+      doc.save(`attendance-${selectedExamSession.subject}-${selectedExamSession.date}.pdf`);
+      
+      toast({
+        title: "Success",
+        description: "Attendance sheet downloaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate attendance sheet.",
+        variant: "destructive",
+      });
+    }
   };
 
   const selectedExamSession = examSessions.find((exam) => exam.id === selectedExam);
@@ -137,6 +207,14 @@ const ExamAttendance = () => {
                   <p className="text-sm text-muted-foreground">Venue</p>
                   <p className="font-medium">{selectedExamSession.venue}</p>
                 </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Center Name</p>
+                  <p className="font-medium">{selectedExamSession.centerName}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Room</p>
+                  <p className="font-medium">{selectedExamSession.roomName}</p>
+                </div>
               </div>
             </div>
           )}
@@ -149,6 +227,7 @@ const ExamAttendance = () => {
                     <TableRow>
                       <TableHead>Registration No</TableHead>
                       <TableHead>Name</TableHead>
+                      <TableHead>Department</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[200px]">Actions</TableHead>
                     </TableRow>
@@ -158,6 +237,7 @@ const ExamAttendance = () => {
                       <TableRow key={student.id}>
                         <TableCell>{student.regNo}</TableCell>
                         <TableCell>{student.name}</TableCell>
+                        <TableCell>{student.department}</TableCell>
                         <TableCell>
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -204,7 +284,11 @@ const ExamAttendance = () => {
                 </Table>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end space-x-4">
+                <Button variant="outline" onClick={downloadAttendanceSheet}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Attendance
+                </Button>
                 <Button onClick={handleSaveAttendance}>
                   <Save className="h-4 w-4 mr-2" />
                   Save Attendance
@@ -219,4 +303,3 @@ const ExamAttendance = () => {
 };
 
 export default ExamAttendance;
-
