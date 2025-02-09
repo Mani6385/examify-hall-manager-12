@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,20 @@ const Seating = () => {
   const [cols, setColumns] = useState(6);
   const [seats, setSeats] = useState<Seat[]>([]);
   const { toast } = useToast();
+
+  // Mock data for center details
+  const examCenters = [
+    { name: "Engineering Block", code: "ENG-01" },
+    { name: "Science Block", code: "SCI-01" },
+    { name: "Arts Block", code: "ART-01" },
+  ];
+
+  const rooms = [
+    { number: "101", floor: "1" },
+    { number: "102", floor: "1" },
+    { number: "201", floor: "2" },
+    { number: "202", floor: "2" },
+  ];
 
   // Mock department data
   const departments = [
@@ -170,25 +185,56 @@ const Seating = () => {
           <div className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-semibold">Examination Center Details</h3>
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                placeholder="Center Name"
-                value={centerName}
-                onChange={(e) => setCenterName(e.target.value)}
-              />
+              <Select value={centerName} onValueChange={(value) => {
+                setCenterName(value);
+                const center = examCenters.find(c => c.name === value);
+                if (center) {
+                  setCenterCode(center.code);
+                }
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Center" />
+                </SelectTrigger>
+                <SelectContent>
+                  {examCenters.map((center) => (
+                    <SelectItem key={center.code} value={center.name}>
+                      {center.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <Input
                 placeholder="Center Code"
                 value={centerCode}
-                onChange={(e) => setCenterCode(e.target.value)}
+                readOnly
+                className="bg-gray-50"
               />
-              <Input
-                placeholder="Room Number"
-                value={roomNo}
-                onChange={(e) => setRoomNo(e.target.value)}
-              />
+
+              <Select value={roomNo} onValueChange={(value) => {
+                setRoomNo(value);
+                const room = rooms.find(r => r.number === value);
+                if (room) {
+                  setFloorNo(room.floor);
+                }
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Room" />
+                </SelectTrigger>
+                <SelectContent>
+                  {rooms.map((room) => (
+                    <SelectItem key={room.number} value={room.number}>
+                      Room {room.number}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <Input
                 placeholder="Floor Number"
                 value={floorNo}
-                onChange={(e) => setFloorNo(e.target.value)}
+                readOnly
+                className="bg-gray-50"
               />
             </div>
           </div>
@@ -323,3 +369,4 @@ const Seating = () => {
 };
 
 export default Seating;
+
