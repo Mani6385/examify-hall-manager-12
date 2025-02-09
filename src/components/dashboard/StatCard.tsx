@@ -7,11 +7,12 @@ interface StatCardProps {
   value: string | number;
   icon: LucideIcon;
   description?: string;
+  className?: string;
 }
 
-export const StatCard = ({ title, value, icon: Icon, description }: StatCardProps) => {
+export const StatCard = ({ title, value, icon: Icon, description, className }: StatCardProps) => {
   return (
-    <Card className="p-6 transition-all duration-200 hover:shadow-lg animate-slideIn">
+    <Card className={`p-6 transition-all duration-200 hover:shadow-lg animate-slideIn ${className}`}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
