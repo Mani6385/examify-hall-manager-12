@@ -34,7 +34,6 @@ const Reports = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Get seating data from localStorage if available
   const getSeatingData = (): SeatingArrangement | null => {
     const storedData = localStorage.getItem('seatingArrangement');
     if (storedData) {
@@ -51,44 +50,63 @@ const Reports = () => {
     try {
       const doc = new jsPDF();
       
-      // Add title
+      // Add header
       doc.setFontSize(16);
-      doc.text("Exam Hall Seating Arrangement", 20, 20);
+      doc.text("Exam Hall Seating Arrangement", doc.internal.pageSize.width/2, 20, { align: 'center' });
       
       // Add metadata
       doc.setFontSize(12);
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
-      doc.text(`Center Name: ${seatingData.centerName}`, 20, 40);
-      doc.text(`Center Code: ${seatingData.centerCode}`, 20, 50);
-      doc.text(`Room No: ${seatingData.roomNo}`, 20, 60);
-      doc.text(`Floor No: ${seatingData.floorNo}`, 20, 70);
-      doc.text(`Department 1: ${seatingData.dept1}`, 20, 80);
-      doc.text(`Department 2: ${seatingData.dept2}`, 20, 90);
+      const startY = 40;
+      const lineHeight = 8;
       
-      // Add table headers
-      const headers = ["Seat No", "Student Name", "Reg No", "Department"];
-      let yPos = 110;
-      const xPos = 20;
+      doc.text(`Center Name: ${seatingData.centerName}`, 20, startY);
+      doc.text(`Center Code: ${seatingData.centerCode}`, 20, startY + lineHeight);
+      doc.text(`Room No: ${seatingData.roomNo}`, 20, startY + 2 * lineHeight);
+      doc.text(`Floor No: ${seatingData.floorNo}`, 20, startY + 3 * lineHeight);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, startY + 4 * lineHeight);
+
+      // Table configuration
+      const headers = ["Seat No", "Reg No", "Department"];
+      const columnWidths = [40, 50, 70];
+      const startTableY = startY + 6 * lineHeight;
+      let currentY = startTableY;
+
+      // Draw table header
+      doc.setFillColor(240, 240, 240);
+      doc.rect(20, currentY - 6, doc.internal.pageSize.width - 40, 8, 'F');
+      let currentX = 20;
       
-      doc.setFontSize(12);
-      doc.text(headers.join("    "), xPos, yPos);
+      headers.forEach((header, index) => {
+        doc.text(header, currentX, currentY);
+        currentX += columnWidths[index];
+      });
       
-      // Add table content
+      currentY += 10;
+
+      // Draw table content
       seatingData.seats.forEach((seat, index) => {
-        yPos += 10;
-        if (yPos > 280) {
+        // Add new page if needed
+        if (currentY > doc.internal.pageSize.height - 20) {
           doc.addPage();
-          yPos = 20;
+          currentY = 20;
         }
-        
-        const row = [
+
+        // Draw row
+        currentX = 20;
+        const rowData = [
           seat.seatNo,
-          seat.studentName || "Empty",
           seat.regNo || "-",
           seat.department || "-"
         ];
-        
-        doc.text(row.join("    "), xPos, yPos);
+
+        // Add cell borders and content
+        rowData.forEach((text, colIndex) => {
+          doc.rect(currentX, currentY - 6, columnWidths[colIndex], 8);
+          doc.text(text, currentX + 2, currentY);
+          currentX += columnWidths[colIndex];
+        });
+
+        currentY += 10;
       });
       
       // Save the PDF
@@ -203,7 +221,6 @@ const Reports = () => {
               </Button>
             </div>
 
-            {/* Preview section */}
             <div className="mt-8">
               <h3 className="text-xl font-semibold mb-4">Preview</h3>
               <div className="border rounded-lg overflow-x-auto">
@@ -211,7 +228,6 @@ const Reports = () => {
                   <thead className="bg-muted">
                     <tr>
                       <th className="px-4 py-2 text-left">Seat No</th>
-                      <th className="px-4 py-2 text-left">Student Name</th>
                       <th className="px-4 py-2 text-left">Registration No</th>
                       <th className="px-4 py-2 text-left">Department</th>
                     </tr>
@@ -220,7 +236,6 @@ const Reports = () => {
                     {seatingData.seats.map((seat) => (
                       <tr key={seat.id} className="border-t">
                         <td className="px-4 py-2">{seat.seatNo}</td>
-                        <td className="px-4 py-2">{seat.studentName || "Empty"}</td>
                         <td className="px-4 py-2">{seat.regNo || "-"}</td>
                         <td className="px-4 py-2">{seat.department || "-"}</td>
                       </tr>
