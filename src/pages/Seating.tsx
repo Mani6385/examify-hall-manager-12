@@ -71,18 +71,6 @@ const Seating = () => {
       return;
     }
 
-    // Save seating arrangement to localStorage for Reports
-    const seatingData = {
-      dept1: selectedDept1,
-      dept2: selectedDept2,
-      startRegNo1,
-      endRegNo1,
-      startRegNo2,
-      endRegNo2,
-      timestamp: new Date().toISOString()
-    };
-    localStorage.setItem('seatingArrangement', JSON.stringify(seatingData));
-
     // Generate student lists for both departments with their respective prefixes
     const dept1Students = generateStudentList(startRegNo1, endRegNo1, selectedDept1, 'A');
     const dept2Students = generateStudentList(startRegNo2, endRegNo2, selectedDept2, 'B');
@@ -113,6 +101,19 @@ const Seating = () => {
       regNo: allStudents[index]?.regNo || null,
       department: allStudents[index]?.department || null,
     }));
+
+    // Save seating arrangement to localStorage for Reports
+    const seatingData = {
+      dept1: selectedDept1,
+      dept2: selectedDept2,
+      startRegNo1,
+      endRegNo1,
+      startRegNo2,
+      endRegNo2,
+      timestamp: new Date().toISOString(),
+      seats: assignedSeats
+    };
+    localStorage.setItem('seatingArrangement', JSON.stringify(seatingData));
 
     setSeats(assignedSeats);
     toast({

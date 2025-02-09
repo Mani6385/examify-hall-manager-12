@@ -9,9 +9,21 @@ import { useNavigate } from "react-router-dom";
 
 interface Seat {
   id: number;
+  seatNo: string;
   studentName: string | null;
   regNo: string | null;
   department: string | null;
+}
+
+interface SeatingArrangement {
+  dept1: string;
+  dept2: string;
+  startRegNo1: string;
+  endRegNo1: string;
+  startRegNo2: string;
+  endRegNo2: string;
+  timestamp: string;
+  seats: Seat[];
 }
 
 const Reports = () => {
@@ -19,17 +31,19 @@ const Reports = () => {
   const navigate = useNavigate();
 
   // Get seating data from localStorage if available
-  const getSeatingData = (): Seat[] => {
+  const getSeatingData = (): SeatingArrangement | null => {
     const storedData = localStorage.getItem('seatingArrangement');
     if (storedData) {
       return JSON.parse(storedData);
     }
-    return [];
+    return null;
   };
 
   const seatingData = getSeatingData();
 
   const generatePDF = () => {
+    if (!seatingData) return;
+    
     try {
       const doc = new jsPDF();
       
@@ -40,17 +54,19 @@ const Reports = () => {
       // Add metadata
       doc.setFontSize(12);
       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+      doc.text(`Department 1: ${seatingData.dept1}`, 20, 40);
+      doc.text(`Department 2: ${seatingData.dept2}`, 20, 50);
       
       // Add table headers
       const headers = ["Seat No", "Student Name", "Reg No", "Department"];
-      let yPos = 40;
+      let yPos = 70;
       const xPos = 20;
       
       doc.setFontSize(12);
       doc.text(headers.join("    "), xPos, yPos);
       
       // Add table content
-      seatingData.forEach((seat, index) => {
+      seatingData.seats.forEach((seat, index) => {
         yPos += 10;
         if (yPos > 280) {
           doc.addPage();
@@ -58,7 +74,7 @@ const Reports = () => {
         }
         
         const row = [
-          seat.id,
+          seat.seatNo,
           seat.studentName || "Empty",
           seat.regNo || "-",
           seat.department || "-"
@@ -84,10 +100,12 @@ const Reports = () => {
   };
 
   const generateExcel = () => {
+    if (!seatingData) return;
+
     try {
       // Prepare data for Excel
-      const excelData = seatingData.map(seat => ({
-        "Seat No": seat.id,
+      const excelData = seatingData.seats.map(seat => ({
+        "Seat No": seat.seatNo,
         "Student Name": seat.studentName || "Empty",
         "Registration No": seat.regNo || "-",
         "Department": seat.department || "-"
@@ -126,7 +144,7 @@ const Reports = () => {
           </p>
         </div>
 
-        {seatingData.length === 0 ? (
+        {!seatingData || !seatingData.seats?.length ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">No seating arrangement data available</p>
             <Button onClick={() => navigate('/seating')} variant="outline">
@@ -161,9 +179,9 @@ const Reports = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {seatingData.map((seat) => (
+                    {seatingData.seats.map((seat) => (
                       <tr key={seat.id} className="border-t">
-                        <td className="px-4 py-2">{seat.id}</td>
+                        <td className="px-4 py-2">{seat.seatNo}</td>
                         <td className="px-4 py-2">{seat.studentName || "Empty"}</td>
                         <td className="px-4 py-2">{seat.regNo || "-"}</td>
                         <td className="px-4 py-2">{seat.department || "-"}</td>
@@ -181,3 +199,4 @@ const Reports = () => {
 };
 
 export default Reports;
+
