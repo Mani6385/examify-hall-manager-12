@@ -36,6 +36,8 @@ interface Exam {
   startTime: string;
   duration: string;
   venue: string;
+  centerName: string;
+  centerCode: string;
 }
 
 const Exams = () => {
@@ -49,8 +51,17 @@ const Exams = () => {
     startTime: "",
     duration: "",
     venue: "",
+    centerName: "",
+    centerCode: "",
   });
   const { toast } = useToast();
+
+  // Mock data for exam centers
+  const examCenters = [
+    { name: "Engineering Block", code: "ENG-01" },
+    { name: "Science Block", code: "SCI-01" },
+    { name: "Arts Block", code: "ART-01" },
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +96,8 @@ const Exams = () => {
       startTime: "",
       duration: "",
       venue: "",
+      centerName: "",
+      centerCode: "",
     });
     setSelectedExam(null);
   };
@@ -97,6 +110,8 @@ const Exams = () => {
       startTime: exam.startTime,
       duration: exam.duration,
       venue: exam.venue,
+      centerName: exam.centerName,
+      centerCode: exam.centerCode,
     });
     setIsEditDialogOpen(true);
   };
@@ -141,6 +156,40 @@ const Exams = () => {
                       setFormData({ ...formData, subject: e.target.value })
                     }
                     required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="centerName">Exam Center</Label>
+                  <Select 
+                    value={formData.centerName}
+                    onValueChange={(value) => {
+                      const center = examCenters.find(c => c.name === value);
+                      setFormData({ 
+                        ...formData, 
+                        centerName: value,
+                        centerCode: center?.code || ""
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Center" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {examCenters.map((center) => (
+                        <SelectItem key={center.code} value={center.name}>
+                          {center.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="centerCode">Center Code</Label>
+                  <Input
+                    id="centerCode"
+                    value={formData.centerCode}
+                    readOnly
+                    className="bg-gray-50"
                   />
                 </div>
                 <div className="space-y-2">
@@ -224,6 +273,40 @@ const Exams = () => {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="edit-centerName">Exam Center</Label>
+                <Select 
+                  value={formData.centerName}
+                  onValueChange={(value) => {
+                    const center = examCenters.find(c => c.name === value);
+                    setFormData({ 
+                      ...formData, 
+                      centerName: value,
+                      centerCode: center?.code || ""
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Center" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {examCenters.map((center) => (
+                      <SelectItem key={center.code} value={center.name}>
+                        {center.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-centerCode">Center Code</Label>
+                <Input
+                  id="edit-centerCode"
+                  value={formData.centerCode}
+                  readOnly
+                  className="bg-gray-50"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="edit-date">Date</Label>
                 <Input
                   id="edit-date"
@@ -290,6 +373,8 @@ const Exams = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Subject</TableHead>
+                <TableHead>Center</TableHead>
+                <TableHead>Code</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Start Time</TableHead>
                 <TableHead>Duration</TableHead>
@@ -301,6 +386,8 @@ const Exams = () => {
               {exams.map((exam) => (
                 <TableRow key={exam.id}>
                   <TableCell>{exam.subject}</TableCell>
+                  <TableCell>{exam.centerName}</TableCell>
+                  <TableCell>{exam.centerCode}</TableCell>
                   <TableCell>{exam.date}</TableCell>
                   <TableCell>{exam.startTime}</TableCell>
                   <TableCell>{exam.duration} hours</TableCell>
@@ -327,7 +414,7 @@ const Exams = () => {
               ))}
               {exams.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No exams found. Add your first exam to get started.
                   </TableCell>
                 </TableRow>
@@ -341,4 +428,3 @@ const Exams = () => {
 };
 
 export default Exams;
-
