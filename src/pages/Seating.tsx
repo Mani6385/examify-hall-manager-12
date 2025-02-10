@@ -9,9 +9,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
-import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
+import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
+
+interface DepartmentConfig {
+  id: string;
+  department: string;
+  startRegNo: string;
+  endRegNo: string;
+  prefix: string;
+}
 
 interface Seat {
   id: number;
@@ -22,12 +30,10 @@ interface Seat {
 }
 
 const Seating = () => {
-  const [selectedDept1, setSelectedDept1] = useState<string>("");
-  const [selectedDept2, setSelectedDept2] = useState<string>("");
-  const [startRegNo1, setStartRegNo1] = useState("");
-  const [endRegNo1, setEndRegNo1] = useState("");
-  const [startRegNo2, setStartRegNo2] = useState("");
-  const [endRegNo2, setEndRegNo2] = useState("");
+  const [departments, setDepartments] = useState<DepartmentConfig[]>([
+    { id: '1', department: '', startRegNo: '', endRegNo: '', prefix: 'A' },
+    { id: '2', department: '', startRegNo: '', endRegNo: '', prefix: 'B' }
+  ]);
   const [centerName, setCenterName] = useState("");
   const [centerCode, setCenterCode] = useState("");
   const [roomNo, setRoomNo] = useState("");
@@ -52,49 +58,96 @@ const Seating = () => {
   ];
 
   // Mock department data
-  const departments = [
+  const departmentsList = [
     { id: "1", name: "Computer Science" },
     { id: "2", name: "Electronics" },
     { id: "3", name: "Mechanical" },
+    { id: "4", name: "Civil" },
+    { id: "5", name: "Electrical" },
   ];
 
-  const generateStudentList = (
-    startReg: string,
-    endReg: string,
-    department: string,
-    prefix: string
-  ) => {
+  const addDepartment = () => {
+    if (departments.length >= 5) {
+      toast({
+        title: "Error",
+        description: "Maximum 5 departments allowed per hall",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newPrefix = String.fromCharCode(65 + departments.length); // A, B, C, D, E
+    setDepartments([...departments, {
+      id: (departments.length + 1).toString(),
+      department: '',
+      startRegNo: '',
+      endRegNo: '',
+      prefix: newPrefix
+    }]);
+  };
+
+  const removeDepartment = (id: string) => {
+    if (departments.length <= 2) {
+      toast({
+        title: "Error",
+        description: "Minimum 2 departments required",
+        variant: "destructive",
+      });
+      return;
+    }
+    setDepartments(departments.filter(dept => dept.id !== id));
+  };
+
+  const updateDepartment = (id: string, field: keyof DepartmentConfig, value: string) => {
+    setDepartments(departments.map(dept => 
+      dept.id === id ? { ...dept, [field]: value } : dept
+    ));
+  };
+
+  const generateStudentList = (deptConfig: DepartmentConfig) => {
     const students = [];
-    const start = parseInt(startReg);
-    const end = parseInt(endReg);
+    const start = parseInt(deptConfig.startRegNo);
+    const end = parseInt(deptConfig.endRegNo);
     let seatNumber = 1;
     
     for (let i = start; i <= end; i++) {
       students.push({
-        name: `${department} Student`,
+        name: `${deptConfig.department} Student`,
         regNo: i.toString().padStart(3, '0'),
-        department: department,
-        seatNo: `${prefix}${seatNumber++}`
+        department: deptConfig.department,
+        seatNo: `${deptConfig.prefix}${seatNumber++}`
       });
     }
     return students;
   };
 
   const generateSeating = () => {
-    if (!selectedDept1 || !selectedDept2 || !startRegNo1 || !endRegNo1 || !startRegNo2 || !endRegNo2 || 
-        !centerName || !centerCode || !roomNo || !floorNo) {
+    // Validate required fields
+    if (!centerName || !centerCode || !roomNo || !floorNo) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all center details",
         variant: "destructive",
       });
       return;
     }
 
-    // Generate student lists for both departments with their respective prefixes
-    const dept1Students = generateStudentList(startRegNo1, endRegNo1, selectedDept1, 'A');
-    const dept2Students = generateStudentList(startRegNo2, endRegNo2, selectedDept2, 'B');
+    // Validate department configurations
+    const invalidDept = departments.find(dept => 
+      !dept.department || !dept.startRegNo || !dept.endRegNo
+    );
+    if (invalidDept) {
+      toast({
+        title: "Error",
+        description: "Please fill in all department details",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    // Generate student lists for all departments
+    const allStudentsLists = departments.map(dept => generateStudentList(dept));
+    
     // Create an array of all seats
     const totalSeats = rows * cols;
     const emptySeats: Seat[] = Array.from({ length: totalSeats }, (_, index) => ({
@@ -105,12 +158,16 @@ const Seating = () => {
       department: null,
     }));
 
-    // Arrange students alternately from both departments
-    const allStudents = [];
-    const maxLength = Math.max(dept1Students.length, dept2Students.length);
+    // Interleave students from all departments
+    const allStudents: any[] = [];
+    let maxLength = Math.max(...allStudentsLists.map(list => list.length));
+    
     for (let i = 0; i < maxLength; i++) {
-      if (dept1Students[i]) allStudents.push(dept1Students[i]);
-      if (dept2Students[i]) allStudents.push(dept2Students[i]);
+      for (let deptList of allStudentsLists) {
+        if (deptList[i]) {
+          allStudents.push(deptList[i]);
+        }
+      }
     }
 
     // Assign students to seats
@@ -124,12 +181,7 @@ const Seating = () => {
 
     // Save seating arrangement to localStorage for Reports
     const seatingData = {
-      dept1: selectedDept1,
-      dept2: selectedDept2,
-      startRegNo1,
-      endRegNo1,
-      startRegNo2,
-      endRegNo2,
+      departments,
       centerName,
       centerCode,
       roomNo,
@@ -240,64 +292,60 @@ const Seating = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Department 1 Configuration */}
-          <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-semibold">Department 1 (A Series)</h3>
-            <Select value={selectedDept1} onValueChange={setSelectedDept1}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.name}>
-                    {dept.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                placeholder="Start Reg No"
-                value={startRegNo1}
-                onChange={(e) => setStartRegNo1(e.target.value)}
-              />
-              <Input
-                placeholder="End Reg No"
-                value={endRegNo1}
-                onChange={(e) => setEndRegNo1(e.target.value)}
-              />
+        {/* Department Configurations */}
+        <div className="space-y-4">
+          {departments.map((dept, index) => (
+            <div key={dept.id} className="p-4 border rounded-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold">Department {index + 1} ({dept.prefix} Series)</h3>
+                {departments.length > 2 && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => removeDepartment(dept.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Select 
+                  value={dept.department} 
+                  onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departmentsList.map((d) => (
+                      <SelectItem key={d.id} value={d.name}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Start Reg No"
+                  value={dept.startRegNo}
+                  onChange={(e) => updateDepartment(dept.id, 'startRegNo', e.target.value)}
+                />
+                <Input
+                  placeholder="End Reg No"
+                  value={dept.endRegNo}
+                  onChange={(e) => updateDepartment(dept.id, 'endRegNo', e.target.value)}
+                />
+              </div>
             </div>
-          </div>
-
-          {/* Department 2 Configuration */}
-          <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-semibold">Department 2 (B Series)</h3>
-            <Select value={selectedDept2} onValueChange={setSelectedDept2}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.name}>
-                    {dept.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                placeholder="Start Reg No"
-                value={startRegNo2}
-                onChange={(e) => setStartRegNo2(e.target.value)}
-              />
-              <Input
-                placeholder="End Reg No"
-                value={endRegNo2}
-                onChange={(e) => setEndRegNo2(e.target.value)}
-              />
-            </div>
-          </div>
+          ))}
+          
+          <Button 
+            variant="outline" 
+            onClick={addDepartment}
+            disabled={departments.length >= 5}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Department
+          </Button>
         </div>
 
         <div className="flex flex-wrap gap-4 items-center">
@@ -343,9 +391,17 @@ const Seating = () => {
                 key={seat.id}
                 className={`p-4 rounded-lg border ${
                   seat.studentName
-                    ? seat.department === selectedDept1
-                      ? "bg-blue-100 border-blue-200"
-                      : "bg-green-100 border-green-200"
+                    ? departments.find(d => d.department === seat.department)?.department === seat.department
+                      ? `bg-${departments.findIndex(d => d.department === seat.department) % 5 === 0 ? 'blue' : 
+                          departments.findIndex(d => d.department === seat.department) % 5 === 1 ? 'green' :
+                          departments.findIndex(d => d.department === seat.department) % 5 === 2 ? 'yellow' :
+                          departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'purple' :
+                          'pink'}-100 border-${departments.findIndex(d => d.department === seat.department) % 5 === 0 ? 'blue' :
+                          departments.findIndex(d => d.department === seat.department) % 5 === 1 ? 'green' :
+                          departments.findIndex(d => d.department === seat.department) % 5 === 2 ? 'yellow' :
+                          departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'purple' :
+                          'pink'}-200`
+                      : "bg-gray-100 border-gray-200"
                     : "bg-muted border-muted-foreground/20"
                 } flex flex-col items-center justify-center text-center min-h-[120px] text-sm`}
               >
