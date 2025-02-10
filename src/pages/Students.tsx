@@ -19,13 +19,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { UserPlus, Pencil, Trash2 } from "lucide-react";
+import { UserPlus, Pencil, Trash2, Search } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 interface Student {
   id: string;
   regNo: string;
   name: string;
+  department?: string;
+  semester?: string;
 }
 
 const Students = () => {
@@ -33,9 +35,12 @@ const Students = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     regNo: "",
     name: "",
+    department: "",
+    semester: "",
   });
   const { toast } = useToast();
 
@@ -66,13 +71,18 @@ const Students = () => {
       });
       setIsAddDialogOpen(false);
     }
-    setFormData({ regNo: "", name: "" });
+    setFormData({ regNo: "", name: "", department: "", semester: "" });
     setSelectedStudent(null);
   };
 
   const handleEdit = (student: Student) => {
     setSelectedStudent(student);
-    setFormData({ regNo: student.regNo, name: student.name });
+    setFormData({
+      regNo: student.regNo,
+      name: student.name,
+      department: student.department || "",
+      semester: student.semester || "",
+    });
     setIsEditDialogOpen(true);
   };
 
@@ -84,6 +94,14 @@ const Students = () => {
       variant: "destructive",
     });
   };
+
+  const filteredStudents = students.filter(
+    student =>
+      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.regNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.semester?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <Layout>
@@ -129,12 +147,44 @@ const Students = () => {
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <Input
+                    id="department"
+                    value={formData.department}
+                    onChange={(e) =>
+                      setFormData({ ...formData, department: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="semester">Semester</Label>
+                  <Input
+                    id="semester"
+                    value={formData.semester}
+                    onChange={(e) =>
+                      setFormData({ ...formData, semester: e.target.value })
+                    }
+                    required
+                  />
+                </div>
                 <Button type="submit" className="w-full">
                   Add Student
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
+        </div>
+
+        <div className="flex items-center space-x-2 mb-4">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search students..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-sm"
+          />
         </div>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -165,6 +215,28 @@ const Students = () => {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-department">Department</Label>
+                <Input
+                  id="edit-department"
+                  value={formData.department}
+                  onChange={(e) =>
+                    setFormData({ ...formData, department: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-semester">Semester</Label>
+                <Input
+                  id="edit-semester"
+                  value={formData.semester}
+                  onChange={(e) =>
+                    setFormData({ ...formData, semester: e.target.value })
+                  }
+                  required
+                />
+              </div>
               <Button type="submit" className="w-full">
                 Update Student
               </Button>
@@ -178,14 +250,18 @@ const Students = () => {
               <TableRow>
                 <TableHead>Registration No</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Semester</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map((student) => (
+              {filteredStudents.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell>{student.regNo}</TableCell>
                   <TableCell>{student.name}</TableCell>
+                  <TableCell>{student.department}</TableCell>
+                  <TableCell>{student.semester}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -206,9 +282,9 @@ const Students = () => {
                   </TableCell>
                 </TableRow>
               ))}
-              {students.length === 0 && (
+              {filteredStudents.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No students found. Add your first student to get started.
                   </TableCell>
                 </TableRow>
