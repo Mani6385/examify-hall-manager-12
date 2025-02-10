@@ -19,7 +19,7 @@ import {
 import { useState } from "react";
 import { UserCheck, UserX, Save, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import jsPDF from "jspdf";
+import * as XLSX from 'xlsx';
 
 interface Student {
   id: string;
@@ -95,54 +95,48 @@ const ExamAttendance = () => {
 
   const downloadAttendanceSheet = () => {
     const selectedExamSession = examSessions.find((exam) => exam.id === selectedExam);
-    if (!selectedExamSession) return;
+    if (!selectedExamSession) {
+      toast({
+        title: "Error",
+        description: "Please select an exam session first.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      const doc = new jsPDF();
-      
-      // Header
-      doc.setFontSize(16);
-      doc.text("Exam Attendance Sheet", doc.internal.pageSize.width/2, 20, { align: 'center' });
-      
-      // Exam Details
-      doc.setFontSize(12);
-      doc.text(`Center Name: ${selectedExamSession.centerName}`, 20, 40);
-      doc.text(`Room: ${selectedExamSession.roomName}`, 20, 50);
-      doc.text(`Subject: ${selectedExamSession.subject}`, 20, 60);
-      doc.text(`Date: ${selectedExamSession.date}`, 20, 70);
-      doc.text(`Time: ${selectedExamSession.startTime}`, 20, 80);
+      // Create worksheet data
+      const wsData = [
+        // Header row with exam details
+        ['Exam Attendance Report'],
+        [],
+        ['Center Name:', selectedExamSession.centerName],
+        ['Room:', selectedExamSession.roomName],
+        ['Subject:', selectedExamSession.subject],
+        ['Date:', selectedExamSession.date],
+        ['Time:', selectedExamSession.startTime],
+        [],
+        // Table headers
+        ['Registration No', 'Name', 'Department', 'Status'],
+        // Student data
+        ...students.map(student => [
+          student.regNo,
+          student.name,
+          student.department,
+          student.status || 'Not marked'
+        ])
+      ];
 
-      // Table Header
-      const headers = ["Reg No", "Name", "Department", "Status", "Student Signature"];
-      let y = 100;
-      doc.line(20, y-5, 190, y-5); // Top line
-      headers.forEach((header, i) => {
-        doc.text(header, 20 + (i * 34), y);
-      });
-      doc.line(20, y+5, 190, y+5); // Bottom line
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-      // Table Content
-      y += 20;
-      students.forEach((student) => {
-        if (y > 250) { // Check if we need a new page
-          doc.addPage();
-          y = 40;
-        }
-        doc.text(student.regNo, 20, y);
-        doc.text(student.name, 54, y);
-        doc.text(student.department, 88, y);
-        doc.text(student.status || "-", 122, y);
-        doc.line(156, y, 190, y); // Signature line
-        y += 15;
-      });
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
 
-      // Teacher's Signature
-      y += 20;
-      doc.text("Teacher's Signature: _________________", 20, y);
-      
-      // Save PDF
-      doc.save(`attendance-${selectedExamSession.subject}-${selectedExamSession.date}.pdf`);
-      
+      // Save file
+      XLSX.writeFile(wb, `attendance-${selectedExamSession.subject}-${selectedExamSession.date}.xlsx`);
+
       toast({
         title: "Success",
         description: "Attendance sheet downloaded successfully.",
@@ -287,7 +281,7 @@ const ExamAttendance = () => {
               <div className="flex justify-end space-x-4">
                 <Button variant="outline" onClick={downloadAttendanceSheet}>
                   <Download className="h-4 w-4 mr-2" />
-                  Download Attendance
+                  Download Status Report
                 </Button>
                 <Button onClick={handleSaveAttendance}>
                   <Save className="h-4 w-4 mr-2" />
