@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,9 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
-import { UserCheck, UserX, Save, Download } from "lucide-react";
+import { UserCheck, UserX, Save, Download, FileText, FilePdf } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import { Document, Packer, Paragraph, Table as DocxTable, TableRow as DocxTableRow, TableCell as DocxTableCell, TextRun } from 'docx';
 
 interface Student {
   id: string;
@@ -105,9 +106,7 @@ const ExamAttendance = () => {
     }
 
     try {
-      // Create worksheet data
       const wsData = [
-        // Header row with exam details
         ['Exam Attendance Report'],
         [],
         ['Center Name:', selectedExamSession.centerName],
@@ -116,9 +115,7 @@ const ExamAttendance = () => {
         ['Date:', selectedExamSession.date],
         ['Time:', selectedExamSession.startTime],
         [],
-        // Table headers
         ['Registration No', 'Name', 'Department', 'Status'],
-        // Student data
         ...students.map(student => [
           student.regNo,
           student.name,
@@ -127,14 +124,9 @@ const ExamAttendance = () => {
         ])
       ];
 
-      // Create worksheet
       const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-      // Create workbook
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
-
-      // Save file
       XLSX.writeFile(wb, `attendance-${selectedExamSession.subject}-${selectedExamSession.date}.xlsx`);
 
       toast({
@@ -145,6 +137,145 @@ const ExamAttendance = () => {
       toast({
         title: "Error",
         description: "Failed to generate attendance sheet.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generatePDF = () => {
+    const selectedExamSession = examSessions.find((exam) => exam.id === selectedExam);
+    if (!selectedExamSession) {
+      toast({
+        title: "Error",
+        description: "Please select an exam session first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const doc = new jsPDF();
+      
+      doc.setFontSize(16);
+      doc.text("Exam Attendance Report", 15, 15);
+      
+      doc.setFontSize(12);
+      doc.text(`Center Name: ${selectedExamSession.centerName}`, 15, 30);
+      doc.text(`Room: ${selectedExamSession.roomName}`, 15, 37);
+      doc.text(`Subject: ${selectedExamSession.subject}`, 15, 44);
+      doc.text(`Date: ${selectedExamSession.date}`, 15, 51);
+      doc.text(`Time: ${selectedExamSession.startTime}`, 15, 58);
+
+      const headers = [["Reg No", "Name", "Department", "Status"]];
+      
+      const data = students.map(student => [
+        student.regNo,
+        student.name,
+        student.department,
+        student.status || "Not marked"
+      ]);
+
+      doc.autoTable({
+        head: headers,
+        body: data,
+        startY: 70,
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [41, 128, 185] },
+      });
+
+      doc.save(`attendance-${selectedExamSession.subject}-${selectedExamSession.date}.pdf`);
+
+      toast({
+        title: "Success",
+        description: "PDF report generated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF report.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateWord = async () => {
+    const selectedExamSession = examSessions.find((exam) => exam.id === selectedExam);
+    if (!selectedExamSession) {
+      toast({
+        title: "Error",
+        description: "Please select an exam session first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: [
+            new Paragraph({
+              children: [new TextRun({ text: "Exam Attendance Report", bold: true, size: 32 })],
+            }),
+            new Paragraph({ children: [] }), // Empty line
+            new Paragraph({
+              children: [new TextRun({ text: `Center Name: ${selectedExamSession.centerName}` })],
+            }),
+            new Paragraph({
+              children: [new TextRun({ text: `Room: ${selectedExamSession.roomName}` })],
+            }),
+            new Paragraph({
+              children: [new TextRun({ text: `Subject: ${selectedExamSession.subject}` })],
+            }),
+            new Paragraph({
+              children: [new TextRun({ text: `Date: ${selectedExamSession.date}` })],
+            }),
+            new Paragraph({
+              children: [new TextRun({ text: `Time: ${selectedExamSession.startTime}` })],
+            }),
+            new Paragraph({ children: [] }), // Empty line
+            new DocxTable({
+              rows: [
+                new DocxTableRow({
+                  children: [
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Reg No", bold: true })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Name", bold: true })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Department", bold: true })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Status", bold: true })] })] }),
+                  ],
+                }),
+                ...students.map(
+                  student => new DocxTableRow({
+                    children: [
+                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.regNo })] })] }),
+                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.name })] })] }),
+                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.department })] })] }),
+                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.status || "Not marked" })] })] }),
+                    ],
+                  })
+                ),
+              ],
+            }),
+          ],
+        }],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `attendance-${selectedExamSession.subject}-${selectedExamSession.date}.docx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: "Word document generated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate Word document.",
         variant: "destructive",
       });
     }
@@ -279,9 +410,17 @@ const ExamAttendance = () => {
               </div>
 
               <div className="flex justify-end space-x-4">
+                <Button variant="outline" onClick={generatePDF}>
+                  <FilePdf className="h-4 w-4 mr-2" />
+                  Export to PDF
+                </Button>
+                <Button variant="outline" onClick={generateWord}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export to Word
+                </Button>
                 <Button variant="outline" onClick={downloadAttendanceSheet}>
                   <Download className="h-4 w-4 mr-2" />
-                  Download Status Report
+                  Download Excel
                 </Button>
                 <Button onClick={handleSaveAttendance}>
                   <Save className="h-4 w-4 mr-2" />
