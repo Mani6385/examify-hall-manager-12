@@ -2,8 +2,11 @@
 import { Layout } from "@/components/dashboard/Layout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Users, UserCog, BookOpen, CalendarDays, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
+  const navigate = useNavigate();
+
   return (
     <Layout>
       <div className="space-y-8 animate-fadeIn">
@@ -63,10 +66,16 @@ const Index = () => {
           <div className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-200">
             <h3 className="text-xl font-semibold mb-4 text-gray-800">Quick Actions</h3>
             <div className="space-y-3">
-              <button className="w-full p-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors">
+              <button 
+                onClick={() => navigate('/seating')}
+                className="w-full p-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+              >
                 Create New Seating Plan
               </button>
-              <button className="w-full p-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors">
+              <button 
+                onClick={() => navigate('/reports')}
+                className="w-full p-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors"
+              >
                 View Reports
               </button>
             </div>
