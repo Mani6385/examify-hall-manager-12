@@ -19,8 +19,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Subject {
   id: string;
@@ -30,7 +32,6 @@ interface Subject {
 }
 
 const Subjects = () => {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
@@ -40,33 +41,121 @@ const Subjects = () => {
     credits: "",
   });
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedSubject) {
-      // Edit existing subject
-      setSubjects(subjects.map(s => 
-        s.id === selectedSubject.id 
-          ? { ...s, ...formData }
-          : s
-      ));
-      toast({
-        title: "Subject Updated",
-        description: "Subject information has been updated successfully.",
-      });
-      setIsEditDialogOpen(false);
-    } else {
-      // Add new subject
-      const newSubject = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData,
-      };
-      setSubjects([...subjects, newSubject]);
+  // Fetch subjects
+  const { data: subjects = [], isLoading } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching subjects:', error);
+        throw error;
+      }
+      
+      return data;
+    },
+  });
+
+  // Add subject mutation
+  const addSubjectMutation = useMutation({
+    mutationFn: async (newSubject: Omit<Subject, 'id'>) => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .insert([newSubject])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
       toast({
         title: "Subject Added",
         description: "New subject has been added successfully.",
       });
       setIsAddDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error('Error adding subject:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add subject. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update subject mutation
+  const updateSubjectMutation = useMutation({
+    mutationFn: async ({ id, ...updateData }: Subject) => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      toast({
+        title: "Subject Updated",
+        description: "Subject information has been updated successfully.",
+      });
+      setIsEditDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error('Error updating subject:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update subject. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete subject mutation
+  const deleteSubjectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('subjects')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      toast({
+        title: "Subject Deleted",
+        description: "Subject has been removed successfully.",
+        variant: "destructive",
+      });
+    },
+    onError: (error) => {
+      console.error('Error deleting subject:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete subject. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedSubject) {
+      updateSubjectMutation.mutate({ id: selectedSubject.id, ...formData });
+    } else {
+      addSubjectMutation.mutate(formData);
     }
     setFormData({ name: "", code: "", credits: "" });
     setSelectedSubject(null);
@@ -83,12 +172,7 @@ const Subjects = () => {
   };
 
   const handleDelete = (id: string) => {
-    setSubjects(subjects.filter(s => s.id !== id));
-    toast({
-      title: "Subject Deleted",
-      description: "Subject has been removed successfully.",
-      variant: "destructive",
-    });
+    deleteSubjectMutation.mutate(id);
   };
 
   return (
@@ -146,7 +230,14 @@ const Subjects = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full">
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={addSubjectMutation.isPending}
+                >
+                  {addSubjectMutation.isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   Add Subject
                 </Button>
               </form>
@@ -193,7 +284,14 @@ const Subjects = () => {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full">
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={updateSubjectMutation.isPending}
+              >
+                {updateSubjectMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 Update Subject
               </Button>
             </form>
@@ -211,37 +309,46 @@ const Subjects = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {subjects.map((subject) => (
-                <TableRow key={subject.id}>
-                  <TableCell>{subject.name}</TableCell>
-                  <TableCell>{subject.code}</TableCell>
-                  <TableCell>{subject.credits}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(subject)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(subject.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
-              ))}
-              {subjects.length === 0 && (
+              ) : subjects.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
                     No subjects found. Add your first subject to get started.
                   </TableCell>
                 </TableRow>
+              ) : (
+                subjects.map((subject) => (
+                  <TableRow key={subject.id}>
+                    <TableCell>{subject.name}</TableCell>
+                    <TableCell>{subject.code}</TableCell>
+                    <TableCell>{subject.credits}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(subject)}
+                          disabled={updateSubjectMutation.isPending}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(subject.id)}
+                          disabled={deleteSubjectMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
