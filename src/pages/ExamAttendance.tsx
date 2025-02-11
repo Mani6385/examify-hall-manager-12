@@ -16,10 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
-import { UserCheck, UserX, Save, Download, FileText, FilePdf } from "lucide-react";
+import { UserCheck, UserX, Save, Download, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import { Document, Packer, Paragraph, Table as DocxTable, TableRow as DocxTableRow, TableCell as DocxTableCell, TextRun } from 'docx';
 
 interface Student {
@@ -175,7 +176,7 @@ const ExamAttendance = () => {
         student.status || "Not marked"
       ]);
 
-      doc.autoTable({
+      (doc as any).autoTable({
         head: headers,
         body: data,
         startY: 70,
@@ -411,7 +412,7 @@ const ExamAttendance = () => {
 
               <div className="flex justify-end space-x-4">
                 <Button variant="outline" onClick={generatePDF}>
-                  <FilePdf className="h-4 w-4 mr-2" />
+                  <FileText className="h-4 w-4 mr-2" />
                   Export to PDF
                 </Button>
                 <Button variant="outline" onClick={generateWord}>
