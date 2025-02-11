@@ -28,78 +28,175 @@ import {
 import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Database } from "@/integrations/supabase/types";
 
-interface Exam {
-  id: string;
-  subject: string;
-  date: string;
-  startTime: string;
-  duration: string;
-  venue: string;
-  centerName: string;
-  centerCode: string;
-}
+type Exam = Database['public']['Tables']['exams']['Row'];
+type ExamCenter = Database['public']['Tables']['exam_centers']['Row'];
 
 const Exams = () => {
-  const [exams, setExams] = useState<Exam[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [formData, setFormData] = useState({
     subject: "",
     date: "",
-    startTime: "",
+    start_time: "",
     duration: "",
     venue: "",
-    centerName: "",
-    centerCode: "",
+    center_id: "",
   });
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Mock data for exam centers
-  const examCenters = [
-    { name: "Engineering Block", code: "ENG-01" },
-    { name: "Science Block", code: "SCI-01" },
-    { name: "Arts Block", code: "ART-01" },
-  ];
+  // Fetch exam centers
+  const { data: examCenters = [], isLoading: isLoadingCenters } = useQuery({
+    queryKey: ['examCenters'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('exam_centers')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedExam) {
-      // Edit existing exam
-      setExams(exams.map(exam => 
-        exam.id === selectedExam.id 
-          ? { ...exam, ...formData }
-          : exam
-      ));
-      toast({
-        title: "Exam Updated",
-        description: "Exam information has been updated successfully.",
-      });
-      setIsEditDialogOpen(false);
-    } else {
-      // Add new exam
-      const newExam = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData,
-      };
-      setExams([...exams, newExam]);
+  // Fetch exams
+  const { data: exams = [], isLoading } = useQuery({
+    queryKey: ['exams'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('exams')
+        .select(`
+          *,
+          exam_centers (
+            name,
+            code
+          )
+        `)
+        .order('date');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Add exam mutation
+  const addExamMutation = useMutation({
+    mutationFn: async (newExam: Omit<Exam, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('exams')
+        .insert([newExam])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
       toast({
         title: "Exam Added",
         description: "New exam has been added successfully.",
       });
       setIsAddDialogOpen(false);
+      setFormData({
+        subject: "",
+        date: "",
+        start_time: "",
+        duration: "",
+        venue: "",
+        center_id: "",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update exam mutation
+  const updateExamMutation = useMutation({
+    mutationFn: async ({ id, ...updateData }: Partial<Exam> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('exams')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+      toast({
+        title: "Exam Updated",
+        description: "Exam information has been updated successfully.",
+      });
+      setIsEditDialogOpen(false);
+      setSelectedExam(null);
+      setFormData({
+        subject: "",
+        date: "",
+        start_time: "",
+        duration: "",
+        venue: "",
+        center_id: "",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete exam mutation
+  const deleteExamMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('exams')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+      toast({
+        title: "Exam Deleted",
+        description: "Exam has been removed successfully.",
+        variant: "destructive",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedExam) {
+      updateExamMutation.mutate({
+        id: selectedExam.id,
+        ...formData,
+      });
+    } else {
+      addExamMutation.mutate(formData);
     }
-    setFormData({
-      subject: "",
-      date: "",
-      startTime: "",
-      duration: "",
-      venue: "",
-      centerName: "",
-      centerCode: "",
-    });
-    setSelectedExam(null);
   };
 
   const handleEdit = (exam: Exam) => {
@@ -107,22 +204,16 @@ const Exams = () => {
     setFormData({
       subject: exam.subject,
       date: exam.date,
-      startTime: exam.startTime,
+      start_time: exam.start_time,
       duration: exam.duration,
       venue: exam.venue,
-      centerName: exam.centerName,
-      centerCode: exam.centerCode,
+      center_id: exam.center_id || "",
     });
     setIsEditDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
-    setExams(exams.filter(exam => exam.id !== id));
-    toast({
-      title: "Exam Deleted",
-      description: "Exam has been removed successfully.",
-      variant: "destructive",
-    });
+    deleteExamMutation.mutate(id);
   };
 
   return (
@@ -159,16 +250,11 @@ const Exams = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="centerName">Exam Center</Label>
+                  <Label htmlFor="center_id">Exam Center</Label>
                   <Select 
-                    value={formData.centerName}
+                    value={formData.center_id}
                     onValueChange={(value) => {
-                      const center = examCenters.find(c => c.name === value);
-                      setFormData({ 
-                        ...formData, 
-                        centerName: value,
-                        centerCode: center?.code || ""
-                      });
+                      setFormData({ ...formData, center_id: value });
                     }}
                   >
                     <SelectTrigger>
@@ -176,21 +262,12 @@ const Exams = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {examCenters.map((center) => (
-                        <SelectItem key={center.code} value={center.name}>
-                          {center.name}
+                        <SelectItem key={center.id} value={center.id}>
+                          {center.name} ({center.code})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="centerCode">Center Code</Label>
-                  <Input
-                    id="centerCode"
-                    value={formData.centerCode}
-                    readOnly
-                    className="bg-gray-50"
-                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="date">Date</Label>
@@ -205,13 +282,13 @@ const Exams = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="startTime">Start Time</Label>
+                  <Label htmlFor="start_time">Start Time</Label>
                   <Input
-                    id="startTime"
+                    id="start_time"
                     type="time"
-                    value={formData.startTime}
+                    value={formData.start_time}
                     onChange={(e) =>
-                      setFormData({ ...formData, startTime: e.target.value })
+                      setFormData({ ...formData, start_time: e.target.value })
                     }
                     required
                   />
@@ -273,16 +350,11 @@ const Exams = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-centerName">Exam Center</Label>
+                <Label htmlFor="edit-center_id">Exam Center</Label>
                 <Select 
-                  value={formData.centerName}
+                  value={formData.center_id}
                   onValueChange={(value) => {
-                    const center = examCenters.find(c => c.name === value);
-                    setFormData({ 
-                      ...formData, 
-                      centerName: value,
-                      centerCode: center?.code || ""
-                    });
+                    setFormData({ ...formData, center_id: value });
                   }}
                 >
                   <SelectTrigger>
@@ -290,21 +362,12 @@ const Exams = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {examCenters.map((center) => (
-                      <SelectItem key={center.code} value={center.name}>
-                        {center.name}
+                      <SelectItem key={center.id} value={center.id}>
+                        {center.name} ({center.code})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-centerCode">Center Code</Label>
-                <Input
-                  id="edit-centerCode"
-                  value={formData.centerCode}
-                  readOnly
-                  className="bg-gray-50"
-                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-date">Date</Label>
@@ -319,13 +382,13 @@ const Exams = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-startTime">Start Time</Label>
+                <Label htmlFor="edit-start_time">Start Time</Label>
                 <Input
-                  id="edit-startTime"
+                  id="edit-start_time"
                   type="time"
-                  value={formData.startTime}
+                  value={formData.start_time}
                   onChange={(e) =>
-                    setFormData({ ...formData, startTime: e.target.value })
+                    setFormData({ ...formData, start_time: e.target.value })
                   }
                   required
                 />
@@ -383,41 +446,48 @@ const Exams = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {exams.map((exam) => (
-                <TableRow key={exam.id}>
-                  <TableCell>{exam.subject}</TableCell>
-                  <TableCell>{exam.centerName}</TableCell>
-                  <TableCell>{exam.centerCode}</TableCell>
-                  <TableCell>{exam.date}</TableCell>
-                  <TableCell>{exam.startTime}</TableCell>
-                  <TableCell>{exam.duration} hours</TableCell>
-                  <TableCell>{exam.venue}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(exam)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(exam.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center">
+                    Loading...
                   </TableCell>
                 </TableRow>
-              ))}
-              {exams.length === 0 && (
+              ) : exams.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No exams found. Add your first exam to get started.
                   </TableCell>
                 </TableRow>
+              ) : (
+                exams.map((exam) => (
+                  <TableRow key={exam.id}>
+                    <TableCell>{exam.subject}</TableCell>
+                    <TableCell>{exam.exam_centers?.name}</TableCell>
+                    <TableCell>{exam.exam_centers?.code}</TableCell>
+                    <TableCell>{exam.date}</TableCell>
+                    <TableCell>{exam.start_time}</TableCell>
+                    <TableCell>{exam.duration} hours</TableCell>
+                    <TableCell>{exam.venue}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(exam)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(exam.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
