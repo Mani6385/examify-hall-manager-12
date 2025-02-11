@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +34,7 @@ const Students = () => {
   const [formData, setFormData] = useState({
     roll_number: "",
     name: "",
+    signature: "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -72,7 +72,7 @@ const Students = () => {
         description: "New student has been added successfully.",
       });
       setIsAddDialogOpen(false);
-      setFormData({ roll_number: "", name: "" });
+      setFormData({ roll_number: "", name: "", signature: "" });
     },
     onError: (error) => {
       toast({
@@ -104,7 +104,7 @@ const Students = () => {
       });
       setIsEditDialogOpen(false);
       setSelectedStudent(null);
-      setFormData({ roll_number: "", name: "" });
+      setFormData({ roll_number: "", name: "", signature: "" });
     },
     onError: (error) => {
       toast({
@@ -159,6 +159,7 @@ const Students = () => {
     setFormData({
       roll_number: student.roll_number,
       name: student.name,
+      signature: student.signature || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -217,6 +218,16 @@ const Students = () => {
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signature">Signature</Label>
+                  <Input
+                    id="signature"
+                    value={formData.signature}
+                    onChange={(e) =>
+                      setFormData({ ...formData, signature: e.target.value })
+                    }
+                  />
+                </div>
                 <Button type="submit" className="w-full">
                   Add Student
                 </Button>
@@ -261,6 +272,16 @@ const Students = () => {
                     setFormData({ ...formData, name: e.target.value })
                   }
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-signature">Signature</Label>
+                <Input
+                  id="edit-signature"
+                  value={formData.signature}
+                  onChange={(e) =>
+                    setFormData({ ...formData, signature: e.target.value })
+                  }
                 />
               </div>
               <Button type="submit" className="w-full">
