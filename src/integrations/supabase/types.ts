@@ -163,6 +163,7 @@ export type Database = {
           id: string
           name: string
           signature: string | null
+          subject: string
           updated_at: string
         }
         Insert: {
@@ -171,6 +172,7 @@ export type Database = {
           id?: string
           name: string
           signature?: string | null
+          subject?: string
           updated_at?: string
         }
         Update: {
@@ -179,6 +181,7 @@ export type Database = {
           id?: string
           name?: string
           signature?: string | null
+          subject?: string
           updated_at?: string
         }
         Relationships: []
