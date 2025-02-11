@@ -19,8 +19,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { BookOpen, Pencil, Trash2 } from "lucide-react";
+import { BookOpen, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Class {
   id: string;
@@ -30,7 +32,6 @@ interface Class {
 }
 
 const Classes = () => {
-  const [classes, setClasses] = useState<Class[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
@@ -40,55 +41,105 @@ const Classes = () => {
     capacity: "",
   });
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fetch classes
+  const { data: classes = [], isLoading } = useQuery({
+    queryKey: ['classes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching classes:', error);
+        throw error;
+      }
+
+      return data as Class[];
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedClass) {
-      // Edit existing class
-      setClasses(classes.map(c => 
-        c.id === selectedClass.id 
-          ? { ...c, ...formData }
-          : c
-      ));
+    try {
+      if (selectedClass) {
+        // Edit existing class
+        const { error } = await supabase
+          .from('classes')
+          .update(formData)
+          .eq('id', selectedClass.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Class Updated",
+          description: "Class information has been updated successfully.",
+        });
+        setIsEditDialogOpen(false);
+      } else {
+        // Add new class
+        const { error } = await supabase
+          .from('classes')
+          .insert([formData]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Class Added",
+          description: "New class has been added successfully.",
+        });
+        setIsAddDialogOpen(false);
+      }
+
+      // Refresh the classes data
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      setFormData({ name: "", section: "", capacity: "" });
+      setSelectedClass(null);
+    } catch (error) {
+      console.error('Error saving class:', error);
       toast({
-        title: "Class Updated",
-        description: "Class information has been updated successfully.",
+        title: "Error",
+        description: "There was an error saving the class. Please try again.",
+        variant: "destructive",
       });
-      setIsEditDialogOpen(false);
-    } else {
-      // Add new class
-      const newClass = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData,
-      };
-      setClasses([...classes, newClass]);
-      toast({
-        title: "Class Added",
-        description: "New class has been added successfully.",
-      });
-      setIsAddDialogOpen(false);
     }
-    setFormData({ name: "", section: "", capacity: "" });
-    setSelectedClass(null);
   };
 
   const handleEdit = (classItem: Class) => {
     setSelectedClass(classItem);
-    setFormData({ 
-      name: classItem.name, 
-      section: classItem.section, 
-      capacity: classItem.capacity 
+    setFormData({
+      name: classItem.name,
+      section: classItem.section,
+      capacity: classItem.capacity,
     });
     setIsEditDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setClasses(classes.filter(c => c.id !== id));
-    toast({
-      title: "Class Deleted",
-      description: "Class has been removed successfully.",
-      variant: "destructive",
-    });
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('classes')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      toast({
+        title: "Class Deleted",
+        description: "Class has been removed successfully.",
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error('Error deleting class:', error);
+      toast({
+        title: "Error",
+        description: "There was an error deleting the class. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -213,37 +264,47 @@ const Classes = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {classes.map((classItem) => (
-                <TableRow key={classItem.id}>
-                  <TableCell>{classItem.name}</TableCell>
-                  <TableCell>{classItem.section}</TableCell>
-                  <TableCell>{classItem.capacity}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(classItem)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(classItem.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-10">
+                    <div className="flex justify-center items-center">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="ml-2">Loading classes...</span>
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
-              {classes.length === 0 && (
+              ) : classes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
                     No classes found. Add your first class to get started.
                   </TableCell>
                 </TableRow>
+              ) : (
+                classes.map((classItem) => (
+                  <TableRow key={classItem.id}>
+                    <TableCell>{classItem.name}</TableCell>
+                    <TableCell>{classItem.section}</TableCell>
+                    <TableCell>{classItem.capacity}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(classItem)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(classItem.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
@@ -254,3 +315,4 @@ const Classes = () => {
 };
 
 export default Classes;
+
