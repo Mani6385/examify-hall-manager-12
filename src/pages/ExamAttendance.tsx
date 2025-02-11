@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
-import { UserCheck, UserX, Save, Download, FileText } from "lucide-react";
+import { UserCheck, UserX, Save, FileText, signature } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -29,6 +30,7 @@ interface Student {
   name: string;
   department: string;
   status: "present" | "absent" | null;
+  signature?: string;
 }
 
 interface ExamSession {
@@ -39,6 +41,7 @@ interface ExamSession {
   venue: string;
   centerName: string;
   roomName: string;
+  teacherSignature?: string;
 }
 
 const ExamAttendance = () => {
@@ -75,6 +78,20 @@ const ExamAttendance = () => {
       students.map((student) =>
         student.id === studentId ? { ...student, status } : student
       )
+    );
+  };
+
+  const addStudentSignature = (studentId: string, signature: string) => {
+    setStudents(
+      students.map((student) =>
+        student.id === studentId ? { ...student, signature } : student
+      )
+    );
+  };
+
+  const addTeacherSignature = (examId: string, signature: string) => {
+    examSessions.map((exam) =>
+      exam.id === examId ? { ...exam, teacherSignature: signature } : exam
     );
   };
 
@@ -116,13 +133,16 @@ const ExamAttendance = () => {
         ['Date:', selectedExamSession.date],
         ['Time:', selectedExamSession.startTime],
         [],
-        ['Registration No', 'Name', 'Department', 'Status'],
+        ['Registration No', 'Name', 'Department', 'Status', 'Student Signature'],
         ...students.map(student => [
           student.regNo,
           student.name,
           student.department,
-          student.status || 'Not marked'
-        ])
+          student.status || 'Not marked',
+          student.signature || '_____________'
+        ]),
+        [],
+        ['Teacher Signature:', selectedExamSession.teacherSignature || '_____________'],
       ];
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -167,13 +187,14 @@ const ExamAttendance = () => {
       doc.text(`Date: ${selectedExamSession.date}`, 15, 51);
       doc.text(`Time: ${selectedExamSession.startTime}`, 15, 58);
 
-      const headers = [["Reg No", "Name", "Department", "Status"]];
+      const headers = [["Reg No", "Name", "Department", "Status", "Student Signature"]];
       
       const data = students.map(student => [
         student.regNo,
         student.name,
         student.department,
-        student.status || "Not marked"
+        student.status || "Not marked",
+        student.signature || "____________"
       ]);
 
       (doc as any).autoTable({
@@ -183,6 +204,9 @@ const ExamAttendance = () => {
         styles: { fontSize: 10 },
         headStyles: { fillColor: [41, 128, 185] },
       });
+
+      // Add teacher signature at the bottom
+      doc.text("Teacher Signature: _________________", 15, doc.internal.pageSize.height - 20);
 
       doc.save(`attendance-${selectedExamSession.subject}-${selectedExamSession.date}.pdf`);
 
@@ -243,6 +267,7 @@ const ExamAttendance = () => {
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Name", bold: true })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Department", bold: true })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Status", bold: true })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Student Signature", bold: true })] })] }),
                   ],
                 }),
                 ...students.map(
@@ -252,10 +277,15 @@ const ExamAttendance = () => {
                       new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.name })] })] }),
                       new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.department })] })] }),
                       new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.status || "Not marked" })] })] }),
+                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.signature || "_____________" })] })] }),
                     ],
                   })
                 ),
               ],
+            }),
+            new Paragraph({ children: [] }), // Empty line
+            new Paragraph({
+              children: [new TextRun({ text: "Teacher Signature: _____________" })],
             }),
           ],
         }],
@@ -355,6 +385,7 @@ const ExamAttendance = () => {
                       <TableHead>Name</TableHead>
                       <TableHead>Department</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Student Signature</TableHead>
                       <TableHead className="w-[200px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -379,6 +410,9 @@ const ExamAttendance = () => {
                                 student.status.slice(1)
                               : "Not marked"}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          {student.signature || "_____________"}
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
@@ -410,23 +444,31 @@ const ExamAttendance = () => {
                 </Table>
               </div>
 
-              <div className="flex justify-end space-x-4">
-                <Button variant="outline" onClick={generatePDF}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Export to PDF
-                </Button>
-                <Button variant="outline" onClick={generateWord}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Export to Word
-                </Button>
-                <Button variant="outline" onClick={downloadAttendanceSheet}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Excel
-                </Button>
-                <Button onClick={handleSaveAttendance}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Attendance
-                </Button>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-muted-foreground">Teacher Signature:</span>
+                  <span className="border-b border-gray-300 w-40">
+                    {selectedExamSession.teacherSignature || "_____________"}
+                  </span>
+                </div>
+                <div className="flex space-x-4">
+                  <Button variant="outline" onClick={generatePDF}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export to PDF
+                  </Button>
+                  <Button variant="outline" onClick={generateWord}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export to Word
+                  </Button>
+                  <Button variant="outline" onClick={downloadAttendanceSheet}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export to Excel
+                  </Button>
+                  <Button onClick={handleSaveAttendance}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Attendance
+                  </Button>
+                </div>
               </div>
             </>
           )}
