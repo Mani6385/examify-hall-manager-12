@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
-import { UserCheck, UserX, Save, FileText, signature } from "lucide-react";
+import { Save, FileText, Signature } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -29,7 +29,6 @@ interface Student {
   regNo: string;
   name: string;
   department: string;
-  status: "present" | "absent" | null;
   signature?: string;
 }
 
@@ -47,9 +46,9 @@ interface ExamSession {
 const ExamAttendance = () => {
   const [selectedExam, setSelectedExam] = useState<string>("");
   const [students, setStudents] = useState<Student[]>([
-    { id: "1", regNo: "CS001", name: "John Doe", department: "Computer Science", status: null },
-    { id: "2", regNo: "CS002", name: "Jane Smith", department: "Computer Science", status: null },
-    { id: "3", regNo: "CS003", name: "Bob Johnson", department: "Computer Science", status: null },
+    { id: "1", regNo: "CS001", name: "John Doe", department: "Computer Science" },
+    { id: "2", regNo: "CS002", name: "Jane Smith", department: "Computer Science" },
+    { id: "3", regNo: "CS003", name: "Bob Johnson", department: "Computer Science" },
   ]);
   const [examSessions] = useState<ExamSession[]>([
     {
@@ -73,14 +72,6 @@ const ExamAttendance = () => {
   ]);
   const { toast } = useToast();
 
-  const markAttendance = (studentId: string, status: "present" | "absent") => {
-    setStudents(
-      students.map((student) =>
-        student.id === studentId ? { ...student, status } : student
-      )
-    );
-  };
-
   const addStudentSignature = (studentId: string, signature: string) => {
     setStudents(
       students.map((student) =>
@@ -96,16 +87,6 @@ const ExamAttendance = () => {
   };
 
   const handleSaveAttendance = () => {
-    const unmarkedStudents = students.filter((student) => student.status === null);
-    if (unmarkedStudents.length > 0) {
-      toast({
-        title: "Incomplete Attendance",
-        description: "Please mark attendance for all students before saving.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     toast({
       title: "Attendance Saved",
       description: "Exam attendance has been recorded successfully.",
@@ -133,12 +114,11 @@ const ExamAttendance = () => {
         ['Date:', selectedExamSession.date],
         ['Time:', selectedExamSession.startTime],
         [],
-        ['Registration No', 'Name', 'Department', 'Status', 'Student Signature'],
+        ['Registration No', 'Name', 'Department', 'Student Signature'],
         ...students.map(student => [
           student.regNo,
           student.name,
           student.department,
-          student.status || 'Not marked',
           student.signature || '_____________'
         ]),
         [],
@@ -187,13 +167,12 @@ const ExamAttendance = () => {
       doc.text(`Date: ${selectedExamSession.date}`, 15, 51);
       doc.text(`Time: ${selectedExamSession.startTime}`, 15, 58);
 
-      const headers = [["Reg No", "Name", "Department", "Status", "Student Signature"]];
+      const headers = [["Reg No", "Name", "Department", "Student Signature"]];
       
       const data = students.map(student => [
         student.regNo,
         student.name,
         student.department,
-        student.status || "Not marked",
         student.signature || "____________"
       ]);
 
@@ -205,7 +184,6 @@ const ExamAttendance = () => {
         headStyles: { fillColor: [41, 128, 185] },
       });
 
-      // Add teacher signature at the bottom
       doc.text("Teacher Signature: _________________", 15, doc.internal.pageSize.height - 20);
 
       doc.save(`attendance-${selectedExamSession.subject}-${selectedExamSession.date}.pdf`);
@@ -242,7 +220,7 @@ const ExamAttendance = () => {
             new Paragraph({
               children: [new TextRun({ text: "Exam Attendance Report", bold: true, size: 32 })],
             }),
-            new Paragraph({ children: [] }), // Empty line
+            new Paragraph({ children: [] }),
             new Paragraph({
               children: [new TextRun({ text: `Center Name: ${selectedExamSession.centerName}` })],
             }),
@@ -258,7 +236,7 @@ const ExamAttendance = () => {
             new Paragraph({
               children: [new TextRun({ text: `Time: ${selectedExamSession.startTime}` })],
             }),
-            new Paragraph({ children: [] }), // Empty line
+            new Paragraph({ children: [] }),
             new DocxTable({
               rows: [
                 new DocxTableRow({
@@ -266,7 +244,6 @@ const ExamAttendance = () => {
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Reg No", bold: true })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Name", bold: true })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Department", bold: true })] })] }),
-                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Status", bold: true })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Student Signature", bold: true })] })] }),
                   ],
                 }),
@@ -276,14 +253,13 @@ const ExamAttendance = () => {
                       new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.regNo })] })] }),
                       new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.name })] })] }),
                       new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.department })] })] }),
-                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.status || "Not marked" })] })] }),
                       new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.signature || "_____________" })] })] }),
                     ],
                   })
                 ),
               ],
             }),
-            new Paragraph({ children: [] }), // Empty line
+            new Paragraph({ children: [] }),
             new Paragraph({
               children: [new TextRun({ text: "Teacher Signature: _____________" })],
             }),
@@ -384,7 +360,6 @@ const ExamAttendance = () => {
                       <TableHead>Registration No</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Department</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead>Student Signature</TableHead>
                       <TableHead className="w-[200px]">Actions</TableHead>
                     </TableRow>
@@ -396,45 +371,17 @@ const ExamAttendance = () => {
                         <TableCell>{student.name}</TableCell>
                         <TableCell>{student.department}</TableCell>
                         <TableCell>
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              student.status === "present"
-                                ? "bg-green-100 text-green-800"
-                                : student.status === "absent"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {student.status
-                              ? student.status.charAt(0).toUpperCase() +
-                                student.status.slice(1)
-                              : "Not marked"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
                           {student.signature || "_____________"}
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
                             <Button
-                              variant={
-                                student.status === "present" ? "default" : "outline"
-                              }
+                              variant="outline"
                               size="sm"
-                              onClick={() => markAttendance(student.id, "present")}
+                              onClick={() => addStudentSignature(student.id, student.name)}
                             >
-                              <UserCheck className="h-4 w-4 mr-1" />
-                              Present
-                            </Button>
-                            <Button
-                              variant={
-                                student.status === "absent" ? "default" : "outline"
-                              }
-                              size="sm"
-                              onClick={() => markAttendance(student.id, "absent")}
-                            >
-                              <UserX className="h-4 w-4 mr-1" />
-                              Absent
+                              <Signature className="h-4 w-4 mr-1" />
+                              Sign
                             </Button>
                           </div>
                         </TableCell>
@@ -450,6 +397,14 @@ const ExamAttendance = () => {
                   <span className="border-b border-gray-300 w-40">
                     {selectedExamSession.teacherSignature || "_____________"}
                   </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addTeacherSignature(selectedExam, "Teacher Name")}
+                  >
+                    <Signature className="h-4 w-4 mr-1" />
+                    Sign
+                  </Button>
                 </div>
                 <div className="flex space-x-4">
                   <Button variant="outline" onClick={generatePDF}>
@@ -479,3 +434,4 @@ const ExamAttendance = () => {
 };
 
 export default ExamAttendance;
+
