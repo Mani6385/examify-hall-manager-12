@@ -21,86 +21,156 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { UserPlus, Pencil, Trash2, Search } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Database } from "@/integrations/supabase/types";
 
-interface Student {
-  id: string;
-  regNo: string;
-  name: string;
-  department?: string;
-  semester?: string;
-}
+type Student = Database['public']['Tables']['students']['Row'];
 
 const Students = () => {
-  const [students, setStudents] = useState<Student[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
-    regNo: "",
+    roll_number: "",
     name: "",
-    department: "",
-    semester: "",
   });
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedStudent) {
-      // Edit existing student
-      setStudents(students.map(s => 
-        s.id === selectedStudent.id 
-          ? { ...s, ...formData }
-          : s
-      ));
-      toast({
-        title: "Student Updated",
-        description: "Student information has been updated successfully.",
-      });
-      setIsEditDialogOpen(false);
-    } else {
-      // Add new student
-      const newStudent = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData,
-      };
-      setStudents([...students, newStudent]);
+  // Fetch students
+  const { data: students = [], isLoading } = useQuery({
+    queryKey: ['students'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Add student mutation
+  const addStudentMutation = useMutation({
+    mutationFn: async (newStudent: Omit<Student, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('students')
+        .insert([newStudent])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
       toast({
         title: "Student Added",
         description: "New student has been added successfully.",
       });
       setIsAddDialogOpen(false);
+      setFormData({ roll_number: "", name: "" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update student mutation
+  const updateStudentMutation = useMutation({
+    mutationFn: async ({ id, ...updateData }: Partial<Student> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('students')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast({
+        title: "Student Updated",
+        description: "Student information has been updated successfully.",
+      });
+      setIsEditDialogOpen(false);
+      setSelectedStudent(null);
+      setFormData({ roll_number: "", name: "" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete student mutation
+  const deleteStudentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('students')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast({
+        title: "Student Deleted",
+        description: "Student has been removed successfully.",
+        variant: "destructive",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedStudent) {
+      updateStudentMutation.mutate({
+        id: selectedStudent.id,
+        ...formData,
+      });
+    } else {
+      addStudentMutation.mutate(formData);
     }
-    setFormData({ regNo: "", name: "", department: "", semester: "" });
-    setSelectedStudent(null);
   };
 
   const handleEdit = (student: Student) => {
     setSelectedStudent(student);
     setFormData({
-      regNo: student.regNo,
+      roll_number: student.roll_number,
       name: student.name,
-      department: student.department || "",
-      semester: student.semester || "",
     });
     setIsEditDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
-    setStudents(students.filter(s => s.id !== id));
-    toast({
-      title: "Student Deleted",
-      description: "Student has been removed successfully.",
-      variant: "destructive",
-    });
+    deleteStudentMutation.mutate(id);
   };
 
   const filteredStudents = students.filter(
     student =>
       student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.regNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.semester?.toLowerCase().includes(searchQuery.toLowerCase())
+      student.roll_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -126,12 +196,12 @@ const Students = () => {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="regNo">Registration Number</Label>
+                  <Label htmlFor="roll_number">Roll Number</Label>
                   <Input
-                    id="regNo"
-                    value={formData.regNo}
+                    id="roll_number"
+                    value={formData.roll_number}
                     onChange={(e) =>
-                      setFormData({ ...formData, regNo: e.target.value })
+                      setFormData({ ...formData, roll_number: e.target.value })
                     }
                     required
                   />
@@ -143,28 +213,6 @@ const Students = () => {
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Input
-                    id="department"
-                    value={formData.department}
-                    onChange={(e) =>
-                      setFormData({ ...formData, department: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="semester">Semester</Label>
-                  <Input
-                    id="semester"
-                    value={formData.semester}
-                    onChange={(e) =>
-                      setFormData({ ...formData, semester: e.target.value })
                     }
                     required
                   />
@@ -194,12 +242,12 @@ const Students = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-regNo">Registration Number</Label>
+                <Label htmlFor="edit-roll_number">Roll Number</Label>
                 <Input
-                  id="edit-regNo"
-                  value={formData.regNo}
+                  id="edit-roll_number"
+                  value={formData.roll_number}
                   onChange={(e) =>
-                    setFormData({ ...formData, regNo: e.target.value })
+                    setFormData({ ...formData, roll_number: e.target.value })
                   }
                   required
                 />
@@ -215,28 +263,6 @@ const Students = () => {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-department">Department</Label>
-                <Input
-                  id="edit-department"
-                  value={formData.department}
-                  onChange={(e) =>
-                    setFormData({ ...formData, department: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-semester">Semester</Label>
-                <Input
-                  id="edit-semester"
-                  value={formData.semester}
-                  onChange={(e) =>
-                    setFormData({ ...formData, semester: e.target.value })
-                  }
-                  required
-                />
-              </div>
               <Button type="submit" className="w-full">
                 Update Student
               </Button>
@@ -248,46 +274,49 @@ const Students = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Registration No</TableHead>
+                <TableHead>Roll Number</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Semester</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredStudents.map((student) => (
-                <TableRow key={student.id}>
-                  <TableCell>{student.regNo}</TableCell>
-                  <TableCell>{student.name}</TableCell>
-                  <TableCell>{student.department}</TableCell>
-                  <TableCell>{student.semester}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(student)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(student.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center">
+                    Loading...
                   </TableCell>
                 </TableRow>
-              ))}
-              {filteredStudents.length === 0 && (
+              ) : filteredStudents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">
                     No students found. Add your first student to get started.
                   </TableCell>
                 </TableRow>
+              ) : (
+                filteredStudents.map((student) => (
+                  <TableRow key={student.id}>
+                    <TableCell>{student.roll_number}</TableCell>
+                    <TableCell>{student.name}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(student)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(student.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
