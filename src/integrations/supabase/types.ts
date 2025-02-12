@@ -110,8 +110,22 @@ export type Database = {
             foreignKeyName: "exam_attendance_exam_id_fkey"
             columns: ["exam_id"]
             isOneToOne: false
+            referencedRelation: "exam_attendance_summary"
+            referencedColumns: ["exam_id"]
+          },
+          {
+            foreignKeyName: "exam_attendance_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
             referencedRelation: "exams"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_attendance_history"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "exam_attendance_student_id_fkey"
@@ -229,6 +243,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "seating_arrangements_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exam_attendance_summary"
+            referencedColumns: ["exam_id"]
+          },
           {
             foreignKeyName: "seating_arrangements_exam_id_fkey"
             columns: ["exam_id"]
@@ -368,7 +389,31 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      exam_attendance_summary: {
+        Row: {
+          center_name: string | null
+          date: string | null
+          exam_id: string | null
+          start_time: string | null
+          subject: string | null
+          total_attendance: number | null
+          total_students: number | null
+          venue: string | null
+        }
+        Relationships: []
+      }
+      student_attendance_history: {
+        Row: {
+          attended: boolean | null
+          exam_date: string | null
+          roll_number: string | null
+          start_time: string | null
+          student_id: string | null
+          student_name: string | null
+          subject: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
