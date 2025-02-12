@@ -250,24 +250,20 @@ const Exams = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="center_id">Exam Center</Label>
-                  <Select 
-                    value={formData.center_id}
-                    onValueChange={(value) => {
-                      setFormData({ ...formData, center_id: value });
+                  <Label htmlFor="center_id">Exam Center Name</Label>
+                  <Input
+                    id="center_name"
+                    placeholder="Enter center name"
+                    onChange={(e) => {
+                      const centerName = e.target.value;
+                      const center = examCenters.find(c => c.name === centerName);
+                      setFormData({ 
+                        ...formData, 
+                        center_id: center?.id || "" 
+                      });
                     }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Center" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {examCenters.map((center) => (
-                        <SelectItem key={center.id} value={center.id}>
-                          {center.name} ({center.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="date">Date</Label>
@@ -350,24 +346,21 @@ const Exams = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-center_id">Exam Center</Label>
-                <Select 
-                  value={formData.center_id}
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, center_id: value });
+                <Label htmlFor="edit-center_id">Exam Center Name</Label>
+                <Input
+                  id="edit_center_name"
+                  placeholder="Enter center name"
+                  defaultValue={selectedExam?.exam_centers?.name}
+                  onChange={(e) => {
+                    const centerName = e.target.value;
+                    const center = examCenters.find(c => c.name === centerName);
+                    setFormData({ 
+                      ...formData, 
+                      center_id: center?.id || "" 
+                    });
                   }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Center" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {examCenters.map((center) => (
-                      <SelectItem key={center.id} value={center.id}>
-                        {center.name} ({center.code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-date">Date</Label>
