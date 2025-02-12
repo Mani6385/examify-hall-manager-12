@@ -47,7 +47,7 @@ const Exams = () => {
     start_time: "",
     duration: "",
     venue: "",
-    center_id: "",
+    center_id: null as string | null,
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -89,9 +89,14 @@ const Exams = () => {
   // Add exam mutation
   const addExamMutation = useMutation({
     mutationFn: async (newExam: Omit<Exam, 'id' | 'created_at' | 'updated_at'>) => {
+      const examData = { ...newExam };
+      if (!examData.center_id) {
+        delete examData.center_id;
+      }
+
       const { data, error } = await supabase
         .from('exams')
-        .insert([newExam])
+        .insert([examData])
         .select()
         .single();
       
@@ -111,7 +116,7 @@ const Exams = () => {
         start_time: "",
         duration: "",
         venue: "",
-        center_id: "",
+        center_id: null,
       });
     },
     onError: (error) => {
@@ -126,6 +131,10 @@ const Exams = () => {
   // Update exam mutation
   const updateExamMutation = useMutation({
     mutationFn: async ({ id, ...updateData }: Partial<Exam> & { id: string }) => {
+      if (!updateData.center_id) {
+        delete updateData.center_id;
+      }
+
       const { data, error } = await supabase
         .from('exams')
         .update(updateData)
@@ -150,7 +159,7 @@ const Exams = () => {
         start_time: "",
         duration: "",
         venue: "",
-        center_id: "",
+        center_id: null,
       });
     },
     onError: (error) => {
@@ -209,7 +218,7 @@ const Exams = () => {
       start_time: exam.start_time,
       duration: exam.duration,
       venue: exam.venue,
-      center_id: exam.center_id || "",
+      center_id: exam.center_id,
     });
     setIsEditDialogOpen(true);
   };
@@ -261,7 +270,7 @@ const Exams = () => {
                       const center = examCenters.find(c => c.name === centerName);
                       setFormData({ 
                         ...formData, 
-                        center_id: center?.id || "" 
+                        center_id: center?.id || null 
                       });
                     }}
                     required
@@ -358,7 +367,7 @@ const Exams = () => {
                     const center = examCenters.find(c => c.name === centerName);
                     setFormData({ 
                       ...formData, 
-                      center_id: center?.id || "" 
+                      center_id: center?.id || null 
                     });
                   }}
                   required
