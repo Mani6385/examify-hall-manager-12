@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,8 +31,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
 
-type Exam = Database['public']['Tables']['exams']['Row'];
 type ExamCenter = Database['public']['Tables']['exam_centers']['Row'];
+
+type Exam = Database['public']['Tables']['exams']['Row'] & {
+  exam_centers?: ExamCenter | null;
+};
 
 const Exams = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
