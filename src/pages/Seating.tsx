@@ -12,6 +12,8 @@ import { useState } from "react";
 import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface DepartmentConfig {
   id: string;
@@ -42,29 +44,102 @@ const Seating = () => {
   const [cols, setColumns] = useState(6);
   const [seats, setSeats] = useState<Seat[]>([]);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Mock data for center details
-  const examCenters = [
-    { name: "Engineering Block", code: "ENG-01" },
-    { name: "Science Block", code: "SCI-01" },
-    { name: "Arts Block", code: "ART-01" },
-  ];
+  // Fetch exam centers from Supabase
+  const { data: examCenters = [] } = useQuery({
+    queryKey: ['examCenters'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('exam_centers')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  const rooms = [
-    { number: "101", floor: "1" },
-    { number: "102", floor: "1" },
-    { number: "201", floor: "2" },
-    { number: "202", floor: "2" },
-  ];
+  // Fetch departments from Supabase
+  const { data: departmentsList = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  // Mock department data
-  const departmentsList = [
-    { id: "1", name: "Computer Science" },
-    { id: "2", name: "Electronics" },
-    { id: "3", name: "Mechanical" },
-    { id: "4", name: "Civil" },
-    { id: "5", name: "Electrical" },
-  ];
+  // Create seating arrangement mutation
+  const createSeatingMutation = useMutation({
+    mutationFn: async () => {
+      // First create the seating arrangement
+      const { data: arrangement, error: arrangementError } = await supabase
+        .from('seating_arrangements')
+        .insert([{
+          room_no: roomNo,
+          floor_no: floorNo,
+          rows: rows,
+          columns: cols,
+        }])
+        .select()
+        .single();
+
+      if (arrangementError) throw arrangementError;
+
+      // Then create department configs
+      const departmentConfigPromises = departments.map(dept => 
+        supabase
+          .from('department_configs')
+          .insert([{
+            arrangement_id: arrangement.id,
+            department: dept.department,
+            start_reg_no: dept.startRegNo,
+            end_reg_no: dept.endRegNo,
+            prefix: dept.prefix,
+          }])
+      );
+
+      await Promise.all(departmentConfigPromises);
+
+      // Finally create seating assignments
+      const seatingAssignments = seats.map((seat, index) => ({
+        arrangement_id: arrangement.id,
+        seat_no: seat.seatNo,
+        student_name: seat.studentName,
+        reg_no: seat.regNo,
+        department: seat.department,
+        position: index,
+      }));
+
+      const { error: assignmentsError } = await supabase
+        .from('seating_assignments')
+        .insert(seatingAssignments);
+
+      if (assignmentsError) throw assignmentsError;
+
+      return arrangement;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seatingArrangements'] });
+      toast({
+        title: "Success",
+        description: "Seating arrangement saved successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to save seating arrangement",
+        variant: "destructive",
+      });
+      console.error("Error saving seating arrangement:", error);
+    },
+  });
 
   const addDepartment = () => {
     if (departments.length >= 5) {
@@ -179,19 +254,11 @@ const Seating = () => {
       department: allStudents[index]?.department || null,
     }));
 
-    // Save seating arrangement to localStorage for Reports
-    const seatingData = {
-      departments,
-      centerName,
-      centerCode,
-      roomNo,
-      floorNo,
-      timestamp: new Date().toISOString(),
-      seats: assignedSeats
-    };
-    localStorage.setItem('seatingArrangement', JSON.stringify(seatingData));
-
     setSeats(assignedSeats);
+
+    // Save to Supabase
+    createSeatingMutation.mutate();
+
     toast({
       title: "Success",
       description: "Seating arrangement generated successfully",
@@ -249,7 +316,7 @@ const Seating = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {examCenters.map((center) => (
-                    <SelectItem key={center.code} value={center.name}>
+                    <SelectItem key={center.id} value={center.name}>
                       {center.name}
                     </SelectItem>
                   ))}
@@ -263,30 +330,16 @@ const Seating = () => {
                 className="bg-gray-50"
               />
 
-              <Select value={roomNo} onValueChange={(value) => {
-                setRoomNo(value);
-                const room = rooms.find(r => r.number === value);
-                if (room) {
-                  setFloorNo(room.floor);
-                }
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Room" />
-                </SelectTrigger>
-                <SelectContent>
-                  {rooms.map((room) => (
-                    <SelectItem key={room.number} value={room.number}>
-                      Room {room.number}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                placeholder="Room Number"
+                value={roomNo}
+                onChange={(e) => setRoomNo(e.target.value)}
+              />
 
               <Input
                 placeholder="Floor Number"
                 value={floorNo}
-                readOnly
-                className="bg-gray-50"
+                onChange={(e) => setFloorNo(e.target.value)}
               />
             </div>
           </div>
@@ -425,4 +478,3 @@ const Seating = () => {
 };
 
 export default Seating;
-

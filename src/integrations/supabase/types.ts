@@ -36,6 +36,47 @@ export type Database = {
         }
         Relationships: []
       }
+      department_configs: {
+        Row: {
+          arrangement_id: string | null
+          created_at: string
+          department: string
+          end_reg_no: string
+          id: string
+          prefix: string
+          start_reg_no: string
+          updated_at: string
+        }
+        Insert: {
+          arrangement_id?: string | null
+          created_at?: string
+          department: string
+          end_reg_no: string
+          id?: string
+          prefix: string
+          start_reg_no: string
+          updated_at?: string
+        }
+        Update: {
+          arrangement_id?: string | null
+          created_at?: string
+          department?: string
+          end_reg_no?: string
+          id?: string
+          prefix?: string
+          start_reg_no?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_configs_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "seating_arrangements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_attendance: {
         Row: {
           created_at: string
@@ -152,6 +193,91 @@ export type Database = {
             columns: ["center_id"]
             isOneToOne: false
             referencedRelation: "exam_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seating_arrangements: {
+        Row: {
+          columns: number
+          created_at: string
+          exam_id: string | null
+          floor_no: string
+          id: string
+          room_no: string
+          rows: number
+          updated_at: string
+        }
+        Insert: {
+          columns: number
+          created_at?: string
+          exam_id?: string | null
+          floor_no: string
+          id?: string
+          room_no: string
+          rows: number
+          updated_at?: string
+        }
+        Update: {
+          columns?: number
+          created_at?: string
+          exam_id?: string | null
+          floor_no?: string
+          id?: string
+          room_no?: string
+          rows?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seating_arrangements_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seating_assignments: {
+        Row: {
+          arrangement_id: string | null
+          created_at: string
+          department: string | null
+          id: string
+          position: number
+          reg_no: string | null
+          seat_no: string
+          student_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          arrangement_id?: string | null
+          created_at?: string
+          department?: string | null
+          id?: string
+          position: number
+          reg_no?: string | null
+          seat_no: string
+          student_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          arrangement_id?: string | null
+          created_at?: string
+          department?: string | null
+          id?: string
+          position?: number
+          reg_no?: string | null
+          seat_no?: string
+          student_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seating_assignments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "seating_arrangements"
             referencedColumns: ["id"]
           },
         ]
