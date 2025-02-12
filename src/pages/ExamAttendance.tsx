@@ -18,84 +18,179 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { Save, FileText, Signature } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { Document, Packer, Paragraph, Table as DocxTable, TableRow as DocxTableRow, TableCell as DocxTableCell, TextRun } from 'docx';
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Database } from "@/integrations/supabase/types";
 
-interface Student {
-  id: string;
-  regNo: string;
-  name: string;
-  department: string;
-  signature?: string;
-}
-
-interface ExamSession {
-  id: string;
-  subject: string;
-  date: string;
-  startTime: string;
-  venue: string;
-  centerName: string;
-  roomName: string;
-  teacherSignature?: string;
-}
+type Student = Database['public']['Tables']['students']['Row'];
+type ExamWithCenter = Database['public']['Tables']['exams']['Row'] & {
+  exam_centers: Database['public']['Tables']['exam_centers']['Row'] | null;
+};
+type ExamAttendance = Database['public']['Tables']['exam_attendance']['Row'];
 
 const ExamAttendance = () => {
   const [selectedExam, setSelectedExam] = useState<string>("");
-  const [students, setStudents] = useState<Student[]>([
-    { id: "1", regNo: "CS001", name: "John Doe", department: "Computer Science" },
-    { id: "2", regNo: "CS002", name: "Jane Smith", department: "Computer Science" },
-    { id: "3", regNo: "CS003", name: "Bob Johnson", department: "Computer Science" },
-  ]);
-  const [examSessions] = useState<ExamSession[]>([
-    {
-      id: "1",
-      subject: "Mathematics",
-      date: "2024-02-15",
-      startTime: "09:00",
-      venue: "Hall A",
-      centerName: "Main Campus",
-      roomName: "Room 101",
-    },
-    {
-      id: "2",
-      subject: "Physics",
-      date: "2024-02-16",
-      startTime: "14:00",
-      venue: "Hall B",
-      centerName: "Science Block",
-      roomName: "Room 202",
-    },
-  ]);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch exam sessions with center details
+  const { data: examSessions = [], isLoading: isLoadingExams } = useQuery({
+    queryKey: ['exams'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('exams')
+        .select(`
+          *,
+          exam_centers (
+            name,
+            code
+          )
+        `)
+        .order('date');
+      
+      if (error) throw error;
+      return data as ExamWithCenter[];
+    },
+  });
+
+  // Fetch students
+  const { data: students = [], isLoading: isLoadingStudents } = useQuery({
+    queryKey: ['students'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch exam attendance records for selected exam
+  const { data: attendanceRecords = [], isLoading: isLoadingAttendance } = useQuery({
+    queryKey: ['attendance', selectedExam],
+    queryFn: async () => {
+      if (!selectedExam) return [];
+      const { data, error } = await supabase
+        .from('exam_attendance')
+        .select('*')
+        .eq('exam_id', selectedExam);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedExam,
+  });
+
+  // Add/Update attendance record mutation
+  const updateAttendanceMutation = useMutation({
+    mutationFn: async ({ studentId, signature }: { studentId: string; signature: string }) => {
+      const existingRecord = attendanceRecords.find(record => record.student_id === studentId);
+      
+      if (existingRecord) {
+        // Update existing record
+        const { data, error } = await supabase
+          .from('exam_attendance')
+          .update({ student_id: studentId })
+          .eq('id', existingRecord.id)
+          .select();
+        
+        if (error) throw error;
+        return data;
+      } else {
+        // Create new record
+        const { data, error } = await supabase
+          .from('exam_attendance')
+          .insert([{
+            exam_id: selectedExam,
+            student_id: studentId,
+            seat_number: `SEAT-${attendanceRecords.length + 1}`,
+          }])
+          .select();
+        
+        if (error) throw error;
+        return data;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance', selectedExam] });
+    },
+  });
+
+  // Update teacher signature mutation
+  const updateTeacherSignatureMutation = useMutation({
+    mutationFn: async ({ teacherId, signature }: { teacherId: string; signature: string }) => {
+      const { data, error } = await supabase
+        .from('teachers')
+        .update({ signature })
+        .eq('id', teacherId)
+        .select();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      toast({
+        title: "Success",
+        description: "Teacher signature updated successfully.",
+      });
+    },
+  });
 
   const addStudentSignature = (studentId: string, signature: string) => {
-    setStudents(
-      students.map((student) =>
-        student.id === studentId ? { ...student, signature } : student
-      )
-    );
+    updateAttendanceMutation.mutate({ studentId, signature });
   };
 
-  const addTeacherSignature = (examId: string, signature: string) => {
-    examSessions.map((exam) =>
-      exam.id === examId ? { ...exam, teacherSignature: signature } : exam
-    );
+  const addTeacherSignature = (teacherId: string, signature: string) => {
+    updateTeacherSignatureMutation.mutate({ teacherId, signature });
   };
 
   const handleSaveAttendance = () => {
+    if (!selectedExam) {
+      toast({
+        title: "Error",
+        description: "Please select an exam session first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Attendance Saved",
       description: "Exam attendance has been recorded successfully.",
     });
   };
 
-  const downloadAttendanceSheet = () => {
+  const generateAttendanceData = () => {
     const selectedExamSession = examSessions.find((exam) => exam.id === selectedExam);
-    if (!selectedExamSession) {
+    if (!selectedExamSession) return null;
+
+    const attendanceData = students.map(student => {
+      const attendanceRecord = attendanceRecords.find(record => record.student_id === student.id);
+      return {
+        regNo: student.roll_number,
+        name: student.name,
+        signature: student.signature || '_____________',
+        isPresent: !!attendanceRecord
+      };
+    });
+
+    return {
+      examSession: selectedExamSession,
+      attendance: attendanceData
+    };
+  };
+
+  const downloadAttendanceSheet = () => {
+    const data = generateAttendanceData();
+    if (!data) {
       toast({
         title: "Error",
         description: "Please select an exam session first.",
@@ -108,27 +203,25 @@ const ExamAttendance = () => {
       const wsData = [
         ['Exam Attendance Report'],
         [],
-        ['Center Name:', selectedExamSession.centerName],
-        ['Room:', selectedExamSession.roomName],
-        ['Subject:', selectedExamSession.subject],
-        ['Date:', selectedExamSession.date],
-        ['Time:', selectedExamSession.startTime],
+        ['Center Name:', data.examSession.exam_centers?.name],
+        ['Room:', data.examSession.venue],
+        ['Subject:', data.examSession.subject],
+        ['Date:', data.examSession.date],
+        ['Time:', data.examSession.start_time],
         [],
-        ['Registration No', 'Name', 'Department', 'Student Signature'],
-        ...students.map(student => [
+        ['Registration No', 'Name', 'Present', 'Student Signature'],
+        ...data.attendance.map(student => [
           student.regNo,
           student.name,
-          student.department,
-          student.signature || '_____________'
+          student.isPresent ? 'Yes' : 'No',
+          student.signature
         ]),
-        [],
-        ['Teacher Signature:', selectedExamSession.teacherSignature || '_____________'],
       ];
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
-      XLSX.writeFile(wb, `attendance-${selectedExamSession.subject}-${selectedExamSession.date}.xlsx`);
+      XLSX.writeFile(wb, `attendance-${data.examSession.subject}-${data.examSession.date}.xlsx`);
 
       toast({
         title: "Success",
@@ -144,8 +237,8 @@ const ExamAttendance = () => {
   };
 
   const generatePDF = () => {
-    const selectedExamSession = examSessions.find((exam) => exam.id === selectedExam);
-    if (!selectedExamSession) {
+    const data = generateAttendanceData();
+    if (!data) {
       toast({
         title: "Error",
         description: "Please select an exam session first.",
@@ -161,24 +254,24 @@ const ExamAttendance = () => {
       doc.text("Exam Attendance Report", 15, 15);
       
       doc.setFontSize(12);
-      doc.text(`Center Name: ${selectedExamSession.centerName}`, 15, 30);
-      doc.text(`Room: ${selectedExamSession.roomName}`, 15, 37);
-      doc.text(`Subject: ${selectedExamSession.subject}`, 15, 44);
-      doc.text(`Date: ${selectedExamSession.date}`, 15, 51);
-      doc.text(`Time: ${selectedExamSession.startTime}`, 15, 58);
+      doc.text(`Center Name: ${data.examSession.exam_centers?.name}`, 15, 30);
+      doc.text(`Room: ${data.examSession.venue}`, 15, 37);
+      doc.text(`Subject: ${data.examSession.subject}`, 15, 44);
+      doc.text(`Date: ${data.examSession.date}`, 15, 51);
+      doc.text(`Time: ${data.examSession.start_time}`, 15, 58);
 
-      const headers = [["Reg No", "Name", "Department", "Student Signature"]];
+      const headers = [["Reg No", "Name", "Present", "Student Signature"]];
       
-      const data = students.map(student => [
+      const tableData = data.attendance.map(student => [
         student.regNo,
         student.name,
-        student.department,
-        student.signature || "____________"
+        student.isPresent ? 'Yes' : 'No',
+        student.signature
       ]);
 
       (doc as any).autoTable({
         head: headers,
-        body: data,
+        body: tableData,
         startY: 70,
         styles: { fontSize: 10 },
         headStyles: { fillColor: [41, 128, 185] },
@@ -186,7 +279,7 @@ const ExamAttendance = () => {
 
       doc.text("Teacher Signature: _________________", 15, doc.internal.pageSize.height - 20);
 
-      doc.save(`attendance-${selectedExamSession.subject}-${selectedExamSession.date}.pdf`);
+      doc.save(`attendance-${data.examSession.subject}-${data.examSession.date}.pdf`);
 
       toast({
         title: "Success",
@@ -202,8 +295,8 @@ const ExamAttendance = () => {
   };
 
   const generateWord = async () => {
-    const selectedExamSession = examSessions.find((exam) => exam.id === selectedExam);
-    if (!selectedExamSession) {
+    const data = generateAttendanceData();
+    if (!data) {
       toast({
         title: "Error",
         description: "Please select an exam session first.",
@@ -222,19 +315,19 @@ const ExamAttendance = () => {
             }),
             new Paragraph({ children: [] }),
             new Paragraph({
-              children: [new TextRun({ text: `Center Name: ${selectedExamSession.centerName}` })],
+              children: [new TextRun({ text: `Center Name: ${data.examSession.exam_centers?.name}` })],
             }),
             new Paragraph({
-              children: [new TextRun({ text: `Room: ${selectedExamSession.roomName}` })],
+              children: [new TextRun({ text: `Room: ${data.examSession.venue}` })],
             }),
             new Paragraph({
-              children: [new TextRun({ text: `Subject: ${selectedExamSession.subject}` })],
+              children: [new TextRun({ text: `Subject: ${data.examSession.subject}` })],
             }),
             new Paragraph({
-              children: [new TextRun({ text: `Date: ${selectedExamSession.date}` })],
+              children: [new TextRun({ text: `Date: ${data.examSession.date}` })],
             }),
             new Paragraph({
-              children: [new TextRun({ text: `Time: ${selectedExamSession.startTime}` })],
+              children: [new TextRun({ text: `Time: ${data.examSession.start_time}` })],
             }),
             new Paragraph({ children: [] }),
             new DocxTable({
@@ -243,17 +336,17 @@ const ExamAttendance = () => {
                   children: [
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Reg No", bold: true })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Name", bold: true })] })] }),
-                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Department", bold: true })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Present", bold: true })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Student Signature", bold: true })] })] }),
                   ],
                 }),
-                ...students.map(
+                ...data.attendance.map(
                   student => new DocxTableRow({
                     children: [
                       new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.regNo })] })] }),
                       new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.name })] })] }),
-                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.department })] })] }),
-                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.signature || "_____________" })] })] }),
+                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.isPresent ? 'Yes' : 'No' })] })] }),
+                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.signature })] })] }),
                     ],
                   })
                 ),
@@ -271,7 +364,7 @@ const ExamAttendance = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `attendance-${selectedExamSession.subject}-${selectedExamSession.date}.docx`;
+      link.download = `attendance-${data.examSession.subject}-${data.examSession.date}.docx`;
       link.click();
       window.URL.revokeObjectURL(url);
 
@@ -312,7 +405,7 @@ const ExamAttendance = () => {
               <SelectContent>
                 {examSessions.map((exam) => (
                   <SelectItem key={exam.id} value={exam.id}>
-                    {exam.subject} - {exam.date} ({exam.startTime})
+                    {exam.subject} - {exam.date} ({exam.start_time})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -333,7 +426,7 @@ const ExamAttendance = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Time</p>
-                  <p className="font-medium">{selectedExamSession.startTime}</p>
+                  <p className="font-medium">{selectedExamSession.start_time}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Venue</p>
@@ -341,11 +434,11 @@ const ExamAttendance = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Center Name</p>
-                  <p className="font-medium">{selectedExamSession.centerName}</p>
+                  <p className="font-medium">{selectedExamSession.exam_centers?.name}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Room</p>
-                  <p className="font-medium">{selectedExamSession.roomName}</p>
+                  <p className="text-sm text-muted-foreground">Center Code</p>
+                  <p className="font-medium">{selectedExamSession.exam_centers?.code}</p>
                 </div>
               </div>
             </div>
@@ -359,34 +452,47 @@ const ExamAttendance = () => {
                     <TableRow>
                       <TableHead>Registration No</TableHead>
                       <TableHead>Name</TableHead>
-                      <TableHead>Department</TableHead>
+                      <TableHead>Present</TableHead>
                       <TableHead>Student Signature</TableHead>
                       <TableHead className="w-[200px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {students.map((student) => (
-                      <TableRow key={student.id}>
-                        <TableCell>{student.regNo}</TableCell>
-                        <TableCell>{student.name}</TableCell>
-                        <TableCell>{student.department}</TableCell>
-                        <TableCell>
-                          {student.signature || "_____________"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => addStudentSignature(student.id, student.name)}
-                            >
-                              <Signature className="h-4 w-4 mr-1" />
-                              Sign
-                            </Button>
-                          </div>
+                    {isLoadingStudents || isLoadingAttendance ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center">
+                          Loading...
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      students.map((student) => {
+                        const attendanceRecord = attendanceRecords.find(
+                          record => record.student_id === student.id
+                        );
+                        return (
+                          <TableRow key={student.id}>
+                            <TableCell>{student.roll_number}</TableCell>
+                            <TableCell>{student.name}</TableCell>
+                            <TableCell>{attendanceRecord ? 'Present' : 'Absent'}</TableCell>
+                            <TableCell>
+                              {student.signature || "_____________"}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => addStudentSignature(student.id, student.name)}
+                                >
+                                  <Signature className="h-4 w-4 mr-1" />
+                                  Sign
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -395,7 +501,7 @@ const ExamAttendance = () => {
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-muted-foreground">Teacher Signature:</span>
                   <span className="border-b border-gray-300 w-40">
-                    {selectedExamSession.teacherSignature || "_____________"}
+                    {selectedExamSession.subject || "_____________"}
                   </span>
                   <Button
                     variant="outline"
@@ -434,4 +540,3 @@ const ExamAttendance = () => {
 };
 
 export default ExamAttendance;
-
