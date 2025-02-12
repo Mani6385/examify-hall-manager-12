@@ -35,6 +35,7 @@ const Students = () => {
     roll_number: "",
     name: "",
     signature: "",
+    department: "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -72,7 +73,7 @@ const Students = () => {
         description: "New student has been added successfully.",
       });
       setIsAddDialogOpen(false);
-      setFormData({ roll_number: "", name: "", signature: "" });
+      setFormData({ roll_number: "", name: "", signature: "", department: "" });
     },
     onError: (error) => {
       toast({
@@ -104,7 +105,7 @@ const Students = () => {
       });
       setIsEditDialogOpen(false);
       setSelectedStudent(null);
-      setFormData({ roll_number: "", name: "", signature: "" });
+      setFormData({ roll_number: "", name: "", signature: "", department: "" });
     },
     onError: (error) => {
       toast({
@@ -160,6 +161,7 @@ const Students = () => {
       roll_number: student.roll_number,
       name: student.name,
       signature: student.signature || "",
+      department: student.department || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -214,6 +216,17 @@ const Students = () => {
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <Input
+                    id="department"
+                    value={formData.department}
+                    onChange={(e) =>
+                      setFormData({ ...formData, department: e.target.value })
                     }
                     required
                   />
@@ -275,6 +288,17 @@ const Students = () => {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="edit-department">Department</Label>
+                <Input
+                  id="edit-department"
+                  value={formData.department}
+                  onChange={(e) =>
+                    setFormData({ ...formData, department: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="edit-signature">Signature</Label>
                 <Input
                   id="edit-signature"
@@ -297,19 +321,20 @@ const Students = () => {
               <TableRow>
                 <TableHead>Roll Number</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Department</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center">
+                  <TableCell colSpan={4} className="text-center">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : filteredStudents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                     No students found. Add your first student to get started.
                   </TableCell>
                 </TableRow>
@@ -318,6 +343,7 @@ const Students = () => {
                   <TableRow key={student.id}>
                     <TableCell>{student.roll_number}</TableCell>
                     <TableCell>{student.name}</TableCell>
+                    <TableCell>{student.department}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button
