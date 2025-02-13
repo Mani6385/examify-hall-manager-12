@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,11 +35,11 @@ const Teachers = () => {
     subject: "",
     employee_id: "",
     signature: "",
+    department: "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch teachers
   const { data: teachers = [], isLoading } = useQuery({
     queryKey: ['teachers'],
     queryFn: async () => {
@@ -54,7 +53,6 @@ const Teachers = () => {
     },
   });
 
-  // Add teacher mutation
   const addTeacherMutation = useMutation({
     mutationFn: async (newTeacher: Omit<Teacher, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
@@ -73,7 +71,7 @@ const Teachers = () => {
         description: "New teacher has been added successfully.",
       });
       setIsAddDialogOpen(false);
-      setFormData({ name: "", subject: "", employee_id: "", signature: "" });
+      setFormData({ name: "", subject: "", employee_id: "", signature: "", department: "" });
     },
     onError: (error) => {
       toast({
@@ -84,7 +82,6 @@ const Teachers = () => {
     },
   });
 
-  // Update teacher mutation
   const updateTeacherMutation = useMutation({
     mutationFn: async ({ id, ...updateData }: Partial<Teacher> & { id: string }) => {
       const { data, error } = await supabase
@@ -105,7 +102,7 @@ const Teachers = () => {
       });
       setIsEditDialogOpen(false);
       setSelectedTeacher(null);
-      setFormData({ name: "", subject: "", employee_id: "", signature: "" });
+      setFormData({ name: "", subject: "", employee_id: "", signature: "", department: "" });
     },
     onError: (error) => {
       toast({
@@ -116,7 +113,6 @@ const Teachers = () => {
     },
   });
 
-  // Delete teacher mutation
   const deleteTeacherMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -162,6 +158,7 @@ const Teachers = () => {
       subject: teacher.subject,
       employee_id: teacher.employee_id,
       signature: teacher.signature || "",
+      department: teacher.department,
     });
     setIsEditDialogOpen(true);
   };
@@ -210,6 +207,17 @@ const Teachers = () => {
                     value={formData.employee_id}
                     onChange={(e) =>
                       setFormData({ ...formData, employee_id: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <Input
+                    id="department"
+                    value={formData.department}
+                    onChange={(e) =>
+                      setFormData({ ...formData, department: e.target.value })
                     }
                     required
                   />
@@ -272,6 +280,17 @@ const Teachers = () => {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="edit-department">Department</Label>
+                <Input
+                  id="edit-department"
+                  value={formData.department}
+                  onChange={(e) =>
+                    setFormData({ ...formData, department: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="edit-subject">Subject</Label>
                 <Input
                   id="edit-subject"
@@ -305,6 +324,7 @@ const Teachers = () => {
               <TableRow>
                 <TableHead>Employee ID</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Department</TableHead>
                 <TableHead>Subject</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
@@ -312,13 +332,13 @@ const Teachers = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
+                  <TableCell colSpan={5} className="text-center">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : teachers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No teachers found. Add your first teacher to get started.
                   </TableCell>
                 </TableRow>
@@ -327,6 +347,7 @@ const Teachers = () => {
                   <TableRow key={teacher.id}>
                     <TableCell>{teacher.employee_id}</TableCell>
                     <TableCell>{teacher.name}</TableCell>
+                    <TableCell>{teacher.department}</TableCell>
                     <TableCell>{teacher.subject}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
