@@ -18,17 +18,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { UserPlus, Pencil, Trash2, Search } from "lucide-react";
+import { UserPlus, Pencil, Trash2, Search, FileSpreadsheet, FileUp } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
+import * as XLSX from 'xlsx';
 
 type Student = Database['public']['Tables']['students']['Row'];
 
 const Students = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
@@ -53,6 +55,71 @@ const Students = () => {
       return data;
     },
   });
+
+  // Bulk import students mutation
+  const bulkImportMutation = useMutation({
+    mutationFn: async (students: Omit<Student, 'id' | 'created_at' | 'updated_at'>[]) => {
+      const { data, error } = await supabase
+        .from('students')
+        .insert(students)
+        .select();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast({
+        title: "Students Imported",
+        description: "Students have been imported successfully.",
+      });
+      setIsImportDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const workbook = XLSX.read(e.target?.result, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(worksheet) as Array<{
+          roll_number: string;
+          name: string;
+          department: string;
+          signature?: string;
+        }>;
+
+        // Validate and format the data
+        const formattedData = data.map(row => ({
+          roll_number: String(row.roll_number),
+          name: String(row.name),
+          department: String(row.department),
+          signature: row.signature ? String(row.signature) : null,
+        }));
+
+        bulkImportMutation.mutate(formattedData);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to parse the Excel file. Please check the format.",
+          variant: "destructive",
+        });
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
 
   // Add student mutation
   const addStudentMutation = useMutation({
@@ -186,67 +253,111 @@ const Students = () => {
               Manage student records and information
             </p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add Student
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Student</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="roll_number">Roll Number</Label>
-                  <Input
-                    id="roll_number"
-                    value={formData.roll_number}
-                    onChange={(e) =>
-                      setFormData({ ...formData, roll_number: e.target.value })
-                    }
-                    required
-                  />
+          <div className="flex gap-4">
+            <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Import Students
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Import Students from Excel</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
+                    <FileUp className="mx-auto h-8 w-8 text-gray-400" />
+                    <div className="mt-2">
+                      <Label htmlFor="file-upload" className="cursor-pointer">
+                        <span className="text-primary hover:text-primary/90">Upload a file</span>
+                        <Input
+                          id="file-upload"
+                          type="file"
+                          className="hidden"
+                          accept=".xlsx,.xls"
+                          onChange={handleFileUpload}
+                        />
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Excel files only (.xlsx, .xls)
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <p>The Excel file should have the following columns:</p>
+                    <ul className="list-disc list-inside mt-1">
+                      <li>roll_number (required)</li>
+                      <li>name (required)</li>
+                      <li>department (required)</li>
+                      <li>signature (optional)</li>
+                    </ul>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Student Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Input
-                    id="department"
-                    value={formData.department}
-                    onChange={(e) =>
-                      setFormData({ ...formData, department: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signature">Signature</Label>
-                  <Input
-                    id="signature"
-                    value={formData.signature}
-                    onChange={(e) =>
-                      setFormData({ ...formData, signature: e.target.value })
-                    }
-                  />
-                </div>
-                <Button type="submit" className="w-full">
+              </DialogContent>
+            </Dialog>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <UserPlus className="mr-2 h-4 w-4" />
                   Add Student
                 </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Student</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="roll_number">Roll Number</Label>
+                    <Input
+                      id="roll_number"
+                      value={formData.roll_number}
+                      onChange={(e) =>
+                        setFormData({ ...formData, roll_number: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Student Name</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Department</Label>
+                    <Input
+                      id="department"
+                      value={formData.department}
+                      onChange={(e) =>
+                        setFormData({ ...formData, department: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signature">Signature</Label>
+                    <Input
+                      id="signature"
+                      value={formData.signature}
+                      onChange={(e) =>
+                        setFormData({ ...formData, signature: e.target.value })
+                      }
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Add Student
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="flex items-center space-x-2 mb-4">
