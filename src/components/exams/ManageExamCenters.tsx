@@ -33,6 +33,7 @@ export function ManageExamCenters() {
   const [formData, setFormData] = useState({
     name: "",
     code: "",
+    department: "",
   });
 
   const { toast } = useToast();
@@ -71,7 +72,7 @@ export function ManageExamCenters() {
         description: "New exam center has been added successfully.",
       });
       setIsAddDialogOpen(false);
-      setFormData({ name: "", code: "" });
+      setFormData({ name: "", code: "", department: "" });
     },
     onError: (error) => {
       toast({
@@ -103,7 +104,7 @@ export function ManageExamCenters() {
       });
       setIsEditDialogOpen(false);
       setSelectedCenter(null);
-      setFormData({ name: "", code: "" });
+      setFormData({ name: "", code: "", department: "" });
     },
     onError: (error) => {
       toast({
@@ -157,6 +158,7 @@ export function ManageExamCenters() {
     setFormData({
       name: center.name,
       code: center.code,
+      department: center.department || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -203,6 +205,17 @@ export function ManageExamCenters() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="department">Department</Label>
+                <Input
+                  id="department"
+                  value={formData.department}
+                  onChange={(e) =>
+                    setFormData({ ...formData, department: e.target.value })
+                  }
+                  placeholder="Enter department name"
+                />
+              </div>
               <Button type="submit" className="w-full">
                 Add Center
               </Button>
@@ -239,6 +252,17 @@ export function ManageExamCenters() {
                 required
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-department">Department</Label>
+              <Input
+                id="edit-department"
+                value={formData.department}
+                onChange={(e) =>
+                  setFormData({ ...formData, department: e.target.value })
+                }
+                placeholder="Enter department name"
+              />
+            </div>
             <Button type="submit" className="w-full">
               Update Center
             </Button>
@@ -252,19 +276,20 @@ export function ManageExamCenters() {
             <TableRow>
               <TableHead>Center Name</TableHead>
               <TableHead>Center Code</TableHead>
+              <TableHead>Department</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center">
+                <TableCell colSpan={4} className="text-center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : examCenters.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
                   No exam centers found. Add your first center to get started.
                 </TableCell>
               </TableRow>
@@ -273,6 +298,7 @@ export function ManageExamCenters() {
                 <TableRow key={center.id}>
                   <TableCell>{center.name}</TableCell>
                   <TableCell>{center.code}</TableCell>
+                  <TableCell>{center.department || "-"}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
