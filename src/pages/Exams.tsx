@@ -1,4 +1,5 @@
 import { Layout } from "@/components/dashboard/Layout";
+import { ManageExamCenters } from "@/components/exams/ManageExamCenters";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -222,280 +223,185 @@ const Exams = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Exams</h2>
-            <p className="text-muted-foreground mt-2">
-              Manage examination schedules and details
-            </p>
-          </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Exam
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Exam</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="subject">Subject</Label>
-                  <Input
-                    id="subject"
-                    value={formData.subject}
-                    onChange={(e) =>
-                      setFormData({ ...formData, subject: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="center_id">Exam Center</Label>
-                  <Select
-                    value={formData.center_id || ""}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, center_id: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select exam center" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {examCenters.map((center) => (
-                        <SelectItem key={center.id} value={center.id}>
-                          {center.name} ({center.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date">Date</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) =>
-                      setFormData({ ...formData, date: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="start_time">Start Time</Label>
-                  <Input
-                    id="start_time"
-                    type="time"
-                    value={formData.start_time}
-                    onChange={(e) =>
-                      setFormData({ ...formData, start_time: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Duration (hours)</Label>
-                  <Select
-                    value={formData.duration}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, duration: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select duration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 hour</SelectItem>
-                      <SelectItem value="1.5">1.5 hours</SelectItem>
-                      <SelectItem value="2">2 hours</SelectItem>
-                      <SelectItem value="2.5">2.5 hours</SelectItem>
-                      <SelectItem value="3">3 hours</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="venue">Venue</Label>
-                  <Input
-                    id="venue"
-                    value={formData.venue}
-                    onChange={(e) =>
-                      setFormData({ ...formData, venue: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full">
+      <div className="space-y-8">
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">Exams</h2>
+              <p className="text-muted-foreground mt-2">
+                Manage examination schedules and details
+              </p>
+            </div>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
                   Add Exam
                 </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Exam</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="subject">Subject</Label>
+                    <Input
+                      id="subject"
+                      value={formData.subject}
+                      onChange={(e) =>
+                        setFormData({ ...formData, subject: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="center_id">Exam Center</Label>
+                    <Select
+                      value={formData.center_id || ""}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, center_id: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select exam center" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {examCenters.map((center) => (
+                          <SelectItem key={center.id} value={center.id}>
+                            {center.name} ({center.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, date: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="start_time">Start Time</Label>
+                    <Input
+                      id="start_time"
+                      type="time"
+                      value={formData.start_time}
+                      onChange={(e) =>
+                        setFormData({ ...formData, start_time: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="duration">Duration (hours)</Label>
+                    <Select
+                      value={formData.duration}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, duration: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 hour</SelectItem>
+                        <SelectItem value="1.5">1.5 hours</SelectItem>
+                        <SelectItem value="2">2 hours</SelectItem>
+                        <SelectItem value="2.5">2.5 hours</SelectItem>
+                        <SelectItem value="3">3 hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="venue">Venue</Label>
+                    <Input
+                      id="venue"
+                      value={formData.venue}
+                      onChange={(e) =>
+                        setFormData({ ...formData, venue: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Add Exam
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
 
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Exam</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-subject">Subject</Label>
-                <Input
-                  id="edit-subject"
-                  value={formData.subject}
-                  onChange={(e) =>
-                    setFormData({ ...formData, subject: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-center_id">Exam Center</Label>
-                <Select
-                  value={formData.center_id || ""}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, center_id: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select exam center" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {examCenters.map((center) => (
-                      <SelectItem key={center.id} value={center.id}>
-                        {center.name} ({center.code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-date">Date</Label>
-                <Input
-                  id="edit-date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-start_time">Start Time</Label>
-                <Input
-                  id="edit-start_time"
-                  type="time"
-                  value={formData.start_time}
-                  onChange={(e) =>
-                    setFormData({ ...formData, start_time: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-duration">Duration (hours)</Label>
-                <Select
-                  value={formData.duration}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, duration: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 hour</SelectItem>
-                    <SelectItem value="1.5">1.5 hours</SelectItem>
-                    <SelectItem value="2">2 hours</SelectItem>
-                    <SelectItem value="2.5">2.5 hours</SelectItem>
-                    <SelectItem value="3">3 hours</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-venue">Venue</Label>
-                <Input
-                  id="edit-venue"
-                  value={formData.venue}
-                  onChange={(e) =>
-                    setFormData({ ...formData, venue: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full">
-                Update Exam
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Subject</TableHead>
-                <TableHead>Center Name</TableHead>
-                <TableHead>Center Code</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Start Time</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Venue</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center">
-                    Loading...
-                  </TableCell>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Center Name</TableHead>
+                  <TableHead>Center Code</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Start Time</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Venue</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
-              ) : exams.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
-                    No exams found. Add your first exam to get started.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                exams.map((exam) => (
-                  <TableRow key={exam.id}>
-                    <TableCell>{exam.subject}</TableCell>
-                    <TableCell>{exam.exam_centers?.name || "-"}</TableCell>
-                    <TableCell>{exam.exam_centers?.code || "-"}</TableCell>
-                    <TableCell>{exam.date}</TableCell>
-                    <TableCell>{exam.start_time}</TableCell>
-                    <TableCell>{exam.duration} hours</TableCell>
-                    <TableCell>{exam.venue}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(exam)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(exam.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center">
+                      Loading...
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : exams.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      No exams found. Add your first exam to get started.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  exams.map((exam) => (
+                    <TableRow key={exam.id}>
+                      <TableCell>{exam.subject}</TableCell>
+                      <TableCell>{exam.exam_centers?.name || "-"}</TableCell>
+                      <TableCell>{exam.exam_centers?.code || "-"}</TableCell>
+                      <TableCell>{exam.date}</TableCell>
+                      <TableCell>{exam.start_time}</TableCell>
+                      <TableCell>{exam.duration} hours</TableCell>
+                      <TableCell>{exam.venue}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(exam)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(exam.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
+
+        <ManageExamCenters />
       </div>
     </Layout>
   );
