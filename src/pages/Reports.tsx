@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, FileText, Grid3X3 } from "lucide-react";
@@ -42,6 +43,15 @@ interface SeatingAssignment {
   reg_no: string | null;
   department: string | null;
   position: number;
+}
+
+interface AttendanceRecord {
+  student_id: string;
+  student_name: string;
+  roll_number: string;
+  exam_date: string;
+  subject: string;
+  attended: boolean;
 }
 
 const Reports = () => {
@@ -244,7 +254,7 @@ const Reports = () => {
       // Draw seating grid
       const cellWidth = 40;
       const cellHeight = 30;
-      const startGridY = startY + 4 * lineHeight;
+      let startGridY = startY + 4 * lineHeight; // Changed to let
       const margin = 20;
 
       assignments?.forEach((assignment, index) => {
@@ -269,7 +279,7 @@ const Reports = () => {
         // Add new page if needed
         if (y + cellHeight > doc.internal.pageSize.height - margin) {
           doc.addPage();
-          startGridY = margin;
+          startGridY = margin; // Now we can modify this value
         }
       });
       
