@@ -1,7 +1,6 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, FileText } from "lucide-react";
+import { FileSpreadsheet, FileText, Grid3X3 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import jsPDF from "jspdf";
 import * as XLSX from "xlsx";
@@ -27,13 +26,22 @@ interface ExamSummary {
   total_students: number;
 }
 
-interface AttendanceRecord {
-  student_name: string;
-  roll_number: string;
-  subject: string;
-  exam_date: string;
-  start_time: string;
-  attended: boolean;
+interface SeatingPlan {
+  id: string;
+  room_no: string;
+  floor_no: string;
+  rows: number;
+  columns: number;
+  exam_id: string | null;
+  created_at: string;
+}
+
+interface SeatingAssignment {
+  seat_no: string;
+  student_name: string | null;
+  reg_no: string | null;
+  department: string | null;
+  position: number;
 }
 
 const Reports = () => {
@@ -65,6 +73,20 @@ const Reports = () => {
       
       if (error) throw error;
       return data as AttendanceRecord[];
+    },
+  });
+
+  // Fetch seating arrangements
+  const { data: seatingPlans = [], isLoading: isLoadingSeating } = useQuery({
+    queryKey: ['seatingPlans'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('seating_arrangements')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as SeatingPlan[];
     },
   });
 
@@ -193,7 +215,127 @@ const Reports = () => {
     }
   };
 
-  if (isLoadingExams || isLoadingAttendance) {
+  const generateSeatingPlanPDF = async (seatingPlan: SeatingPlan) => {
+    try {
+      // Fetch seating assignments for this arrangement
+      const { data: assignments, error } = await supabase
+        .from('seating_assignments')
+        .select('*')
+        .eq('arrangement_id', seatingPlan.id)
+        .order('position');
+
+      if (error) throw error;
+
+      const doc = new jsPDF();
+      
+      // Add header
+      doc.setFontSize(16);
+      doc.text("Seating Plan", doc.internal.pageSize.width/2, 20, { align: 'center' });
+      
+      // Add metadata
+      doc.setFontSize(12);
+      const startY = 40;
+      const lineHeight = 8;
+      
+      doc.text(`Room Number: ${seatingPlan.room_no}`, 20, startY);
+      doc.text(`Floor Number: ${seatingPlan.floor_no}`, 20, startY + lineHeight);
+      doc.text(`Date: ${new Date(seatingPlan.created_at).toLocaleDateString()}`, 20, startY + 2 * lineHeight);
+
+      // Draw seating grid
+      const cellWidth = 40;
+      const cellHeight = 30;
+      const startGridY = startY + 4 * lineHeight;
+      const margin = 20;
+
+      assignments?.forEach((assignment, index) => {
+        const row = Math.floor(index / seatingPlan.columns);
+        const col = index % seatingPlan.columns;
+        const x = margin + (col * cellWidth);
+        const y = startGridY + (row * cellHeight);
+
+        // Draw cell border
+        doc.rect(x, y, cellWidth, cellHeight);
+
+        // Add seat information
+        doc.setFontSize(10);
+        doc.text(assignment.seat_no, x + 2, y + 10);
+        if (assignment.student_name) {
+          doc.text(assignment.student_name, x + 2, y + 20, { maxWidth: cellWidth - 4 });
+        }
+        if (assignment.reg_no) {
+          doc.text(assignment.reg_no, x + 2, y + 25);
+        }
+
+        // Add new page if needed
+        if (y + cellHeight > doc.internal.pageSize.height - margin) {
+          doc.addPage();
+          startGridY = margin;
+        }
+      });
+      
+      doc.save(`seating-plan-${seatingPlan.room_no}-${seatingPlan.floor_no}.pdf`);
+      
+      toast({
+        title: "Success",
+        description: "Seating plan PDF generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate seating plan PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateSeatingPlanExcel = async (seatingPlan: SeatingPlan) => {
+    try {
+      const { data: assignments, error } = await supabase
+        .from('seating_assignments')
+        .select('*')
+        .eq('arrangement_id', seatingPlan.id)
+        .order('position');
+
+      if (error) throw error;
+
+      const excelData = assignments?.map(assignment => ({
+        "Seat No": assignment.seat_no,
+        "Student Name": assignment.student_name || "",
+        "Registration No": assignment.reg_no || "",
+        "Department": assignment.department || "",
+        "Position": assignment.position + 1
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet([
+        {
+          "Room Number": seatingPlan.room_no,
+          "Floor Number": seatingPlan.floor_no,
+          "Date": new Date(seatingPlan.created_at).toLocaleDateString(),
+          "Rows": seatingPlan.rows,
+          "Columns": seatingPlan.columns
+        },
+        ...excelData
+      ]);
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Seating Plan");
+      
+      XLSX.writeFile(wb, `seating-plan-${seatingPlan.room_no}-${seatingPlan.floor_no}.xlsx`);
+      
+      toast({
+        title: "Success",
+        description: "Seating plan Excel file generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate seating plan Excel file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isLoadingExams || isLoadingAttendance || isLoadingSeating) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-full">
@@ -222,11 +364,12 @@ const Reports = () => {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Reports</h2>
           <p className="text-muted-foreground mt-2">
-            Generate attendance reports for exams
+            Generate attendance and seating plan reports
           </p>
         </div>
 
         <div className="space-y-6">
+          <h3 className="text-xl font-semibold">Exam Attendance Reports</h3>
           {examSummaries.map((examSummary) => (
             <div key={examSummary.exam_id} className="bg-muted/50 p-4 rounded-lg">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -275,6 +418,46 @@ const Reports = () => {
                 </Button>
                 
                 <Button onClick={() => generateExcel(examSummary)} variant="outline" className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Export as Excel
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-6">
+          <h3 className="text-xl font-semibold">Seating Plan Reports</h3>
+          {seatingPlans.map((seatingPlan) => (
+            <div key={seatingPlan.id} className="bg-muted/50 p-4 rounded-lg">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <span className="text-sm text-muted-foreground">Room:</span>
+                  <p className="font-medium">{seatingPlan.room_no}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Floor:</span>
+                  <p className="font-medium">{seatingPlan.floor_no}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Layout:</span>
+                  <p className="font-medium">{seatingPlan.rows} × {seatingPlan.columns}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Created:</span>
+                  <p className="font-medium">
+                    {new Date(seatingPlan.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <Button onClick={() => generateSeatingPlanPDF(seatingPlan)} className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Export as PDF
+                </Button>
+                
+                <Button onClick={() => generateSeatingPlanExcel(seatingPlan)} variant="outline" className="flex items-center gap-2">
                   <FileSpreadsheet className="h-4 w-4" />
                   Export as Excel
                 </Button>
