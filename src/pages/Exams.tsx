@@ -32,9 +32,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
 
 type ExamCenter = Database['public']['Tables']['exam_centers']['Row'];
-
 type Exam = Database['public']['Tables']['exams']['Row'] & {
-  exam_centers?: ExamCenter | null;
+  exam_centers: ExamCenter | null;
 };
 
 const Exams = () => {
@@ -66,7 +65,7 @@ const Exams = () => {
     },
   });
 
-  // Fetch exams
+  // Fetch exams with center details
   const { data: exams = [], isLoading } = useQuery({
     queryKey: ['exams'],
     queryFn: async () => {
@@ -74,30 +73,25 @@ const Exams = () => {
         .from('exams')
         .select(`
           *,
-          exam_centers (
-            name,
-            code
-          )
+          exam_centers (*)
         `)
         .order('date');
       
       if (error) throw error;
-      return data;
+      return data as Exam[];
     },
   });
 
   // Add exam mutation
   const addExamMutation = useMutation({
-    mutationFn: async (newExam: Omit<Exam, 'id' | 'created_at' | 'updated_at'>) => {
-      const examData = { ...newExam };
-      if (!examData.center_id) {
-        delete examData.center_id;
-      }
-
+    mutationFn: async (newExam: Omit<Exam, 'id' | 'created_at' | 'updated_at' | 'exam_centers'>) => {
       const { data, error } = await supabase
         .from('exams')
-        .insert([examData])
-        .select()
+        .insert([newExam])
+        .select(`
+          *,
+          exam_centers (*)
+        `)
         .single();
       
       if (error) throw error;
@@ -131,15 +125,14 @@ const Exams = () => {
   // Update exam mutation
   const updateExamMutation = useMutation({
     mutationFn: async ({ id, ...updateData }: Partial<Exam> & { id: string }) => {
-      if (!updateData.center_id) {
-        delete updateData.center_id;
-      }
-
       const { data, error } = await supabase
         .from('exams')
         .update(updateData)
         .eq('id', id)
-        .select()
+        .select(`
+          *,
+          exam_centers (*)
+        `)
         .single();
       
       if (error) throw error;
@@ -261,20 +254,24 @@ const Exams = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="center_id">Exam Center Name</Label>
-                  <Input
-                    id="center_name"
-                    placeholder="Enter center name"
-                    onChange={(e) => {
-                      const centerName = e.target.value;
-                      const center = examCenters.find(c => c.name === centerName);
-                      setFormData({ 
-                        ...formData, 
-                        center_id: center?.id || null 
-                      });
-                    }}
-                    required
-                  />
+                  <Label htmlFor="center_id">Exam Center</Label>
+                  <Select
+                    value={formData.center_id || ""}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, center_id: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select exam center" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {examCenters.map((center) => (
+                        <SelectItem key={center.id} value={center.id}>
+                          {center.name} ({center.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="date">Date</Label>
@@ -357,21 +354,24 @@ const Exams = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-center_id">Exam Center Name</Label>
-                <Input
-                  id="edit_center_name"
-                  placeholder="Enter center name"
-                  defaultValue={selectedExam?.exam_centers?.name}
-                  onChange={(e) => {
-                    const centerName = e.target.value;
-                    const center = examCenters.find(c => c.name === centerName);
-                    setFormData({ 
-                      ...formData, 
-                      center_id: center?.id || null 
-                    });
-                  }}
-                  required
-                />
+                <Label htmlFor="edit-center_id">Exam Center</Label>
+                <Select
+                  value={formData.center_id || ""}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, center_id: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select exam center" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {examCenters.map((center) => (
+                      <SelectItem key={center.id} value={center.id}>
+                        {center.name} ({center.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-date">Date</Label>
@@ -440,8 +440,8 @@ const Exams = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Subject</TableHead>
-                <TableHead>Center</TableHead>
-                <TableHead>Code</TableHead>
+                <TableHead>Center Name</TableHead>
+                <TableHead>Center Code</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Start Time</TableHead>
                 <TableHead>Duration</TableHead>
@@ -466,8 +466,8 @@ const Exams = () => {
                 exams.map((exam) => (
                   <TableRow key={exam.id}>
                     <TableCell>{exam.subject}</TableCell>
-                    <TableCell>{exam.exam_centers?.name}</TableCell>
-                    <TableCell>{exam.exam_centers?.code}</TableCell>
+                    <TableCell>{exam.exam_centers?.name || "-"}</TableCell>
+                    <TableCell>{exam.exam_centers?.code || "-"}</TableCell>
                     <TableCell>{exam.date}</TableCell>
                     <TableCell>{exam.start_time}</TableCell>
                     <TableCell>{exam.duration} hours</TableCell>
