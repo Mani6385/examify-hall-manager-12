@@ -185,11 +185,14 @@ const Seating = () => {
     const end = parseInt(deptConfig.endRegNo);
     let seatNumber = 1;
     
+    // Find the department name from the subjects list
+    const departmentName = departmentsList.find(d => d.name === deptConfig.department)?.name || deptConfig.department;
+    
     for (let i = start; i <= end; i++) {
       students.push({
-        name: `${deptConfig.department} Student`,
+        name: `${departmentName} Student`,
         regNo: i.toString().padStart(3, '0'),
-        department: deptConfig.department,
+        department: departmentName,
         seatNo: `${deptConfig.prefix}${seatNumber++}`
       });
     }
