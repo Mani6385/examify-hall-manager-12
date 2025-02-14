@@ -56,13 +56,29 @@ export function ManageExamCenters() {
   // Add exam center mutation
   const addCenterMutation = useMutation({
     mutationFn: async (newCenter: Omit<ExamCenter, 'id' | 'created_at' | 'updated_at'>) => {
+      // First check if code already exists
+      const { data: existingCenter } = await supabase
+        .from('exam_centers')
+        .select('code')
+        .eq('code', newCenter.code)
+        .single();
+
+      if (existingCenter) {
+        throw new Error('An exam center with this code already exists');
+      }
+
       const { data, error } = await supabase
         .from('exam_centers')
         .insert([newCenter])
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('An exam center with this code already exists');
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -86,6 +102,20 @@ export function ManageExamCenters() {
   // Update exam center mutation
   const updateCenterMutation = useMutation({
     mutationFn: async ({ id, ...updateData }: Partial<ExamCenter> & { id: string }) => {
+      // Check if code exists and belongs to a different center
+      if (updateData.code) {
+        const { data: existingCenter } = await supabase
+          .from('exam_centers')
+          .select('id, code')
+          .eq('code', updateData.code)
+          .neq('id', id)
+          .single();
+
+        if (existingCenter) {
+          throw new Error('An exam center with this code already exists');
+        }
+      }
+
       const { data, error } = await supabase
         .from('exam_centers')
         .update(updateData)
@@ -93,7 +123,12 @@ export function ManageExamCenters() {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('An exam center with this code already exists');
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
