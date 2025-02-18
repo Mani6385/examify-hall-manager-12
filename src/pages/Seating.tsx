@@ -185,7 +185,7 @@ const Seating = () => {
     const end = parseInt(deptConfig.endRegNo);
     let seatNumber = 1;
     
-    // Find the subject details from the subjects list
+    // Find the department details from the subjects list
     const subject = departmentsList.find(d => d.name === deptConfig.department);
     const departmentName = subject?.name || deptConfig.department;
     const subjectCode = subject?.code;
@@ -373,12 +373,12 @@ const Seating = () => {
                   onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
+                    <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
                     {departmentsList.map((d) => (
                       <SelectItem key={d.id} value={d.name}>
-                        {d.name} ({d.code})
+                        {d.name} - {d.code}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -470,7 +470,7 @@ const Seating = () => {
                     <span className="font-medium">{seat.studentName}</span>
                     <span className="text-xs text-gray-600">Reg: {seat.regNo}</span>
                     <span className="text-xs text-gray-500">
-                      {seat.department} {seat.subjectCode && `(${seat.subjectCode})`}
+                      {seat.department} - {seat.subjectCode}
                     </span>
                   </>
                 ) : (
