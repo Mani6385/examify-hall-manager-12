@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +28,7 @@ interface Seat {
   studentName: string | null;
   regNo: string | null;
   department: string | null;
+  subjectCode?: string | null;
 }
 
 const Seating = () => {
@@ -60,7 +60,7 @@ const Seating = () => {
     },
   });
 
-  // Fetch departments from Supabase
+  // Fetch subjects with full details from Supabase
   const { data: departmentsList = [] } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
@@ -185,14 +185,17 @@ const Seating = () => {
     const end = parseInt(deptConfig.endRegNo);
     let seatNumber = 1;
     
-    // Find the department name from the subjects list
-    const departmentName = departmentsList.find(d => d.name === deptConfig.department)?.name || deptConfig.department;
+    // Find the subject details from the subjects list
+    const subject = departmentsList.find(d => d.name === deptConfig.department);
+    const departmentName = subject?.name || deptConfig.department;
+    const subjectCode = subject?.code;
     
     for (let i = start; i <= end; i++) {
       students.push({
         name: `${departmentName} Student`,
         regNo: i.toString().padStart(3, '0'),
         department: departmentName,
+        subjectCode: subjectCode,
         seatNo: `${deptConfig.prefix}${seatNumber++}`
       });
     }
@@ -370,12 +373,12 @@ const Seating = () => {
                   onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
+                    <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
                   <SelectContent>
                     {departmentsList.map((d) => (
                       <SelectItem key={d.id} value={d.name}>
-                        {d.name}
+                        {d.name} ({d.code})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -466,7 +469,9 @@ const Seating = () => {
                     <span className="font-bold text-lg mb-1">{seat.seatNo}</span>
                     <span className="font-medium">{seat.studentName}</span>
                     <span className="text-xs text-gray-600">Reg: {seat.regNo}</span>
-                    <span className="text-xs text-gray-500">{seat.department}</span>
+                    <span className="text-xs text-gray-500">
+                      {seat.department} {seat.subjectCode && `(${seat.subjectCode})`}
+                    </span>
                   </>
                 ) : (
                   "Empty"
