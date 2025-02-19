@@ -29,6 +29,7 @@ interface Seat {
   regNo: string | null;
   department: string | null;
   subjectCode?: string | null;
+  subjectName?: string | null;
 }
 
 const Seating = () => {
@@ -60,14 +61,14 @@ const Seating = () => {
     },
   });
 
-  // Fetch subjects with full details from Supabase
+  // Fetch departments and their subjects from Supabase
   const { data: departmentsList = [] } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subjects')
         .select('*')
-        .order('name');
+        .order('department, name');
       
       if (error) throw error;
       return data;
@@ -185,9 +186,10 @@ const Seating = () => {
     const end = parseInt(deptConfig.endRegNo);
     let seatNumber = 1;
     
-    // Find the department details from the subjects list
+    // Find the department and subject details
     const subject = departmentsList.find(d => d.name === deptConfig.department);
-    const departmentName = subject?.name || deptConfig.department;
+    const departmentName = subject?.department || 'Unknown Department';
+    const subjectName = subject?.name || deptConfig.department;
     const subjectCode = subject?.code;
     
     for (let i = start; i <= end; i++) {
@@ -196,6 +198,7 @@ const Seating = () => {
         regNo: i.toString().padStart(3, '0'),
         department: departmentName,
         subjectCode: subjectCode,
+        subjectName: subjectName,
         seatNo: `${deptConfig.prefix}${seatNumber++}`
       });
     }
@@ -258,6 +261,8 @@ const Seating = () => {
       studentName: allStudents[index]?.name || null,
       regNo: allStudents[index]?.regNo || null,
       department: allStudents[index]?.department || null,
+      subjectCode: allStudents[index]?.subjectCode || null,
+      subjectName: allStudents[index]?.subjectName || null,
     }));
 
     setSeats(assignedSeats);
@@ -373,12 +378,12 @@ const Seating = () => {
                   onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
+                    <SelectValue placeholder="Select module" />
                   </SelectTrigger>
                   <SelectContent>
                     {departmentsList.map((d) => (
                       <SelectItem key={d.id} value={d.name}>
-                        {d.name} - {d.code}
+                        {d.department} - {d.name} ({d.code})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -469,8 +474,9 @@ const Seating = () => {
                     <span className="font-bold text-lg mb-1">{seat.seatNo}</span>
                     <span className="font-medium">{seat.studentName}</span>
                     <span className="text-xs text-gray-600">Reg: {seat.regNo}</span>
+                    <span className="text-xs text-gray-500">{seat.department}</span>
                     <span className="text-xs text-gray-500">
-                      {seat.department} - {seat.subjectCode}
+                      {seat.subjectCode} - {seat.subjectName}
                     </span>
                   </>
                 ) : (
