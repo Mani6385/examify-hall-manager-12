@@ -6,6 +6,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import { useState } from "react";
 import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw, Plus, Trash2 } from "lucide-react";
@@ -74,6 +76,15 @@ const Seating = () => {
       return data;
     },
   });
+
+  // Group subjects by department
+  const groupedSubjects = departmentsList.reduce((acc, subject) => {
+    if (!acc[subject.department]) {
+      acc[subject.department] = [];
+    }
+    acc[subject.department].push(subject);
+    return acc;
+  }, {} as Record<string, typeof departmentsList>);
 
   // Create seating arrangement mutation
   const createSeatingMutation = useMutation({
@@ -378,13 +389,18 @@ const Seating = () => {
                   onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select module" />
+                    <SelectValue placeholder="Select department and module" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departmentsList.map((d) => (
-                      <SelectItem key={d.id} value={d.name}>
-                        {d.department} - {d.name} ({d.code})
-                      </SelectItem>
+                    {Object.entries(groupedSubjects).map(([department, subjects]) => (
+                      <SelectGroup key={department}>
+                        <SelectLabel className="font-bold">{department}</SelectLabel>
+                        {subjects.map((subject) => (
+                          <SelectItem key={subject.id} value={subject.name}>
+                            {subject.name} ({subject.code})
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
                   </SelectContent>
                 </Select>
