@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,13 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
@@ -30,6 +22,19 @@ import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Check, ChevronsUpDown } from "lucide-react"
 
 interface Subject {
   id: string;
@@ -193,6 +198,9 @@ const Subjects = () => {
     deleteSubjectMutation.mutate(id);
   };
 
+  const [open, setOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -210,78 +218,108 @@ const Subjects = () => {
                 Add Subject
               </Button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Subject</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Subject Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="code">Subject Code</Label>
-                  <Input
-                    id="code"
-                    value={formData.code}
-                    onChange={(e) =>
-                      setFormData({ ...formData, code: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="credits">Credits</Label>
-                  <Input
-                    id="credits"
-                    value={formData.credits}
-                    onChange={(e) =>
-                      setFormData({ ...formData, credits: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Select
-                    value={formData.department}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, department: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button 
-                  type="submit" 
-                  className="w-full"
-                  disabled={addSubjectMutation.isPending}
-                >
-                  {addSubjectMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Add Subject
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Subject</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Subject Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="code">Subject Code</Label>
+                <Input
+                  id="code"
+                  value={formData.code}
+                  onChange={(e) =>
+                    setFormData({ ...formData, code: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="credits">Credits</Label>
+                <Input
+                  id="credits"
+                  value={formData.credits}
+                  onChange={(e) =>
+                    setFormData({ ...formData, credits: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="department">Department</Label>
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={open}
+                      className="w-full justify-between"
+                    >
+                      {formData.department || "Select department..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search department..." />
+                      <CommandEmpty>No department found.</CommandEmpty>
+                      <CommandGroup>
+                        {departments.map((dept) => (
+                          <CommandItem
+                            key={dept}
+                            value={dept}
+                            onSelect={(currentValue) => {
+                              setFormData({ ...formData, department: currentValue })
+                              setOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.department === dept ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {dept}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                      <div className="p-2 border-t">
+                        <Input
+                          placeholder="Or type custom department..."
+                          value={formData.department}
+                          onChange={(e) =>
+                            setFormData({ ...formData, department: e.target.value })
+                          }
+                        />
+                      </div>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={addSubjectMutation.isPending}
+              >
+                {addSubjectMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Add Subject
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent>
@@ -324,23 +362,54 @@ const Subjects = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-department">Department</Label>
-                <Select
-                  value={formData.department}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, department: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={editOpen} onOpenChange={setEditOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={editOpen}
+                      className="w-full justify-between"
+                    >
+                      {formData.department || "Select department..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search department..." />
+                      <CommandEmpty>No department found.</CommandEmpty>
+                      <CommandGroup>
+                        {departments.map((dept) => (
+                          <CommandItem
+                            key={dept}
+                            value={dept}
+                            onSelect={(currentValue) => {
+                              setFormData({ ...formData, department: currentValue })
+                              setEditOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.department === dept ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {dept}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                      <div className="p-2 border-t">
+                        <Input
+                          placeholder="Or type custom department..."
+                          value={formData.department}
+                          onChange={(e) =>
+                            setFormData({ ...formData, department: e.target.value })
+                          }
+                        />
+                      </div>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <Button 
                 type="submit" 
