@@ -16,6 +16,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
@@ -29,7 +36,16 @@ interface Subject {
   name: string;
   code: string;
   credits: string;
+  department: string | null;
 }
+
+const departments = [
+  "Computer Science",
+  "Electrical Engineering",
+  "Mechanical Engineering",
+  "Civil Engineering",
+  "Chemical Engineering",
+];
 
 const Subjects = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -39,6 +55,7 @@ const Subjects = () => {
     name: "",
     code: "",
     credits: "",
+    department: "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -157,7 +174,7 @@ const Subjects = () => {
     } else {
       addSubjectMutation.mutate(formData);
     }
-    setFormData({ name: "", code: "", credits: "" });
+    setFormData({ name: "", code: "", credits: "", department: "" });
     setSelectedSubject(null);
   };
 
@@ -166,7 +183,8 @@ const Subjects = () => {
     setFormData({ 
       name: subject.name, 
       code: subject.code, 
-      credits: subject.credits 
+      credits: subject.credits,
+      department: subject.department || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -230,6 +248,26 @@ const Subjects = () => {
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <Select
+                    value={formData.department}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, department: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button 
                   type="submit" 
                   className="w-full"
@@ -284,6 +322,26 @@ const Subjects = () => {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-department">Department</Label>
+                <Select
+                  value={formData.department}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, department: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button 
                 type="submit" 
                 className="w-full"
@@ -305,19 +363,20 @@ const Subjects = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Code</TableHead>
                 <TableHead>Credits</TableHead>
+                <TableHead>Department</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
+                  <TableCell colSpan={5} className="text-center">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : subjects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No subjects found. Add your first subject to get started.
                   </TableCell>
                 </TableRow>
@@ -327,6 +386,7 @@ const Subjects = () => {
                     <TableCell>{subject.name}</TableCell>
                     <TableCell>{subject.code}</TableCell>
                     <TableCell>{subject.credits}</TableCell>
+                    <TableCell>{subject.department || "Not assigned"}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button
