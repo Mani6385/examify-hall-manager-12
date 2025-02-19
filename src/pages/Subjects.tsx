@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -203,6 +202,14 @@ const Subjects = () => {
   const [open, setOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
 
+  // Add a new state for search input
+  const [searchValue, setSearchValue] = useState("");
+
+  // Filter departments based on search value
+  const filteredDepartments = departments.filter((dept) =>
+    dept.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -268,22 +275,32 @@ const Subjects = () => {
                         aria-expanded={open}
                         className="w-full justify-between"
                       >
-                        {formData.department || "Select department..."}
+                        {formData.department || "Select or type department..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-full p-0">
                       <Command>
-                        <CommandInput placeholder="Search department..." />
+                        <div className="p-2">
+                          <Input
+                            placeholder="Type or search department..."
+                            value={formData.department}
+                            onChange={(e) => {
+                              setFormData({ ...formData, department: e.target.value });
+                              setSearchValue(e.target.value);
+                            }}
+                            className="w-full"
+                          />
+                        </div>
                         <CommandEmpty>No department found.</CommandEmpty>
                         <CommandGroup>
-                          {departments.map((dept) => (
+                          {filteredDepartments.map((dept) => (
                             <CommandItem
                               key={dept}
                               value={dept}
                               onSelect={(currentValue) => {
-                                setFormData({ ...formData, department: currentValue })
-                                setOpen(false)
+                                setFormData({ ...formData, department: currentValue });
+                                setOpen(false);
                               }}
                             >
                               <Check
@@ -296,15 +313,6 @@ const Subjects = () => {
                             </CommandItem>
                           ))}
                         </CommandGroup>
-                        <div className="p-2 border-t">
-                          <Input
-                            placeholder="Or type custom department..."
-                            value={formData.department}
-                            onChange={(e) =>
-                              setFormData({ ...formData, department: e.target.value })
-                            }
-                          />
-                        </div>
                       </Command>
                     </PopoverContent>
                   </Popover>
@@ -372,22 +380,32 @@ const Subjects = () => {
                         aria-expanded={editOpen}
                         className="w-full justify-between"
                       >
-                        {formData.department || "Select department..."}
+                        {formData.department || "Select or type department..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-full p-0">
                       <Command>
-                        <CommandInput placeholder="Search department..." />
+                        <div className="p-2">
+                          <Input
+                            placeholder="Type or search department..."
+                            value={formData.department}
+                            onChange={(e) => {
+                              setFormData({ ...formData, department: e.target.value });
+                              setSearchValue(e.target.value);
+                            }}
+                            className="w-full"
+                          />
+                        </div>
                         <CommandEmpty>No department found.</CommandEmpty>
                         <CommandGroup>
-                          {departments.map((dept) => (
+                          {filteredDepartments.map((dept) => (
                             <CommandItem
                               key={dept}
                               value={dept}
                               onSelect={(currentValue) => {
-                                setFormData({ ...formData, department: currentValue })
-                                setEditOpen(false)
+                                setFormData({ ...formData, department: currentValue });
+                                setEditOpen(false);
                               }}
                             >
                               <Check
@@ -400,15 +418,6 @@ const Subjects = () => {
                             </CommandItem>
                           ))}
                         </CommandGroup>
-                        <div className="p-2 border-t">
-                          <Input
-                            placeholder="Or type custom department..."
-                            value={formData.department}
-                            onChange={(e) =>
-                              setFormData({ ...formData, department: e.target.value })
-                            }
-                          />
-                        </div>
                       </Command>
                     </PopoverContent>
                   </Popover>
