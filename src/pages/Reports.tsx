@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, FileText, Grid3X3, Trash2 } from "lucide-react";
@@ -97,21 +96,42 @@ const Reports = () => {
   // Delete mutations
   const deleteExamSummaryMutation = useMutation({
     mutationFn: async (examId: string) => {
-      // First delete related attendance records
+      if (!examId) throw new Error("Invalid exam ID");
+
+      // First check if exam exists
+      const { data: examExists, error: checkError } = await supabase
+        .from('exam_attendance_summary')
+        .select('exam_id')
+        .eq('exam_id', examId)
+        .single();
+
+      if (checkError || !examExists) {
+        throw new Error("Exam not found");
+      }
+
+      // Delete related attendance records
       const { error: attendanceError } = await supabase
         .from('student_attendance_history')
         .delete()
-        .match({ exam_id: examId });
+        .eq('exam_id', examId);
       
-      if (attendanceError) throw attendanceError;
+      if (attendanceError) {
+        console.error('Error deleting attendance records:', attendanceError);
+        throw new Error("Failed to delete attendance records");
+      }
 
-      // Then delete the exam summary
+      // Delete exam summary
       const { error: summaryError } = await supabase
         .from('exam_attendance_summary')
         .delete()
-        .match({ exam_id: examId });
+        .eq('exam_id', examId);
       
-      if (summaryError) throw summaryError;
+      if (summaryError) {
+        console.error('Error deleting exam summary:', summaryError);
+        throw new Error("Failed to delete exam summary");
+      }
+
+      return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['examSummaries'] });
@@ -121,33 +141,54 @@ const Reports = () => {
         description: "Report deleted successfully",
       });
     },
-    onError: (error) => {
-      console.error('Delete error:', error);
+    onError: (error: Error) => {
+      console.error('Delete exam error:', error);
       toast({
         title: "Error",
-        description: "Failed to delete report",
+        description: error.message || "Failed to delete report",
         variant: "destructive",
       });
-    },
+    }
   });
 
   const deleteSeatingPlanMutation = useMutation({
     mutationFn: async (planId: string) => {
-      // First delete related seating assignments
+      if (!planId) throw new Error("Invalid seating plan ID");
+
+      // First check if seating plan exists
+      const { data: planExists, error: checkError } = await supabase
+        .from('seating_arrangements')
+        .select('id')
+        .eq('id', planId)
+        .single();
+
+      if (checkError || !planExists) {
+        throw new Error("Seating plan not found");
+      }
+
+      // Delete related seating assignments
       const { error: assignmentsError } = await supabase
         .from('seating_assignments')
         .delete()
-        .match({ arrangement_id: planId });
+        .eq('arrangement_id', planId);
       
-      if (assignmentsError) throw assignmentsError;
+      if (assignmentsError) {
+        console.error('Error deleting seating assignments:', assignmentsError);
+        throw new Error("Failed to delete seating assignments");
+      }
 
-      // Then delete the seating plan
+      // Delete seating plan
       const { error: planError } = await supabase
         .from('seating_arrangements')
         .delete()
-        .match({ id: planId });
+        .eq('id', planId);
       
-      if (planError) throw planError;
+      if (planError) {
+        console.error('Error deleting seating plan:', planError);
+        throw new Error("Failed to delete seating plan");
+      }
+
+      return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seatingPlans'] });
@@ -156,14 +197,14 @@ const Reports = () => {
         description: "Seating plan deleted successfully",
       });
     },
-    onError: (error) => {
-      console.error('Delete error:', error);
+    onError: (error: Error) => {
+      console.error('Delete seating plan error:', error);
       toast({
         title: "Error",
-        description: "Failed to delete seating plan",
+        description: error.message || "Failed to delete seating plan",
         variant: "destructive",
       });
-    },
+    }
   });
 
   const generatePDF = (examSummary: ExamSummary) => {
