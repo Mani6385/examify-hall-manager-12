@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, FileText, Grid3X3, Trash2 } from "lucide-react";
@@ -96,21 +97,32 @@ const Reports = () => {
   // Delete mutations
   const deleteExamSummaryMutation = useMutation({
     mutationFn: async (examId: string) => {
-      const { error } = await supabase
+      // First delete related attendance records
+      const { error: attendanceError } = await supabase
+        .from('student_attendance_history')
+        .delete()
+        .match({ exam_id: examId });
+      
+      if (attendanceError) throw attendanceError;
+
+      // Then delete the exam summary
+      const { error: summaryError } = await supabase
         .from('exam_attendance_summary')
         .delete()
-        .eq('exam_id', examId);
+        .match({ exam_id: examId });
       
-      if (error) throw error;
+      if (summaryError) throw summaryError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['examSummaries'] });
+      queryClient.invalidateQueries({ queryKey: ['attendanceRecords'] });
       toast({
         title: "Success",
         description: "Report deleted successfully",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Delete error:', error);
       toast({
         title: "Error",
         description: "Failed to delete report",
@@ -121,12 +133,21 @@ const Reports = () => {
 
   const deleteSeatingPlanMutation = useMutation({
     mutationFn: async (planId: string) => {
-      const { error } = await supabase
+      // First delete related seating assignments
+      const { error: assignmentsError } = await supabase
+        .from('seating_assignments')
+        .delete()
+        .match({ arrangement_id: planId });
+      
+      if (assignmentsError) throw assignmentsError;
+
+      // Then delete the seating plan
+      const { error: planError } = await supabase
         .from('seating_arrangements')
         .delete()
-        .eq('id', planId);
+        .match({ id: planId });
       
-      if (error) throw error;
+      if (planError) throw planError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seatingPlans'] });
@@ -135,7 +156,8 @@ const Reports = () => {
         description: "Seating plan deleted successfully",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Delete error:', error);
       toast({
         title: "Error",
         description: "Failed to delete seating plan",
