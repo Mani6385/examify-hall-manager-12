@@ -1,4 +1,4 @@
-importtypescript
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, FileText, Grid3X3, Trash2 } from "lucide-react";
