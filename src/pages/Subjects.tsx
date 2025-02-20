@@ -269,55 +269,14 @@ const Subjects = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="department">Department</Label>
-                  <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={open}
-                        className="w-full justify-between"
-                      >
-                        {formData.department || "Select or type department..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <Command>
-                        <div className="p-2">
-                          <Input
-                            placeholder="Type or search department..."
-                            value={formData.department}
-                            onChange={(e) => {
-                              setFormData({ ...formData, department: e.target.value });
-                              setSearchValue(e.target.value);
-                            }}
-                            className="w-full"
-                          />
-                        </div>
-                        <CommandEmpty>No department found.</CommandEmpty>
-                        <CommandGroup>
-                          {filteredDepartments.map((dept) => (
-                            <CommandItem
-                              key={dept}
-                              value={dept}
-                              onSelect={(currentValue) => {
-                                setFormData({ ...formData, department: currentValue });
-                                setOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  formData.department === dept ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {dept}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <Input
+                    id="department"
+                    placeholder="Enter department"
+                    value={formData.department}
+                    onChange={(e) =>
+                      setFormData({ ...formData, department: e.target.value })
+                    }
+                  />
                 </div>
                 <Button 
                   type="submit" 
@@ -374,55 +333,14 @@ const Subjects = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-department">Department</Label>
-                  <Popover open={editOpen} onOpenChange={setEditOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={editOpen}
-                        className="w-full justify-between"
-                      >
-                        {formData.department || "Select or type department..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <Command>
-                        <div className="p-2">
-                          <Input
-                            placeholder="Type or search department..."
-                            value={formData.department}
-                            onChange={(e) => {
-                              setFormData({ ...formData, department: e.target.value });
-                              setSearchValue(e.target.value);
-                            }}
-                            className="w-full"
-                          />
-                        </div>
-                        <CommandEmpty>No department found.</CommandEmpty>
-                        <CommandGroup>
-                          {filteredDepartments.map((dept) => (
-                            <CommandItem
-                              key={dept}
-                              value={dept}
-                              onSelect={(currentValue) => {
-                                setFormData({ ...formData, department: currentValue });
-                                setEditOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  formData.department === dept ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {dept}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <Input
+                    id="edit-department"
+                    placeholder="Enter department"
+                    value={formData.department}
+                    onChange={(e) =>
+                      setFormData({ ...formData, department: e.target.value })
+                    }
+                  />
                 </div>
                 <Button 
                   type="submit" 
