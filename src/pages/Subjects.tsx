@@ -45,7 +45,7 @@ interface Subject {
   department: string | null;
 }
 
-const departments = [
+const departments: string[] = [
   "Computer Science",
   "Electrical Engineering",
   "Mechanical Engineering",
@@ -206,9 +206,11 @@ const Subjects = () => {
   const [searchValue, setSearchValue] = useState("");
 
   // Filter departments based on search value
-  const filteredDepartments = departments.filter((dept) =>
-    dept.toLowerCase().includes(searchValue.toLowerCase())
-  );
+  const filteredDepartments = searchValue
+    ? departments.filter((dept) =>
+        dept.toLowerCase().includes(searchValue.toLowerCase())
+      )
+    : departments;
 
   return (
     <Layout>
