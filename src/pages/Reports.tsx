@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, FileText, Grid3X3, Trash2 } from "lucide-react";
@@ -390,6 +389,101 @@ const Reports = () => {
     }
   };
 
+  const generateOverallSeatingPlanPDF = async () => {
+    try {
+      // Fetch all seating assignments for all plans
+      const { data: allAssignments, error: assignmentsError } = await supabase
+        .from('seating_assignments')
+        .select('*, seating_arrangements!inner(room_no, floor_no)');
+
+      if (assignmentsError) throw assignmentsError;
+
+      const doc = new jsPDF();
+      
+      // Add header
+      doc.setFontSize(16);
+      doc.text("Overall Seating Plan - All Halls", doc.internal.pageSize.width/2, 20, { align: 'center' });
+      
+      // Group assignments by room
+      const assignmentsByRoom = allAssignments.reduce((acc: any, curr: any) => {
+        const roomKey = `${curr.seating_arrangements.room_no}-${curr.seating_arrangements.floor_no}`;
+        if (!acc[roomKey]) {
+          acc[roomKey] = [];
+        }
+        acc[roomKey].push(curr);
+        return acc;
+      }, {});
+
+      let currentY = 40;
+
+      // Iterate through each room
+      Object.entries(assignmentsByRoom).forEach(([roomKey, assignments]: [string, any]) => {
+        // Add new page if not enough space
+        if (currentY > doc.internal.pageSize.height - 40) {
+          doc.addPage();
+          currentY = 40;
+        }
+
+        // Add room header
+        const [roomNo, floorNo] = roomKey.split('-');
+        doc.setFontSize(14);
+        doc.text(`Room ${roomNo} - Floor ${floorNo}`, 20, currentY);
+        currentY += 10;
+
+        // Create table for this room
+        const headers = ["Seat No", "Student Name", "Registration No", "Department"];
+        const data = assignments.map((a: any) => [
+          a.seat_no,
+          a.student_name || "Not assigned",
+          a.reg_no || "N/A",
+          a.department || "N/A"
+        ]);
+
+        // Add table
+        doc.setFontSize(10);
+        const startX = 20;
+        const cellWidth = 40;
+        const cellHeight = 10;
+
+        // Draw headers
+        headers.forEach((header, i) => {
+          doc.rect(startX + (i * cellWidth), currentY, cellWidth, cellHeight);
+          doc.text(header, startX + (i * cellWidth) + 2, currentY + 7);
+        });
+        currentY += cellHeight;
+
+        // Draw data
+        data.forEach((row: string[]) => {
+          if (currentY > doc.internal.pageSize.height - 20) {
+            doc.addPage();
+            currentY = 40;
+          }
+
+          row.forEach((cell, i) => {
+            doc.rect(startX + (i * cellWidth), currentY, cellWidth, cellHeight);
+            doc.text(cell.toString(), startX + (i * cellWidth) + 2, currentY + 7);
+          });
+          currentY += cellHeight;
+        });
+
+        currentY += 20; // Add space between rooms
+      });
+
+      doc.save('overall-seating-plan.pdf');
+      
+      toast({
+        title: "Success",
+        description: "Overall seating plan PDF generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate overall seating plan PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoadingExams || isLoadingAttendance || isLoadingSeating) {
     return (
       <Layout>
@@ -491,7 +585,13 @@ const Reports = () => {
         </div>
 
         <div className="space-y-6">
-          <h3 className="text-xl font-semibold">Seating Plan Reports</h3>
+          <div className="flex justify-between items-center">
+            <h3 className="text-xl font-semibold">Seating Plan Reports</h3>
+            <Button onClick={generateOverallSeatingPlanPDF} className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Generate Overall Seating Plan
+            </Button>
+          </div>
           {seatingPlans.map((seatingPlan) => (
             <div key={seatingPlan.id} className="bg-muted/50 p-4 rounded-lg">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
