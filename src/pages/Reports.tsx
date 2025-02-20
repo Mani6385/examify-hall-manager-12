@@ -1,20 +1,13 @@
-
+importtypescript
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, FileText, Grid3X3 } from "lucide-react";
+import { FileSpreadsheet, FileText, Grid3X3, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import jsPDF from "jspdf";
 import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface ExamSummary {
   exam_id: string;
@@ -57,6 +50,7 @@ interface AttendanceRecord {
 const Reports = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Fetch exam summaries
   const { data: examSummaries = [], isLoading: isLoadingExams } = useQuery({
@@ -97,6 +91,57 @@ const Reports = () => {
       
       if (error) throw error;
       return data as SeatingPlan[];
+    },
+  });
+
+  // Delete mutations
+  const deleteExamSummaryMutation = useMutation({
+    mutationFn: async (examId: string) => {
+      const { error } = await supabase
+        .from('exam_attendance_summary')
+        .delete()
+        .eq('exam_id', examId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['examSummaries'] });
+      toast({
+        title: "Success",
+        description: "Report deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete report",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteSeatingPlanMutation = useMutation({
+    mutationFn: async (planId: string) => {
+      const { error } = await supabase
+        .from('seating_arrangements')
+        .delete()
+        .eq('id', planId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seatingPlans'] });
+      toast({
+        title: "Success",
+        description: "Seating plan deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete seating plan",
+        variant: "destructive",
+      });
     },
   });
 
@@ -420,7 +465,6 @@ const Reports = () => {
                   </p>
                 </div>
               </div>
-
               <div className="flex gap-4">
                 <Button onClick={() => generatePDF(examSummary)} className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
@@ -430,6 +474,16 @@ const Reports = () => {
                 <Button onClick={() => generateExcel(examSummary)} variant="outline" className="flex items-center gap-2">
                   <FileSpreadsheet className="h-4 w-4" />
                   Export as Excel
+                </Button>
+
+                <Button 
+                  onClick={() => deleteExamSummaryMutation.mutate(examSummary.exam_id)} 
+                  variant="destructive"
+                  disabled={deleteExamSummaryMutation.isPending}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Report
                 </Button>
               </div>
             </div>
@@ -460,7 +514,6 @@ const Reports = () => {
                   </p>
                 </div>
               </div>
-
               <div className="flex gap-4">
                 <Button onClick={() => generateSeatingPlanPDF(seatingPlan)} className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
@@ -470,6 +523,16 @@ const Reports = () => {
                 <Button onClick={() => generateSeatingPlanExcel(seatingPlan)} variant="outline" className="flex items-center gap-2">
                   <FileSpreadsheet className="h-4 w-4" />
                   Export as Excel
+                </Button>
+
+                <Button 
+                  onClick={() => deleteSeatingPlanMutation.mutate(seatingPlan.id)}
+                  variant="destructive"
+                  disabled={deleteSeatingPlanMutation.isPending}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Plan
                 </Button>
               </div>
             </div>
