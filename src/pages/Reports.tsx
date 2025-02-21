@@ -1,422 +1,46 @@
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, FileText, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import jsPDF from "jspdf";
-import * as XLSX from "xlsx";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import { useState } from "react";
+import { CalendarDays, File, FileText, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
-// Interfaces
-interface ExamSummary {
-  exam_id: string;
-  subject: string;
-  date: string;
-  start_time: string;
-  venue: string;
-  center_name: string;
-  total_attendance: number;
-  total_students: number;
-}
-
-interface AttendanceRecord {
-  student_id: string;
-  student_name: string;
-  roll_number: string;
-  exam_date: string;
-  subject: string;
-  attended: boolean;
-}
-
-interface SeatingPlan {
+interface SeatingAssignment {
   id: string;
-  room_no: string;
-  floor_no: string;
-  rows: number;
-  columns: number;
-  exam_id: string | null;
-  created_at: string;
+  seat_no: number;
+  reg_no: string;
+  department: string;
+  subject: string;
+  seating_arrangements: {
+    room_no: string;
+    floor_no: string;
+  };
 }
 
 const Reports = () => {
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const [isLoadingPDF, setIsLoadingPDF] = useState(false);
+  const [isLoadingExcel, setIsLoadingExcel] = useState(false);
 
-  const { data: examSummaries = [], isLoading: isLoadingExams } = useQuery<ExamSummary[]>({
-    queryKey: ['examSummaries'],
+  const { data: assignments, isLoading } = useQuery({
+    queryKey: ['seating-assignments'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('exam_attendance_summary')
-        .select('*')
-        .order('date', { ascending: false });
-      
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const { data: attendanceRecords = [], isLoading: isLoadingAttendance } = useQuery<AttendanceRecord[]>({
-    queryKey: ['attendanceRecords'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('student_attendance_history')
-        .select('*')
-        .order('student_name');
-      
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const { data: seatingPlans = [], isLoading: isLoadingSeating } = useQuery<SeatingPlan[]>({
-    queryKey: ['seatingPlans'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('seating_arrangements')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const deleteExamSummaryMutation = useMutation<void, Error, string>({
-    mutationFn: async (examId: string) => {
-      const { error } = await supabase
-        .from('exam_attendance_summary')
-        .delete()
-        .eq('exam_id', examId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['examSummaries'] });
-      toast({
-        title: "Success",
-        description: "Report deleted successfully",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to delete report",
-        variant: "destructive",
-      });
-    }
-  });
-
-  const deleteSeatingPlanMutation = useMutation<void, Error, string>({
-    mutationFn: async (planId: string) => {
-      const { error } = await supabase
-        .from('seating_arrangements')
-        .delete()
-        .eq('id', planId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['seatingPlans'] });
-      toast({
-        title: "Success",
-        description: "Seating plan deleted successfully",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to delete seating plan",
-        variant: "destructive",
-      });
-    }
-  });
-
-  const generatePDF = (examSummary: ExamSummary) => {
-    try {
-      const doc = new jsPDF();
-      
-      doc.setFontSize(16);
-      doc.text("Exam Attendance Report", doc.internal.pageSize.width/2, 20, { align: 'center' });
-      
-      doc.setFontSize(12);
-      const startY = 40;
-      const lineHeight = 8;
-      
-      doc.text(`Center Name: ${examSummary.center_name}`, 20, startY);
-      doc.text(`Subject: ${examSummary.subject}`, 20, startY + lineHeight);
-      doc.text(`Date: ${examSummary.date}`, 20, startY + 2 * lineHeight);
-      doc.text(`Time: ${examSummary.start_time}`, 20, startY + 3 * lineHeight);
-      doc.text(`Venue: ${examSummary.venue}`, 20, startY + 4 * lineHeight);
-      doc.text(`Total Students: ${examSummary.total_students}`, 20, startY + 5 * lineHeight);
-      doc.text(`Total Attendance: ${examSummary.total_attendance}`, 20, startY + 6 * lineHeight);
-
-      const records = attendanceRecords.filter(
-        record => record.subject === examSummary.subject && record.exam_date === examSummary.date
-      );
-
-      const headers = ["Roll Number", "Student Name", "Status"];
-      const columnWidths = [40, 80, 40];
-      const startTableY = startY + 8 * lineHeight;
-      let currentY = startTableY;
-
-      doc.setFillColor(240, 240, 240);
-      doc.rect(20, currentY - 6, doc.internal.pageSize.width - 40, 8, 'F');
-      let currentX = 20;
-      
-      headers.forEach((header, index) => {
-        doc.text(header, currentX, currentY);
-        currentX += columnWidths[index];
-      });
-      
-      currentY += 10;
-
-      records.forEach((record) => {
-        if (currentY > doc.internal.pageSize.height - 20) {
-          doc.addPage();
-          currentY = 20;
-        }
-
-        currentX = 20;
-        const rowData = [
-          record.roll_number,
-          record.student_name,
-          record.attended ? "Present" : "Absent"
-        ];
-
-        rowData.forEach((text, colIndex) => {
-          doc.rect(currentX, currentY - 6, columnWidths[colIndex], 8);
-          doc.text(text, currentX + 2, currentY);
-          currentX += columnWidths[colIndex];
-        });
-
-        currentY += 10;
-      });
-      
-      doc.save(`attendance-${examSummary.subject}-${examSummary.date}.pdf`);
-      
-      toast({
-        title: "Success",
-        description: "PDF generated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate PDF",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const generateExcel = (examSummary: ExamSummary) => {
-    try {
-      const records = attendanceRecords.filter(
-        record => record.subject === examSummary.subject && record.exam_date === examSummary.date
-      );
-
-      const excelData = records.map(record => ({
-        "Roll Number": record.roll_number,
-        "Student Name": record.student_name,
-        "Status": record.attended ? "Present" : "Absent"
-      }));
-      
-      const ws = XLSX.utils.json_to_sheet([
-        {
-          "Center Name": examSummary.center_name,
-          "Subject": examSummary.subject,
-          "Date": examSummary.date,
-          "Time": examSummary.start_time,
-          "Venue": examSummary.venue,
-          "Total Students": examSummary.total_students,
-          "Total Attendance": examSummary.total_attendance
-        },
-        ...excelData
-      ]);
-      
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-      
-      XLSX.writeFile(wb, `attendance-${examSummary.subject}-${examSummary.date}.xlsx`);
-      
-      toast({
-        title: "Success",
-        description: "Excel file generated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate Excel file",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const generateSeatingPlanPDF = async (seatingPlan: SeatingPlan) => {
-    try {
-      const { data: assignments, error } = await supabase
         .from('seating_assignments')
-        .select('*')
-        .eq('arrangement_id', seatingPlan.id)
-        .order('position');
+        .select('*, seating_arrangements!inner(room_no, floor_no)');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching seating assignments:', error);
+        throw error;
+      }
 
-      const doc = new jsPDF();
-      
-      // Header
-      doc.setFontSize(18);
-      doc.text("Seating Plan Details", doc.internal.pageSize.width/2, 20, { align: 'center' });
-      
-      // Plan Info
-      doc.setFontSize(12);
-      doc.text("Room Details:", 20, 40);
-      doc.text(`Room Number: ${seatingPlan.room_no}`, 30, 50);
-      doc.text(`Floor Number: ${seatingPlan.floor_no}`, 30, 60);
-      doc.text(`Layout: ${seatingPlan.rows} × ${seatingPlan.columns}`, 30, 70);
-      doc.text(`Date: ${new Date(seatingPlan.created_at).toLocaleDateString()}`, 30, 80);
-
-      // Table Headers
-      const headers = ["Seat No.", "Student Name", "Registration No.", "Row", "Column"];
-      const startY = 100;
-      const cellWidth = 38;
-      const cellHeight = 10;
-      let currentY = startY;
-
-      // Draw Headers
-      doc.setFillColor(240, 240, 240);
-      doc.rect(20, currentY - 6, doc.internal.pageSize.width - 40, 8, 'F');
-      headers.forEach((header, index) => {
-        doc.text(header, 20 + (index * cellWidth), currentY);
-      });
-      currentY += cellHeight;
-
-      // Draw Rows
-      assignments?.forEach((assignment, index) => {
-        if (currentY > doc.internal.pageSize.height - 20) {
-          doc.addPage();
-          currentY = 20;
-        }
-
-        const rowNum = Math.floor(assignment.position / seatingPlan.columns) + 1;
-        const colNum = (assignment.position % seatingPlan.columns) + 1;
-
-        const rowData = [
-          assignment.seat_no,
-          assignment.student_name || "Not Assigned",
-          assignment.reg_no || "N/A",
-          rowNum.toString(),
-          colNum.toString()
-        ];
-
-        rowData.forEach((text, colIndex) => {
-          doc.text(text, 20 + (colIndex * cellWidth), currentY);
-          doc.rect(20 + (colIndex * cellWidth) - 2, currentY - 6, cellWidth, 8);
-        });
-
-        currentY += cellHeight;
-      });
-      
-      doc.save(`seating-plan-${seatingPlan.room_no}-${seatingPlan.floor_no}.pdf`);
-      
-      toast({
-        title: "Success",
-        description: "Seating plan PDF generated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate seating plan PDF",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const generateSeatingPlanExcel = async (seatingPlan: SeatingPlan) => {
-    try {
-      const { data: assignments, error } = await supabase
-        .from('seating_assignments')
-        .select('*')
-        .eq('arrangement_id', seatingPlan.id)
-        .order('position');
-
-      if (error) throw error;
-
-      // Create a worksheet for plan details
-      const planDetails = [{
-        "Room Number": seatingPlan.room_no,
-        "Floor Number": seatingPlan.floor_no,
-        "Layout (Rows × Columns)": `${seatingPlan.rows} × ${seatingPlan.columns}`,
-        "Created Date": new Date(seatingPlan.created_at).toLocaleDateString()
-      }];
-      
-      const detailsWS = XLSX.utils.json_to_sheet(planDetails);
-
-      // Create a worksheet for seating assignments
-      const seatingData = assignments?.map(assignment => {
-        const rowNum = Math.floor(assignment.position / seatingPlan.columns) + 1;
-        const colNum = (assignment.position % seatingPlan.columns) + 1;
-        
-        return {
-          "Seat Number": assignment.seat_no,
-          "Student Name": assignment.student_name || "Not Assigned",
-          "Registration Number": assignment.reg_no || "N/A",
-          "Row": rowNum,
-          "Column": colNum,
-          "Position": assignment.position + 1
-        };
-      });
-      
-      const seatingWS = XLSX.utils.json_to_sheet(seatingData || []);
-      
-      // Create workbook with both worksheets
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, detailsWS, "Plan Details");
-      XLSX.utils.book_append_sheet(wb, seatingWS, "Seating Assignments");
-      
-      // Auto-size columns
-      const detailsCols = Object.keys(planDetails[0]);
-      const seatingCols = seatingData && seatingData.length > 0 ? Object.keys(seatingData[0]) : [];
-      
-      detailsCols.forEach((col, i) => {
-        const maxWidth = Math.max(
-          col.length,
-          ...planDetails.map(row => String(row[col as keyof typeof row]).length)
-        );
-        detailsWS['!cols'] = detailsWS['!cols'] || [];
-        detailsWS['!cols'][i] = { wch: maxWidth + 2 };
-      });
-
-      seatingCols.forEach((col, i) => {
-        const maxWidth = Math.max(
-          col.length,
-          ...(seatingData?.map(row => String(row[col as keyof typeof row]).length) || [])
-        );
-        seatingWS['!cols'] = seatingWS['!cols'] || [];
-        seatingWS['!cols'][i] = { wch: maxWidth + 2 };
-      });
-      
-      XLSX.writeFile(wb, `seating-plan-${seatingPlan.room_no}-${seatingPlan.floor_no}.xlsx`);
-      
-      toast({
-        title: "Success",
-        description: "Seating plan Excel file generated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate seating plan Excel file",
-        variant: "destructive",
-      });
-    }
-  };
+      return data as SeatingAssignment[];
+    },
+  });
 
   const generateOverallSeatingPlanPDF = async () => {
     try {
@@ -453,9 +77,9 @@ const Reports = () => {
         doc.text(`Room ${roomNo} - Floor ${floorNo}`, 20, currentY);
         currentY += 10;
 
-        const headers = ["Seat No", "Registration No", "Student Name", "Department", "Subject"];
+        const headers = ["Seat No", "Registration No", "Department", "Subject"];
         const startX = 20;
-        const cellWidth = 35;
+        const cellWidth = 45; // Increased width since we removed one column
         const cellHeight = 10;
 
         // Draw Headers with gray background
@@ -477,7 +101,6 @@ const Reports = () => {
           const rowData = [
             assignment.seat_no,
             assignment.reg_no || "N/A",
-            assignment.student_name || "Not assigned",
             assignment.department || "N/A",
             assignment.subject || "N/A"
           ];
@@ -536,20 +159,19 @@ const Reports = () => {
           "Room Number": roomNo,
           "Floor Number": floorNo,
           "Total Seats": assignments.length,
-          "Occupied Seats": assignments.filter((a: any) => a.student_name).length
+          "Occupied Seats": assignments.filter((a: any) => a.reg_no).length
         };
       });
 
       const summaryWS = XLSX.utils.json_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(wb, summaryWS, "Summary");
 
-      // Create detailed seating plan worksheet
+      // Create detailed seating plan worksheet without student names
       const allSeatingData = allAssignments.map((assignment: any) => ({
         "Room Number": assignment.seating_arrangements.room_no,
         "Floor Number": assignment.seating_arrangements.floor_no,
         "Seat Number": assignment.seat_no,
         "Registration Number": assignment.reg_no || "N/A",
-        "Student Name": assignment.student_name || "Not Assigned",
         "Department": assignment.department || "N/A",
         "Subject": assignment.subject || "N/A"
       }));
@@ -589,131 +211,73 @@ const Reports = () => {
     }
   };
 
-  if (isLoadingExams || isLoadingAttendance || isLoadingSeating) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-full">
-          <p>Loading reports...</p>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Reports</h2>
           <p className="text-muted-foreground mt-2">
-            Generate attendance and seating plan reports
+            Generate and download exam hall seating arrangement reports
           </p>
         </div>
 
-        {/* Exam Reports Section */}
-        <div className="space-y-6">
-          <h3 className="text-xl font-semibold">Exam Attendance Reports</h3>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Subject</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Venue</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {examSummaries.map((examSummary) => (
-                <TableRow key={examSummary.exam_id}>
-                  <TableCell className="font-medium">{examSummary.subject}</TableCell>
-                  <TableCell>{examSummary.date}</TableCell>
-                  <TableCell>{examSummary.start_time}</TableCell>
-                  <TableCell>{examSummary.venue}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button onClick={() => generatePDF(examSummary)} size="sm" variant="outline">
-                        <FileText className="h-4 w-4 mr-1" />
-                        PDF
-                      </Button>
-                      <Button onClick={() => generateExcel(examSummary)} size="sm" variant="outline">
-                        <FileSpreadsheet className="h-4 w-4 mr-1" />
-                        Excel
-                      </Button>
-                      <Button 
-                        onClick={() => deleteExamSummaryMutation.mutate(examSummary.exam_id)}
-                        size="sm"
-                        variant="destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Seating Plans Section */}
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-semibold">Seating Plan Reports</h3>
-            <div className="flex gap-2">
-              <Button onClick={generateOverallSeatingPlanPDF} className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                PDF All Plans
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="border rounded-lg p-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Overall Seating Plan</h3>
+              <p className="text-sm text-muted-foreground">
+                Generate a detailed report of the entire seating arrangement.
+              </p>
+            </div>
+            <div className="space-x-2">
+              <Button
+                onClick={generateOverallSeatingPlanPDF}
+                disabled={isLoadingPDF}
+              >
+                {isLoadingPDF ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="mr-2 h-4 w-4" />
+                    PDF
+                  </>
+                )}
               </Button>
-              <Button onClick={generateOverallSeatingPlanExcel} className="flex items-center gap-2">
-                <FileSpreadsheet className="h-4 w-4" />
-                Excel All Plans
+              <Button
+                variant="secondary"
+                onClick={generateOverallSeatingPlanExcel}
+                disabled={isLoadingExcel}
+              >
+                {isLoadingExcel ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <File className="mr-2 h-4 w-4" />
+                    Excel
+                  </>
+                )}
               </Button>
             </div>
           </div>
-          
-          {seatingPlans.length === 0 ? (
-            <p className="text-muted-foreground">No seating plans available</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Room Number</TableHead>
-                  <TableHead>Floor Number</TableHead>
-                  <TableHead>Layout</TableHead>
-                  <TableHead>Created Date</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {seatingPlans.map((seatingPlan) => (
-                  <TableRow key={seatingPlan.id}>
-                    <TableCell className="font-medium">{seatingPlan.room_no}</TableCell>
-                    <TableCell>{seatingPlan.floor_no}</TableCell>
-                    <TableCell>{seatingPlan.rows} × {seatingPlan.columns}</TableCell>
-                    <TableCell>{new Date(seatingPlan.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button onClick={() => generateSeatingPlanPDF(seatingPlan)} size="sm" variant="outline">
-                          <FileText className="h-4 w-4 mr-1" />
-                          PDF
-                        </Button>
-                        <Button onClick={() => generateSeatingPlanExcel(seatingPlan)} size="sm" variant="outline">
-                          <FileSpreadsheet className="h-4 w-4 mr-1" />
-                          Excel
-                        </Button>
-                        <Button 
-                          onClick={() => deleteSeatingPlanMutation.mutate(seatingPlan.id)}
-                          size="sm"
-                          variant="destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+
+          <div className="border rounded-lg p-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Upcoming Exams</h3>
+              <p className="text-sm text-muted-foreground">
+                View a list of all upcoming exams and their schedules.
+              </p>
+            </div>
+            <Button variant="outline" disabled>
+              <CalendarDays className="mr-2 h-4 w-4" />
+              View Exams
+            </Button>
+          </div>
         </div>
       </div>
     </Layout>
