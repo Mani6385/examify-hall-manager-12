@@ -7,7 +7,7 @@ import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { PostgrestError } from "@supabase/supabase-js";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 interface ExamSummary {
   exam_id: string;
@@ -20,6 +20,15 @@ interface ExamSummary {
   total_students: number;
 }
 
+interface AttendanceRecord {
+  student_id: string;
+  student_name: string;
+  roll_number: string;
+  exam_date: string;
+  subject: string;
+  attended: boolean;
+}
+
 interface SeatingPlan {
   id: string;
   room_no: string;
@@ -30,29 +39,11 @@ interface SeatingPlan {
   created_at: string;
 }
 
-interface SeatingAssignment {
-  seat_no: string;
-  student_name: string | null;
-  reg_no: string | null;
-  department: string | null;
-  position: number;
-}
-
-interface AttendanceRecord {
-  student_id: string;
-  student_name: string;
-  roll_number: string;
-  exam_date: string;
-  subject: string;
-  attended: boolean;
-}
-
 const Reports = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Fetch exam summaries
   const { data: examSummaries = [], isLoading: isLoadingExams } = useQuery({
     queryKey: ['examSummaries'],
     queryFn: async () => {
@@ -66,7 +57,6 @@ const Reports = () => {
     },
   });
 
-  // Fetch attendance records
   const { data: attendanceRecords = [], isLoading: isLoadingAttendance } = useQuery({
     queryKey: ['attendanceRecords'],
     queryFn: async () => {
@@ -80,7 +70,6 @@ const Reports = () => {
     },
   });
 
-  // Fetch seating arrangements
   const { data: seatingPlans = [], isLoading: isLoadingSeating } = useQuery({
     queryKey: ['seatingPlans'],
     queryFn: async () => {
@@ -90,46 +79,27 @@ const Reports = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as SeatingPlan[];
+      return (data || []) as SeatingPlan[];
     },
   });
 
-  // Delete mutations
-  const deleteExamSummaryMutation = useMutation({
-    mutationFn: async (examId: string) => {
+  const deleteExamSummaryMutation = useMutation<void, Error, string>({
+    mutationFn: async (examId) => {
       if (!examId) throw new Error("Invalid exam ID");
 
-      const { data, error } = await supabase
-        .from('exam_attendance_summary')
-        .select('exam_id')
-        .eq('exam_id', examId)
-        .single();
-
-      if (error || !data) {
-        throw new Error("Exam not found");
-      }
-
-      // Delete related attendance records
       const { error: attendanceError } = await supabase
         .from('student_attendance_history')
         .delete()
         .eq('exam_id', examId);
       
-      if (attendanceError) {
-        console.error('Error deleting attendance records:', attendanceError);
-        throw new Error("Failed to delete attendance records");
-      }
+      if (attendanceError) throw attendanceError;
 
-      // Delete exam summary
       const { error: summaryError } = await supabase
         .from('exam_attendance_summary')
         .delete()
         .eq('exam_id', examId);
       
-      if (summaryError) {
-        console.error('Error deleting exam summary:', summaryError);
-        throw new Error("Failed to delete exam summary");
-      }
+      if (summaryError) throw summaryError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['examSummaries'] });
@@ -139,7 +109,7 @@ const Reports = () => {
         description: "Report deleted successfully",
       });
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       console.error('Delete exam error:', error);
       toast({
         title: "Error",
@@ -149,41 +119,23 @@ const Reports = () => {
     }
   });
 
-  const deleteSeatingPlanMutation = useMutation({
-    mutationFn: async (planId: string) => {
+  const deleteSeatingPlanMutation = useMutation<void, Error, string>({
+    mutationFn: async (planId) => {
       if (!planId) throw new Error("Invalid seating plan ID");
 
-      const { data, error } = await supabase
-        .from('seating_arrangements')
-        .select('id')
-        .eq('id', planId)
-        .single();
-
-      if (error || !data) {
-        throw new Error("Seating plan not found");
-      }
-
-      // Delete related seating assignments
       const { error: assignmentsError } = await supabase
         .from('seating_assignments')
         .delete()
         .eq('arrangement_id', planId);
       
-      if (assignmentsError) {
-        console.error('Error deleting seating assignments:', assignmentsError);
-        throw new Error("Failed to delete seating assignments");
-      }
+      if (assignmentsError) throw assignmentsError;
 
-      // Delete seating plan
       const { error: planError } = await supabase
         .from('seating_arrangements')
         .delete()
         .eq('id', planId);
       
-      if (planError) {
-        console.error('Error deleting seating plan:', planError);
-        throw new Error("Failed to delete seating plan");
-      }
+      if (planError) throw planError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seatingPlans'] });
@@ -192,7 +144,7 @@ const Reports = () => {
         description: "Seating plan deleted successfully",
       });
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       console.error('Delete seating plan error:', error);
       toast({
         title: "Error",
@@ -206,11 +158,9 @@ const Reports = () => {
     try {
       const doc = new jsPDF();
       
-      // Add header
       doc.setFontSize(16);
       doc.text("Exam Attendance Report", doc.internal.pageSize.width/2, 20, { align: 'center' });
       
-      // Add metadata
       doc.setFontSize(12);
       const startY = 40;
       const lineHeight = 8;
@@ -223,7 +173,6 @@ const Reports = () => {
       doc.text(`Total Students: ${examSummary.total_students}`, 20, startY + 5 * lineHeight);
       doc.text(`Total Attendance: ${examSummary.total_attendance}`, 20, startY + 6 * lineHeight);
 
-      // Table configuration
       const records = attendanceRecords.filter(
         record => record.subject === examSummary.subject && record.exam_date === examSummary.date
       );
@@ -233,7 +182,6 @@ const Reports = () => {
       const startTableY = startY + 8 * lineHeight;
       let currentY = startTableY;
 
-      // Draw table header
       doc.setFillColor(240, 240, 240);
       doc.rect(20, currentY - 6, doc.internal.pageSize.width - 40, 8, 'F');
       let currentX = 20;
@@ -245,7 +193,6 @@ const Reports = () => {
       
       currentY += 10;
 
-      // Draw table content
       records.forEach((record) => {
         if (currentY > doc.internal.pageSize.height - 20) {
           doc.addPage();
@@ -295,7 +242,6 @@ const Reports = () => {
         "Status": record.attended ? "Present" : "Absent"
       }));
       
-      // Create worksheet
       const ws = XLSX.utils.json_to_sheet([
         {
           "Center Name": examSummary.center_name,
@@ -329,7 +275,6 @@ const Reports = () => {
 
   const generateSeatingPlanPDF = async (seatingPlan: SeatingPlan) => {
     try {
-      // Fetch seating assignments for this arrangement
       const { data: assignments, error } = await supabase
         .from('seating_assignments')
         .select('*')
@@ -340,11 +285,9 @@ const Reports = () => {
 
       const doc = new jsPDF();
       
-      // Add header
       doc.setFontSize(16);
       doc.text("Seating Plan", doc.internal.pageSize.width/2, 20, { align: 'center' });
       
-      // Add metadata
       doc.setFontSize(12);
       const startY = 40;
       const lineHeight = 8;
@@ -353,10 +296,9 @@ const Reports = () => {
       doc.text(`Floor Number: ${seatingPlan.floor_no}`, 20, startY + lineHeight);
       doc.text(`Date: ${new Date(seatingPlan.created_at).toLocaleDateString()}`, 20, startY + 2 * lineHeight);
 
-      // Draw seating grid
       const cellWidth = 40;
       const cellHeight = 30;
-      let startGridY = startY + 4 * lineHeight; // Changed to let
+      let startGridY = startY + 4 * lineHeight;
       const margin = 20;
 
       assignments?.forEach((assignment, index) => {
@@ -365,10 +307,8 @@ const Reports = () => {
         const x = margin + (col * cellWidth);
         const y = startGridY + (row * cellHeight);
 
-        // Draw cell border
         doc.rect(x, y, cellWidth, cellHeight);
 
-        // Add seat information
         doc.setFontSize(10);
         doc.text(assignment.seat_no, x + 2, y + 10);
         if (assignment.student_name) {
@@ -378,10 +318,9 @@ const Reports = () => {
           doc.text(assignment.reg_no, x + 2, y + 25);
         }
 
-        // Add new page if needed
         if (y + cellHeight > doc.internal.pageSize.height - margin) {
           doc.addPage();
-          startGridY = margin; // Now we can modify this value
+          startGridY = margin;
         }
       });
       
@@ -449,7 +388,6 @@ const Reports = () => {
 
   const generateOverallSeatingPlanPDF = async () => {
     try {
-      // Fetch all seating assignments for all plans
       const { data: allAssignments, error: assignmentsError } = await supabase
         .from('seating_assignments')
         .select('*, seating_arrangements!inner(room_no, floor_no)');
@@ -458,11 +396,9 @@ const Reports = () => {
 
       const doc = new jsPDF();
       
-      // Add header
       doc.setFontSize(16);
       doc.text("Overall Seating Plan - All Halls", doc.internal.pageSize.width/2, 20, { align: 'center' });
       
-      // Group assignments by room
       const assignmentsByRoom = allAssignments.reduce((acc: any, curr: any) => {
         const roomKey = `${curr.seating_arrangements.room_no}-${curr.seating_arrangements.floor_no}`;
         if (!acc[roomKey]) {
@@ -474,21 +410,17 @@ const Reports = () => {
 
       let currentY = 40;
 
-      // Iterate through each room
       Object.entries(assignmentsByRoom).forEach(([roomKey, assignments]: [string, any]) => {
-        // Add new page if not enough space
         if (currentY > doc.internal.pageSize.height - 40) {
           doc.addPage();
           currentY = 40;
         }
 
-        // Add room header
         const [roomNo, floorNo] = roomKey.split('-');
         doc.setFontSize(14);
         doc.text(`Room ${roomNo} - Floor ${floorNo}`, 20, currentY);
         currentY += 10;
 
-        // Create table for this room
         const headers = ["Seat No", "Student Name", "Registration No", "Department"];
         const data = assignments.map((a: any) => [
           a.seat_no,
@@ -497,20 +429,17 @@ const Reports = () => {
           a.department || "N/A"
         ]);
 
-        // Add table
         doc.setFontSize(10);
         const startX = 20;
         const cellWidth = 40;
         const cellHeight = 10;
 
-        // Draw headers
         headers.forEach((header, i) => {
           doc.rect(startX + (i * cellWidth), currentY, cellWidth, cellHeight);
           doc.text(header, startX + (i * cellWidth) + 2, currentY + 7);
         });
         currentY += cellHeight;
 
-        // Draw data
         data.forEach((row: string[]) => {
           if (currentY > doc.internal.pageSize.height - 20) {
             doc.addPage();
@@ -524,7 +453,7 @@ const Reports = () => {
           currentY += cellHeight;
         });
 
-        currentY += 20; // Add space between rooms
+        currentY += 20;
       });
 
       doc.save('overall-seating-plan.pdf');
@@ -547,19 +476,6 @@ const Reports = () => {
       <Layout>
         <div className="flex items-center justify-center h-full">
           <p>Loading reports...</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!examSummaries.length) {
-    return (
-      <Layout>
-        <div className="text-center py-8">
-          <p className="text-muted-foreground mb-4">No exam data available</p>
-          <Button onClick={() => navigate('/exams')} variant="outline">
-            Go to Exams
-          </Button>
         </div>
       </Layout>
     );
@@ -596,42 +512,19 @@ const Reports = () => {
                   <span className="text-sm text-muted-foreground">Venue:</span>
                   <p className="font-medium">{examSummary.venue}</p>
                 </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Center:</span>
-                  <p className="font-medium">{examSummary.center_name}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Total Students:</span>
-                  <p className="font-medium">{examSummary.total_students}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Attendance:</span>
-                  <p className="font-medium">{examSummary.total_attendance}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Percentage:</span>
-                  <p className="font-medium">
-                    {examSummary.total_students > 0
-                      ? ((examSummary.total_attendance / examSummary.total_students) * 100).toFixed(1)
-                      : 0}%
-                  </p>
-                </div>
               </div>
               <div className="flex gap-4">
                 <Button onClick={() => generatePDF(examSummary)} className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   Export as PDF
                 </Button>
-                
                 <Button onClick={() => generateExcel(examSummary)} variant="outline" className="flex items-center gap-2">
                   <FileSpreadsheet className="h-4 w-4" />
                   Export as Excel
                 </Button>
-
                 <Button 
-                  onClick={() => deleteExamSummaryMutation.mutate(examSummary.exam_id)} 
+                  onClick={() => deleteExamSummaryMutation.mutate(examSummary.exam_id)}
                   variant="destructive"
-                  disabled={deleteExamSummaryMutation.isPending}
                   className="flex items-center gap-2"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -650,51 +543,53 @@ const Reports = () => {
               Generate Overall Seating Plan
             </Button>
           </div>
-          {seatingPlans.map((seatingPlan) => (
-            <div key={seatingPlan.id} className="bg-muted/50 p-4 rounded-lg">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <span className="text-sm text-muted-foreground">Room:</span>
-                  <p className="font-medium">{seatingPlan.room_no}</p>
+          
+          {seatingPlans.length === 0 ? (
+            <p className="text-muted-foreground">No seating plans available</p>
+          ) : (
+            seatingPlans.map((seatingPlan) => (
+              <div key={seatingPlan.id} className="bg-muted/50 p-4 rounded-lg">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <span className="text-sm text-muted-foreground">Room:</span>
+                    <p className="font-medium">{seatingPlan.room_no}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground">Floor:</span>
+                    <p className="font-medium">{seatingPlan.floor_no}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground">Layout:</span>
+                    <p className="font-medium">{seatingPlan.rows} × {seatingPlan.columns}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-muted-foreground">Created:</span>
+                    <p className="font-medium">
+                      {new Date(seatingPlan.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Floor:</span>
-                  <p className="font-medium">{seatingPlan.floor_no}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Layout:</span>
-                  <p className="font-medium">{seatingPlan.rows} × {seatingPlan.columns}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Created:</span>
-                  <p className="font-medium">
-                    {new Date(seatingPlan.created_at).toLocaleDateString()}
-                  </p>
+                <div className="flex gap-4">
+                  <Button onClick={() => generateSeatingPlanPDF(seatingPlan)} className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Export as PDF
+                  </Button>
+                  <Button onClick={() => generateSeatingPlanExcel(seatingPlan)} variant="outline" className="flex items-center gap-2">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Export as Excel
+                  </Button>
+                  <Button 
+                    onClick={() => deleteSeatingPlanMutation.mutate(seatingPlan.id)}
+                    variant="destructive"
+                    className="flex items-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete Plan
+                  </Button>
                 </div>
               </div>
-              <div className="flex gap-4">
-                <Button onClick={() => generateSeatingPlanPDF(seatingPlan)} className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Export as PDF
-                </Button>
-                
-                <Button onClick={() => generateSeatingPlanExcel(seatingPlan)} variant="outline" className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Export as Excel
-                </Button>
-
-                <Button 
-                  onClick={() => deleteSeatingPlanMutation.mutate(seatingPlan.id)}
-                  variant="destructive"
-                  disabled={deleteSeatingPlanMutation.isPending}
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete Plan
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </Layout>
