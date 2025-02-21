@@ -7,6 +7,15 @@ import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // Interfaces
 interface ExamSummary {
@@ -83,16 +92,16 @@ const Reports = () => {
     },
   });
 
-  const deleteExamSummaryMutation = useMutation({
-    mutationFn: (examId: string) => {
-      return supabase.rpc('delete_exam_summary', { exam_id: examId })
-        .then(({ error }) => {
-          if (error) throw error;
-        });
+  const deleteExamSummaryMutation = useMutation<void, Error, string>({
+    mutationFn: async (examId: string) => {
+      const { error } = await supabase
+        .from('exam_attendance_summary')
+        .delete()
+        .eq('exam_id', examId);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['examSummaries'] });
-      queryClient.invalidateQueries({ queryKey: ['attendanceRecords'] });
       toast({
         title: "Success",
         description: "Report deleted successfully",
@@ -107,12 +116,13 @@ const Reports = () => {
     }
   });
 
-  const deleteSeatingPlanMutation = useMutation({
-    mutationFn: (planId: string) => {
-      return supabase.rpc('delete_seating_plan', { plan_id: planId })
-        .then(({ error }) => {
-          if (error) throw error;
-        });
+  const deleteSeatingPlanMutation = useMutation<void, Error, string>({
+    mutationFn: async (planId: string) => {
+      const { error } = await supabase
+        .from('seating_arrangements')
+        .delete()
+        .eq('id', planId);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seatingPlans'] });
@@ -467,50 +477,52 @@ const Reports = () => {
           </p>
         </div>
 
+        {/* Exam Reports Section */}
         <div className="space-y-6">
           <h3 className="text-xl font-semibold">Exam Attendance Reports</h3>
-          {examSummaries.map((examSummary) => (
-            <div key={examSummary.exam_id} className="bg-muted/50 p-4 rounded-lg">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <span className="text-sm text-muted-foreground">Subject:</span>
-                  <p className="font-medium">{examSummary.subject}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Date:</span>
-                  <p className="font-medium">{examSummary.date}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Time:</span>
-                  <p className="font-medium">{examSummary.start_time}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-muted-foreground">Venue:</span>
-                  <p className="font-medium">{examSummary.venue}</p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <Button onClick={() => generatePDF(examSummary)} className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Export as PDF
-                </Button>
-                <Button onClick={() => generateExcel(examSummary)} variant="outline" className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Export as Excel
-                </Button>
-                <Button 
-                  onClick={() => deleteExamSummaryMutation.mutate(examSummary.exam_id)}
-                  variant="destructive"
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete Report
-                </Button>
-              </div>
-            </div>
-          ))}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Subject</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Venue</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {examSummaries.map((examSummary) => (
+                <TableRow key={examSummary.exam_id}>
+                  <TableCell className="font-medium">{examSummary.subject}</TableCell>
+                  <TableCell>{examSummary.date}</TableCell>
+                  <TableCell>{examSummary.start_time}</TableCell>
+                  <TableCell>{examSummary.venue}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button onClick={() => generatePDF(examSummary)} size="sm" variant="outline">
+                        <FileText className="h-4 w-4 mr-1" />
+                        PDF
+                      </Button>
+                      <Button onClick={() => generateExcel(examSummary)} size="sm" variant="outline">
+                        <FileSpreadsheet className="h-4 w-4 mr-1" />
+                        Excel
+                      </Button>
+                      <Button 
+                        onClick={() => deleteExamSummaryMutation.mutate(examSummary.exam_id)}
+                        size="sm"
+                        variant="destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
 
+        {/* Seating Plans Section */}
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-semibold">Seating Plan Reports</h3>
@@ -523,48 +535,46 @@ const Reports = () => {
           {seatingPlans.length === 0 ? (
             <p className="text-muted-foreground">No seating plans available</p>
           ) : (
-            seatingPlans.map((seatingPlan) => (
-              <div key={seatingPlan.id} className="bg-muted/50 p-4 rounded-lg">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <span className="text-sm text-muted-foreground">Room:</span>
-                    <p className="font-medium">{seatingPlan.room_no}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-muted-foreground">Floor:</span>
-                    <p className="font-medium">{seatingPlan.floor_no}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-muted-foreground">Layout:</span>
-                    <p className="font-medium">{seatingPlan.rows} × {seatingPlan.columns}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-muted-foreground">Created:</span>
-                    <p className="font-medium">
-                      {new Date(seatingPlan.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <Button onClick={() => generateSeatingPlanPDF(seatingPlan)} className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Export as PDF
-                  </Button>
-                  <Button onClick={() => generateSeatingPlanExcel(seatingPlan)} variant="outline" className="flex items-center gap-2">
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Export as Excel
-                  </Button>
-                  <Button 
-                    onClick={() => deleteSeatingPlanMutation.mutate(seatingPlan.id)}
-                    variant="destructive"
-                    className="flex items-center gap-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete Plan
-                  </Button>
-                </div>
-              </div>
-            ))
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Room Number</TableHead>
+                  <TableHead>Floor Number</TableHead>
+                  <TableHead>Layout</TableHead>
+                  <TableHead>Created Date</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {seatingPlans.map((seatingPlan) => (
+                  <TableRow key={seatingPlan.id}>
+                    <TableCell className="font-medium">{seatingPlan.room_no}</TableCell>
+                    <TableCell>{seatingPlan.floor_no}</TableCell>
+                    <TableCell>{seatingPlan.rows} × {seatingPlan.columns}</TableCell>
+                    <TableCell>{new Date(seatingPlan.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button onClick={() => generateSeatingPlanPDF(seatingPlan)} size="sm" variant="outline">
+                          <FileText className="h-4 w-4 mr-1" />
+                          PDF
+                        </Button>
+                        <Button onClick={() => generateSeatingPlanExcel(seatingPlan)} size="sm" variant="outline">
+                          <FileSpreadsheet className="h-4 w-4 mr-1" />
+                          Excel
+                        </Button>
+                        <Button 
+                          onClick={() => deleteSeatingPlanMutation.mutate(seatingPlan.id)}
+                          size="sm"
+                          variant="destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </div>
       </div>
