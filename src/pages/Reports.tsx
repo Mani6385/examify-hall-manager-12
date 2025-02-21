@@ -271,43 +271,57 @@ const Reports = () => {
 
       const doc = new jsPDF();
       
-      doc.setFontSize(16);
-      doc.text("Seating Plan", doc.internal.pageSize.width/2, 20, { align: 'center' });
+      // Header
+      doc.setFontSize(18);
+      doc.text("Seating Plan Details", doc.internal.pageSize.width/2, 20, { align: 'center' });
       
+      // Plan Info
       doc.setFontSize(12);
-      const startY = 40;
-      const lineHeight = 8;
-      
-      doc.text(`Room Number: ${seatingPlan.room_no}`, 20, startY);
-      doc.text(`Floor Number: ${seatingPlan.floor_no}`, 20, startY + lineHeight);
-      doc.text(`Date: ${new Date(seatingPlan.created_at).toLocaleDateString()}`, 20, startY + 2 * lineHeight);
+      doc.text("Room Details:", 20, 40);
+      doc.text(`Room Number: ${seatingPlan.room_no}`, 30, 50);
+      doc.text(`Floor Number: ${seatingPlan.floor_no}`, 30, 60);
+      doc.text(`Layout: ${seatingPlan.rows} × ${seatingPlan.columns}`, 30, 70);
+      doc.text(`Date: ${new Date(seatingPlan.created_at).toLocaleDateString()}`, 30, 80);
 
-      const cellWidth = 40;
-      const cellHeight = 30;
-      let startGridY = startY + 4 * lineHeight;
-      const margin = 20;
+      // Table Headers
+      const headers = ["Seat No.", "Student Name", "Registration No.", "Row", "Column"];
+      const startY = 100;
+      const cellWidth = 38;
+      const cellHeight = 10;
+      let currentY = startY;
 
+      // Draw Headers
+      doc.setFillColor(240, 240, 240);
+      doc.rect(20, currentY - 6, doc.internal.pageSize.width - 40, 8, 'F');
+      headers.forEach((header, index) => {
+        doc.text(header, 20 + (index * cellWidth), currentY);
+      });
+      currentY += cellHeight;
+
+      // Draw Rows
       assignments?.forEach((assignment, index) => {
-        const row = Math.floor(index / seatingPlan.columns);
-        const col = index % seatingPlan.columns;
-        const x = margin + (col * cellWidth);
-        const y = startGridY + (row * cellHeight);
-
-        doc.rect(x, y, cellWidth, cellHeight);
-
-        doc.setFontSize(10);
-        doc.text(assignment.seat_no, x + 2, y + 10);
-        if (assignment.student_name) {
-          doc.text(assignment.student_name, x + 2, y + 20, { maxWidth: cellWidth - 4 });
-        }
-        if (assignment.reg_no) {
-          doc.text(assignment.reg_no, x + 2, y + 25);
-        }
-
-        if (y + cellHeight > doc.internal.pageSize.height - margin) {
+        if (currentY > doc.internal.pageSize.height - 20) {
           doc.addPage();
-          startGridY = margin;
+          currentY = 20;
         }
+
+        const rowNum = Math.floor(assignment.position / seatingPlan.columns) + 1;
+        const colNum = (assignment.position % seatingPlan.columns) + 1;
+
+        const rowData = [
+          assignment.seat_no,
+          assignment.student_name || "Not Assigned",
+          assignment.reg_no || "N/A",
+          rowNum.toString(),
+          colNum.toString()
+        ];
+
+        rowData.forEach((text, colIndex) => {
+          doc.text(text, 20 + (colIndex * cellWidth), currentY);
+          doc.rect(20 + (colIndex * cellWidth) - 2, currentY - 6, cellWidth, 8);
+        });
+
+        currentY += cellHeight;
       });
       
       doc.save(`seating-plan-${seatingPlan.room_no}-${seatingPlan.floor_no}.pdf`);
@@ -335,27 +349,59 @@ const Reports = () => {
 
       if (error) throw error;
 
-      const excelData = assignments?.map(assignment => ({
-        "Seat No": assignment.seat_no,
-        "Student Name": assignment.student_name || "",
-        "Registration No": assignment.reg_no || "",
-        "Department": assignment.department || "",
-        "Position": assignment.position + 1
-      }));
+      // Create a worksheet for plan details
+      const planDetails = [{
+        "Room Number": seatingPlan.room_no,
+        "Floor Number": seatingPlan.floor_no,
+        "Layout (Rows × Columns)": `${seatingPlan.rows} × ${seatingPlan.columns}`,
+        "Created Date": new Date(seatingPlan.created_at).toLocaleDateString()
+      }];
       
-      const ws = XLSX.utils.json_to_sheet([
-        {
-          "Room Number": seatingPlan.room_no,
-          "Floor Number": seatingPlan.floor_no,
-          "Date": new Date(seatingPlan.created_at).toLocaleDateString(),
-          "Rows": seatingPlan.rows,
-          "Columns": seatingPlan.columns
-        },
-        ...excelData
-      ]);
+      const detailsWS = XLSX.utils.json_to_sheet(planDetails);
+
+      // Create a worksheet for seating assignments
+      const seatingData = assignments?.map(assignment => {
+        const rowNum = Math.floor(assignment.position / seatingPlan.columns) + 1;
+        const colNum = (assignment.position % seatingPlan.columns) + 1;
+        
+        return {
+          "Seat Number": assignment.seat_no,
+          "Student Name": assignment.student_name || "Not Assigned",
+          "Registration Number": assignment.reg_no || "N/A",
+          "Row": rowNum,
+          "Column": colNum,
+          "Position": assignment.position + 1
+        };
+      });
       
+      const seatingWS = XLSX.utils.json_to_sheet(seatingData || []);
+      
+      // Create workbook with both worksheets
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Seating Plan");
+      XLSX.utils.book_append_sheet(wb, detailsWS, "Plan Details");
+      XLSX.utils.book_append_sheet(wb, seatingWS, "Seating Assignments");
+      
+      // Auto-size columns
+      const detailsCols = Object.keys(planDetails[0]);
+      const seatingCols = seatingData && seatingData.length > 0 ? Object.keys(seatingData[0]) : [];
+      
+      detailsCols.forEach((col, i) => {
+        const maxWidth = Math.max(
+          col.length,
+          ...planDetails.map(row => String(row[col as keyof typeof row]).length)
+        );
+        detailsWS['!cols'] = detailsWS['!cols'] || [];
+        detailsWS['!cols'][i] = { wch: maxWidth + 2 };
+      });
+
+      seatingCols.forEach((col, i) => {
+        const maxWidth = Math.max(
+          col.length,
+          ...(seatingData?.map(row => String(row[col as keyof typeof row]).length) || [])
+        );
+        seatingWS['!cols'] = seatingWS['!cols'] || [];
+        seatingWS['!cols'][i] = { wch: maxWidth + 2 };
+      });
       
       XLSX.writeFile(wb, `seating-plan-${seatingPlan.room_no}-${seatingPlan.floor_no}.xlsx`);
       
