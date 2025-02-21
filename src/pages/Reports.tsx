@@ -39,12 +39,17 @@ interface SeatingPlan {
   created_at: string;
 }
 
+type MutationError = {
+  message: string;
+}
+
 const Reports = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: examSummaries = [], isLoading: isLoadingExams } = useQuery({
+  // Query definitions with explicit return types
+  const { data: examSummaries = [], isLoading: isLoadingExams } = useQuery<ExamSummary[]>({
     queryKey: ['examSummaries'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -57,7 +62,7 @@ const Reports = () => {
     },
   });
 
-  const { data: attendanceRecords = [], isLoading: isLoadingAttendance } = useQuery({
+  const { data: attendanceRecords = [], isLoading: isLoadingAttendance } = useQuery<AttendanceRecord[]>({
     queryKey: ['attendanceRecords'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -70,7 +75,7 @@ const Reports = () => {
     },
   });
 
-  const { data: seatingPlans = [], isLoading: isLoadingSeating } = useQuery({
+  const { data: seatingPlans = [], isLoading: isLoadingSeating } = useQuery<SeatingPlan[]>({
     queryKey: ['seatingPlans'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -79,14 +84,17 @@ const Reports = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return (data || []) as SeatingPlan[];
+      return data as SeatingPlan[];
     },
   });
 
-  const deleteExamSummaryMutation = useMutation<void, Error, string>({
-    mutationFn: async (examId) => {
+  // Simplified mutation definitions
+  const deleteExamSummaryMutation = useMutation({
+    mutationKey: ['deleteExam'],
+    mutationFn: async (examId: string) => {
       if (!examId) throw new Error("Invalid exam ID");
 
+      // Delete attendance records
       const { error: attendanceError } = await supabase
         .from('student_attendance_history')
         .delete()
@@ -94,6 +102,7 @@ const Reports = () => {
       
       if (attendanceError) throw attendanceError;
 
+      // Delete exam summary
       const { error: summaryError } = await supabase
         .from('exam_attendance_summary')
         .delete()
@@ -109,7 +118,7 @@ const Reports = () => {
         description: "Report deleted successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: MutationError) => {
       console.error('Delete exam error:', error);
       toast({
         title: "Error",
@@ -119,10 +128,12 @@ const Reports = () => {
     }
   });
 
-  const deleteSeatingPlanMutation = useMutation<void, Error, string>({
-    mutationFn: async (planId) => {
+  const deleteSeatingPlanMutation = useMutation({
+    mutationKey: ['deleteSeatingPlan'],
+    mutationFn: async (planId: string) => {
       if (!planId) throw new Error("Invalid seating plan ID");
 
+      // Delete seating assignments
       const { error: assignmentsError } = await supabase
         .from('seating_assignments')
         .delete()
@@ -130,6 +141,7 @@ const Reports = () => {
       
       if (assignmentsError) throw assignmentsError;
 
+      // Delete seating plan
       const { error: planError } = await supabase
         .from('seating_arrangements')
         .delete()
@@ -144,7 +156,7 @@ const Reports = () => {
         description: "Seating plan deleted successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: MutationError) => {
       console.error('Delete seating plan error:', error);
       toast({
         title: "Error",
