@@ -453,39 +453,44 @@ const Reports = () => {
         doc.text(`Room ${roomNo} - Floor ${floorNo}`, 20, currentY);
         currentY += 10;
 
-        const headers = ["Seat No", "Student Name", "Registration No", "Department"];
-        const data = assignments.map((a: any) => [
-          a.seat_no,
-          a.student_name || "Not assigned",
-          a.reg_no || "N/A",
-          a.department || "N/A"
-        ]);
-
-        doc.setFontSize(10);
+        const headers = ["Seat No", "Registration No", "Student Name", "Department", "Subject"];
         const startX = 20;
-        const cellWidth = 40;
+        const cellWidth = 35;
         const cellHeight = 10;
 
+        // Draw Headers with gray background
+        doc.setFillColor(240, 240, 240);
+        doc.rect(startX, currentY - 6, cellWidth * headers.length, cellHeight, 'F');
+        doc.setFontSize(10);
         headers.forEach((header, i) => {
-          doc.rect(startX + (i * cellWidth), currentY, cellWidth, cellHeight);
-          doc.text(header, startX + (i * cellWidth) + 2, currentY + 7);
+          doc.text(header, startX + (i * cellWidth) + 2, currentY);
         });
         currentY += cellHeight;
 
-        data.forEach((row: string[]) => {
+        // Draw Data Rows
+        assignments.forEach((assignment: any) => {
           if (currentY > doc.internal.pageSize.height - 20) {
             doc.addPage();
             currentY = 40;
           }
 
-          row.forEach((cell, i) => {
-            doc.rect(startX + (i * cellWidth), currentY, cellWidth, cellHeight);
-            doc.text(cell.toString(), startX + (i * cellWidth) + 2, currentY + 7);
+          const rowData = [
+            assignment.seat_no,
+            assignment.reg_no || "N/A",
+            assignment.student_name || "Not assigned",
+            assignment.department || "N/A",
+            assignment.subject || "N/A"
+          ];
+
+          // Draw cell borders and text
+          rowData.forEach((text, i) => {
+            doc.rect(startX + (i * cellWidth), currentY - 6, cellWidth, cellHeight);
+            doc.text(text.toString(), startX + (i * cellWidth) + 2, currentY);
           });
           currentY += cellHeight;
         });
 
-        currentY += 20;
+        currentY += 20; // Add space between room tables
       });
 
       doc.save('overall-seating-plan.pdf');
@@ -498,6 +503,87 @@ const Reports = () => {
       toast({
         title: "Error",
         description: "Failed to generate overall seating plan PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateOverallSeatingPlanExcel = async () => {
+    try {
+      const { data: allAssignments, error: assignmentsError } = await supabase
+        .from('seating_assignments')
+        .select('*, seating_arrangements!inner(room_no, floor_no)');
+
+      if (assignmentsError) throw assignmentsError;
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      // Process assignments by room
+      const assignmentsByRoom = allAssignments.reduce((acc: any, curr: any) => {
+        const roomKey = `${curr.seating_arrangements.room_no}-${curr.seating_arrangements.floor_no}`;
+        if (!acc[roomKey]) {
+          acc[roomKey] = [];
+        }
+        acc[roomKey].push(curr);
+        return acc;
+      }, {});
+
+      // Create summary worksheet
+      const summaryData = Object.entries(assignmentsByRoom).map(([roomKey, assignments]: [string, any]) => {
+        const [roomNo, floorNo] = roomKey.split('-');
+        return {
+          "Room Number": roomNo,
+          "Floor Number": floorNo,
+          "Total Seats": assignments.length,
+          "Occupied Seats": assignments.filter((a: any) => a.student_name).length
+        };
+      });
+
+      const summaryWS = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summaryWS, "Summary");
+
+      // Create detailed seating plan worksheet
+      const allSeatingData = allAssignments.map((assignment: any) => ({
+        "Room Number": assignment.seating_arrangements.room_no,
+        "Floor Number": assignment.seating_arrangements.floor_no,
+        "Seat Number": assignment.seat_no,
+        "Registration Number": assignment.reg_no || "N/A",
+        "Student Name": assignment.student_name || "Not Assigned",
+        "Department": assignment.department || "N/A",
+        "Subject": assignment.subject || "N/A"
+      }));
+
+      const seatingWS = XLSX.utils.json_to_sheet(allSeatingData);
+      XLSX.utils.book_append_sheet(wb, seatingWS, "All Seating Plans");
+
+      // Auto-size columns for both worksheets
+      [summaryWS, seatingWS].forEach((ws) => {
+        const cols = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']).e.c + 1 : 0;
+        ws['!cols'] = [];
+        for (let i = 0; i < cols; i++) {
+          let maxWidth = 10;
+          const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+          for (let row = range.s.r; row <= range.e.r; row++) {
+            const cell = ws[XLSX.utils.encode_cell({ r: row, c: i })];
+            if (cell && cell.v) {
+              maxWidth = Math.max(maxWidth, String(cell.v).length + 2);
+            }
+          }
+          ws['!cols'][i] = { wch: maxWidth };
+        }
+      });
+
+      XLSX.writeFile(wb, 'overall-seating-plan.xlsx');
+      
+      toast({
+        title: "Success",
+        description: "Overall seating plan Excel file generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate overall seating plan Excel file",
         variant: "destructive",
       });
     }
@@ -572,10 +658,16 @@ const Reports = () => {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-semibold">Seating Plan Reports</h3>
-            <Button onClick={generateOverallSeatingPlanPDF} className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Generate Overall Seating Plan
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={generateOverallSeatingPlanPDF} className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                PDF All Plans
+              </Button>
+              <Button onClick={generateOverallSeatingPlanExcel} className="flex items-center gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                Excel All Plans
+              </Button>
+            </div>
           </div>
           
           {seatingPlans.length === 0 ? (
