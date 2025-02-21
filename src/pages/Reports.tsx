@@ -68,9 +68,7 @@ const Reports = () => {
 
       const doc = new jsPDF();
       
-      doc.setFontSize(16);
-      doc.text("Overall Seating Plan - All Halls", doc.internal.pageSize.width/2, 20, { align: 'center' });
-      
+      // Group assignments by room
       const assignmentsByRoom = assignments.reduce((acc: Record<string, SeatingAssignment[]>, curr) => {
         const roomKey = `${curr.seating_arrangements.room_no}-${curr.seating_arrangements.floor_no}`;
         if (!acc[roomKey]) {
@@ -80,67 +78,71 @@ const Reports = () => {
         return acc;
       }, {});
 
-      let currentY = 40;
-
-      Object.entries(assignmentsByRoom).forEach(([roomKey, roomAssignments]) => {
-        if (currentY > doc.internal.pageSize.height - 40) {
+      // Process each room on a new page
+      Object.entries(assignmentsByRoom).forEach(([roomKey, roomAssignments], index) => {
+        // Add a new page for each room except the first one
+        if (index > 0) {
           doc.addPage();
-          currentY = 40;
         }
 
         const [roomNo, floorNo] = roomKey.split('-');
-        doc.setFontSize(14);
-        doc.text(`Room ${roomNo} - Floor ${floorNo}`, 20, currentY);
-        currentY += 10;
+        
+        // Page Title
+        doc.setFontSize(16);
+        doc.text(`Hall Seating Plan - Room ${roomNo}, Floor ${floorNo}`, doc.internal.pageSize.width/2, 20, { align: 'center' });
 
-        const headers = ["Seat No", "Registration No", "Department", "Subject"];
-        const startX = 20;
-        const cellWidth = 45;
-        const cellHeight = 10;
+        // Create table data
+        const tableData = roomAssignments.map(assignment => [
+          assignment.seat_no,
+          assignment.reg_no || "N/A",
+          assignment.department || "N/A",
+          assignment.subject || "N/A"
+        ]);
 
-        // Draw Headers with gray background
-        doc.setFillColor(240, 240, 240);
-        doc.rect(startX, currentY - 6, cellWidth * headers.length, cellHeight, 'F');
-        doc.setFontSize(10);
-        headers.forEach((header, i) => {
-          doc.text(header, startX + (i * cellWidth) + 2, currentY);
+        // Add the table using autoTable
+        (doc as any).autoTable({
+          head: [['Seat No', 'Registration No', 'Department', 'Subject']],
+          body: tableData,
+          startY: 30,
+          margin: { top: 30 },
+          styles: {
+            fontSize: 10,
+            cellPadding: 3,
+          },
+          headStyles: {
+            fillColor: [240, 240, 240],
+            textColor: [0, 0, 0],
+            fontStyle: 'bold',
+          },
+          columnStyles: {
+            0: { cellWidth: 40 }, // Seat No
+            1: { cellWidth: 50 }, // Registration No
+            2: { cellWidth: 50 }, // Department
+            3: { cellWidth: 50 }, // Subject
+          },
+          didDrawPage: (data: any) => {
+            // Add footer with page info
+            doc.setFontSize(10);
+            doc.text(
+              `Room ${roomNo} - Floor ${floorNo} | Total Seats: ${roomAssignments.length}`,
+              doc.internal.pageSize.width / 2,
+              doc.internal.pageSize.height - 10,
+              { align: 'center' }
+            );
+          },
         });
-        currentY += cellHeight;
-
-        // Draw Data Rows
-        roomAssignments.forEach((assignment) => {
-          if (currentY > doc.internal.pageSize.height - 20) {
-            doc.addPage();
-            currentY = 40;
-          }
-
-          const rowData = [
-            assignment.seat_no,
-            assignment.reg_no || "N/A",
-            assignment.department || "N/A",
-            assignment.subject || "N/A"
-          ];
-
-          rowData.forEach((text, i) => {
-            doc.rect(startX + (i * cellWidth), currentY - 6, cellWidth, cellHeight);
-            doc.text(text.toString(), startX + (i * cellWidth) + 2, currentY);
-          });
-          currentY += cellHeight;
-        });
-
-        currentY += 20;
       });
 
-      doc.save('overall-seating-plan.pdf');
+      doc.save('hall-seating-plans.pdf');
       
       toast({
         title: "Success",
-        description: "Overall seating plan PDF generated successfully",
+        description: "Hall seating plans PDF generated successfully",
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to generate overall seating plan PDF",
+        description: "Failed to generate hall seating plans PDF",
         variant: "destructive",
       });
     } finally {
@@ -239,9 +241,9 @@ const Reports = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <div className="border rounded-lg p-4 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold">Overall Seating Plan</h3>
+              <h3 className="text-lg font-semibold">Hall Seating Plans</h3>
               <p className="text-sm text-muted-foreground">
-                Generate a detailed report of the entire seating arrangement.
+                Generate seating plans for each hall (one hall per page).
               </p>
             </div>
             <div className="space-x-2">
