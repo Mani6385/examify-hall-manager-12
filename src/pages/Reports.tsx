@@ -1,12 +1,13 @@
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, FileText, Grid3X3, Trash2 } from "lucide-react";
+import { FileSpreadsheet, FileText, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import jsPDF from "jspdf";
 import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { PostgrestError } from "@supabase/supabase-js";
 
 interface ExamSummary {
   exam_id: string;
@@ -98,14 +99,13 @@ const Reports = () => {
     mutationFn: async (examId: string) => {
       if (!examId) throw new Error("Invalid exam ID");
 
-      // First check if exam exists
-      const { data: examExists, error: checkError } = await supabase
+      const { data, error } = await supabase
         .from('exam_attendance_summary')
         .select('exam_id')
         .eq('exam_id', examId)
         .single();
 
-      if (checkError || !examExists) {
+      if (error || !data) {
         throw new Error("Exam not found");
       }
 
@@ -130,8 +130,6 @@ const Reports = () => {
         console.error('Error deleting exam summary:', summaryError);
         throw new Error("Failed to delete exam summary");
       }
-
-      return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['examSummaries'] });
@@ -155,14 +153,13 @@ const Reports = () => {
     mutationFn: async (planId: string) => {
       if (!planId) throw new Error("Invalid seating plan ID");
 
-      // First check if seating plan exists
-      const { data: planExists, error: checkError } = await supabase
+      const { data, error } = await supabase
         .from('seating_arrangements')
         .select('id')
         .eq('id', planId)
         .single();
 
-      if (checkError || !planExists) {
+      if (error || !data) {
         throw new Error("Seating plan not found");
       }
 
@@ -187,8 +184,6 @@ const Reports = () => {
         console.error('Error deleting seating plan:', planError);
         throw new Error("Failed to delete seating plan");
       }
-
-      return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seatingPlans'] });
