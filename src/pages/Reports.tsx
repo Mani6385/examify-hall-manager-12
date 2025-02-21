@@ -7,8 +7,8 @@ import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { PostgrestError } from "@supabase/supabase-js";
 
+// Interfaces
 interface ExamSummary {
   exam_id: string;
   subject: string;
@@ -39,16 +39,11 @@ interface SeatingPlan {
   created_at: string;
 }
 
-type MutationError = {
-  message: string;
-}
-
 const Reports = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Query definitions with explicit return types
   const { data: examSummaries = [], isLoading: isLoadingExams } = useQuery<ExamSummary[]>({
     queryKey: ['examSummaries'],
     queryFn: async () => {
@@ -58,7 +53,7 @@ const Reports = () => {
         .order('date', { ascending: false });
       
       if (error) throw error;
-      return data as ExamSummary[];
+      return data || [];
     },
   });
 
@@ -71,7 +66,7 @@ const Reports = () => {
         .order('student_name');
       
       if (error) throw error;
-      return data as AttendanceRecord[];
+      return data || [];
     },
   });
 
@@ -84,31 +79,16 @@ const Reports = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as SeatingPlan[];
+      return data || [];
     },
   });
 
-  // Simplified mutation definitions
   const deleteExamSummaryMutation = useMutation({
-    mutationKey: ['deleteExam'],
-    mutationFn: async (examId: string) => {
-      if (!examId) throw new Error("Invalid exam ID");
-
-      // Delete attendance records
-      const { error: attendanceError } = await supabase
-        .from('student_attendance_history')
-        .delete()
-        .eq('exam_id', examId);
-      
-      if (attendanceError) throw attendanceError;
-
-      // Delete exam summary
-      const { error: summaryError } = await supabase
-        .from('exam_attendance_summary')
-        .delete()
-        .eq('exam_id', examId);
-      
-      if (summaryError) throw summaryError;
+    mutationFn: (examId: string) => {
+      return supabase.rpc('delete_exam_summary', { exam_id: examId })
+        .then(({ error }) => {
+          if (error) throw error;
+        });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['examSummaries'] });
@@ -118,36 +98,21 @@ const Reports = () => {
         description: "Report deleted successfully",
       });
     },
-    onError: (error: MutationError) => {
-      console.error('Delete exam error:', error);
+    onError: () => {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete report",
+        description: "Failed to delete report",
         variant: "destructive",
       });
     }
   });
 
   const deleteSeatingPlanMutation = useMutation({
-    mutationKey: ['deleteSeatingPlan'],
-    mutationFn: async (planId: string) => {
-      if (!planId) throw new Error("Invalid seating plan ID");
-
-      // Delete seating assignments
-      const { error: assignmentsError } = await supabase
-        .from('seating_assignments')
-        .delete()
-        .eq('arrangement_id', planId);
-      
-      if (assignmentsError) throw assignmentsError;
-
-      // Delete seating plan
-      const { error: planError } = await supabase
-        .from('seating_arrangements')
-        .delete()
-        .eq('id', planId);
-      
-      if (planError) throw planError;
+    mutationFn: (planId: string) => {
+      return supabase.rpc('delete_seating_plan', { plan_id: planId })
+        .then(({ error }) => {
+          if (error) throw error;
+        });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seatingPlans'] });
@@ -156,11 +121,10 @@ const Reports = () => {
         description: "Seating plan deleted successfully",
       });
     },
-    onError: (error: MutationError) => {
-      console.error('Delete seating plan error:', error);
+    onError: () => {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete seating plan",
+        description: "Failed to delete seating plan",
         variant: "destructive",
       });
     }
