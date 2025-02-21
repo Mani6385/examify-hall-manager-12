@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -11,10 +12,10 @@ import { useQuery } from "@tanstack/react-query";
 
 interface SeatingAssignment {
   id: string;
-  seat_no: number;
-  reg_no: string;
-  department: string;
-  subject: string;
+  seat_no: string;
+  reg_no: string | null;
+  department: string | null;
+  subject: string | null;
   seating_arrangements: {
     room_no: string;
     floor_no: string;
@@ -26,36 +27,51 @@ const Reports = () => {
   const [isLoadingPDF, setIsLoadingPDF] = useState(false);
   const [isLoadingExcel, setIsLoadingExcel] = useState(false);
 
+  // Update the query to also fetch the subject field
   const { data: assignments, isLoading } = useQuery({
     queryKey: ['seating-assignments'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: assignmentsData, error } = await supabase
         .from('seating_assignments')
-        .select('*, seating_arrangements!inner(room_no, floor_no)');
+        .select(`
+          *,
+          seating_arrangements!inner(room_no, floor_no),
+          department_configs!inner(department)
+        `);
 
       if (error) {
         console.error('Error fetching seating assignments:', error);
         throw error;
       }
 
-      return data as SeatingAssignment[];
+      // Transform the data to match our interface
+      const transformedData: SeatingAssignment[] = assignmentsData.map((assignment: any) => ({
+        id: assignment.id,
+        seat_no: assignment.seat_no,
+        reg_no: assignment.reg_no,
+        department: assignment.department,
+        subject: assignment.department_configs?.department || null,
+        seating_arrangements: {
+          room_no: assignment.seating_arrangements.room_no,
+          floor_no: assignment.seating_arrangements.floor_no
+        }
+      }));
+
+      return transformedData;
     },
   });
 
   const generateOverallSeatingPlanPDF = async () => {
     try {
-      const { data: allAssignments, error: assignmentsError } = await supabase
-        .from('seating_assignments')
-        .select('*, seating_arrangements!inner(room_no, floor_no)');
-
-      if (assignmentsError) throw assignmentsError;
+      setIsLoadingPDF(true);
+      if (!assignments) throw new Error("No assignments data available");
 
       const doc = new jsPDF();
       
       doc.setFontSize(16);
       doc.text("Overall Seating Plan - All Halls", doc.internal.pageSize.width/2, 20, { align: 'center' });
       
-      const assignmentsByRoom = allAssignments.reduce((acc: any, curr: any) => {
+      const assignmentsByRoom = assignments.reduce((acc: Record<string, SeatingAssignment[]>, curr) => {
         const roomKey = `${curr.seating_arrangements.room_no}-${curr.seating_arrangements.floor_no}`;
         if (!acc[roomKey]) {
           acc[roomKey] = [];
@@ -66,7 +82,7 @@ const Reports = () => {
 
       let currentY = 40;
 
-      Object.entries(assignmentsByRoom).forEach(([roomKey, assignments]: [string, any]) => {
+      Object.entries(assignmentsByRoom).forEach(([roomKey, roomAssignments]) => {
         if (currentY > doc.internal.pageSize.height - 40) {
           doc.addPage();
           currentY = 40;
@@ -79,7 +95,7 @@ const Reports = () => {
 
         const headers = ["Seat No", "Registration No", "Department", "Subject"];
         const startX = 20;
-        const cellWidth = 45; // Increased width since we removed one column
+        const cellWidth = 45;
         const cellHeight = 10;
 
         // Draw Headers with gray background
@@ -92,7 +108,7 @@ const Reports = () => {
         currentY += cellHeight;
 
         // Draw Data Rows
-        assignments.forEach((assignment: any) => {
+        roomAssignments.forEach((assignment) => {
           if (currentY > doc.internal.pageSize.height - 20) {
             doc.addPage();
             currentY = 40;
@@ -105,7 +121,6 @@ const Reports = () => {
             assignment.subject || "N/A"
           ];
 
-          // Draw cell borders and text
           rowData.forEach((text, i) => {
             doc.rect(startX + (i * cellWidth), currentY - 6, cellWidth, cellHeight);
             doc.text(text.toString(), startX + (i * cellWidth) + 2, currentY);
@@ -113,7 +128,7 @@ const Reports = () => {
           currentY += cellHeight;
         });
 
-        currentY += 20; // Add space between room tables
+        currentY += 20;
       });
 
       doc.save('overall-seating-plan.pdf');
@@ -128,22 +143,20 @@ const Reports = () => {
         description: "Failed to generate overall seating plan PDF",
         variant: "destructive",
       });
+    } finally {
+      setIsLoadingPDF(false);
     }
   };
 
   const generateOverallSeatingPlanExcel = async () => {
     try {
-      const { data: allAssignments, error: assignmentsError } = await supabase
-        .from('seating_assignments')
-        .select('*, seating_arrangements!inner(room_no, floor_no)');
+      setIsLoadingExcel(true);
+      if (!assignments) throw new Error("No assignments data available");
 
-      if (assignmentsError) throw assignmentsError;
-
-      // Create workbook
       const wb = XLSX.utils.book_new();
 
       // Process assignments by room
-      const assignmentsByRoom = allAssignments.reduce((acc: any, curr: any) => {
+      const assignmentsByRoom = assignments.reduce((acc: Record<string, SeatingAssignment[]>, curr) => {
         const roomKey = `${curr.seating_arrangements.room_no}-${curr.seating_arrangements.floor_no}`;
         if (!acc[roomKey]) {
           acc[roomKey] = [];
@@ -153,21 +166,21 @@ const Reports = () => {
       }, {});
 
       // Create summary worksheet
-      const summaryData = Object.entries(assignmentsByRoom).map(([roomKey, assignments]: [string, any]) => {
+      const summaryData = Object.entries(assignmentsByRoom).map(([roomKey, roomAssignments]) => {
         const [roomNo, floorNo] = roomKey.split('-');
         return {
           "Room Number": roomNo,
           "Floor Number": floorNo,
-          "Total Seats": assignments.length,
-          "Occupied Seats": assignments.filter((a: any) => a.reg_no).length
+          "Total Seats": roomAssignments.length,
+          "Occupied Seats": roomAssignments.filter((a) => a.reg_no).length
         };
       });
 
       const summaryWS = XLSX.utils.json_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(wb, summaryWS, "Summary");
 
-      // Create detailed seating plan worksheet without student names
-      const allSeatingData = allAssignments.map((assignment: any) => ({
+      // Create detailed seating plan worksheet
+      const allSeatingData = assignments.map((assignment) => ({
         "Room Number": assignment.seating_arrangements.room_no,
         "Floor Number": assignment.seating_arrangements.floor_no,
         "Seat Number": assignment.seat_no,
@@ -208,6 +221,8 @@ const Reports = () => {
         description: "Failed to generate overall seating plan Excel file",
         variant: "destructive",
       });
+    } finally {
+      setIsLoadingExcel(false);
     }
   };
 
@@ -232,7 +247,7 @@ const Reports = () => {
             <div className="space-x-2">
               <Button
                 onClick={generateOverallSeatingPlanPDF}
-                disabled={isLoadingPDF}
+                disabled={isLoadingPDF || isLoading}
               >
                 {isLoadingPDF ? (
                   <>
@@ -249,7 +264,7 @@ const Reports = () => {
               <Button
                 variant="secondary"
                 onClick={generateOverallSeatingPlanExcel}
-                disabled={isLoadingExcel}
+                disabled={isLoadingExcel || isLoading}
               >
                 {isLoadingExcel ? (
                   <>
@@ -264,19 +279,6 @@ const Reports = () => {
                 )}
               </Button>
             </div>
-          </div>
-
-          <div className="border rounded-lg p-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">Upcoming Exams</h3>
-              <p className="text-sm text-muted-foreground">
-                View a list of all upcoming exams and their schedules.
-              </p>
-            </div>
-            <Button variant="outline" disabled>
-              <CalendarDays className="mr-2 h-4 w-4" />
-              View Exams
-            </Button>
           </div>
         </div>
       </div>
