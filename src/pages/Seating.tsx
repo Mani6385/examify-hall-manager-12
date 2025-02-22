@@ -339,51 +339,94 @@ const Seating = () => {
   if (!isLoggedIn) {
     return (
       <Layout>
-        <div className="max-w-md mx-auto mt-8">
-          <div className="space-y-6 bg-gradient-to-br from-blue-50 to-purple-50 p-8 rounded-lg border border-blue-100 shadow-lg animate-fadeIn">
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Login Required</h2>
-              <p className="text-muted-foreground mt-2">
-                Please log in to access the seating arrangement system
-              </p>
+        <div className="min-h-[80vh] flex items-center justify-center p-4">
+          <div className="w-full max-w-md relative">
+            {/* Decorative background elements */}
+            <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+            <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+
+            <div className="relative backdrop-blur-sm bg-white/80 p-8 rounded-2xl shadow-2xl border border-white/20 space-y-6 animate-fadeIn">
+              <div className="text-center space-y-2">
+                <div className="inline-block p-2 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 mb-4">
+                  <LogIn className="w-8 h-8 text-blue-600" />
+                </div>
+                <h2 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+                  Welcome Back
+                </h2>
+                <p className="text-muted-foreground">
+                  Sign in to access the seating arrangement system
+                </p>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-sm font-medium text-gray-700">
+                    Username
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="username"
+                      type="text"
+                      placeholder="Enter your username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      className="pl-10 bg-white/50 border-blue-200 focus:border-blue-400 transition-all duration-300 backdrop-blur-sm"
+                    />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="pl-10 bg-white/50 border-blue-200 focus:border-blue-400 transition-all duration-300 backdrop-blur-sm"
+                    />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Sign In
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white/80 text-gray-500">Demo Credentials</span>
+                  </div>
+                </div>
+
+                <div className="text-sm text-center space-y-1 text-gray-600">
+                  <p>Username: <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">admin</span></p>
+                  <p>Password: <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">admin123</span></p>
+                </div>
+              </form>
             </div>
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Enter username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  className="border-blue-200 focus:border-blue-400 transition-colors"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="border-blue-200 focus:border-blue-400 transition-colors"
-                />
-              </div>
-
-              <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300">
-                <LogIn className="mr-2 h-4 w-4" />
-                Login
-              </Button>
-
-              <p className="text-sm text-muted-foreground text-center mt-4">
-                Default credentials: username: admin, password: admin123
-              </p>
-            </form>
           </div>
         </div>
       </Layout>
