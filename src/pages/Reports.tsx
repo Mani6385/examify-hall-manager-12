@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from 'xlsx';
 import { jsPDF } from "jspdf";
-import autoTable from 'jspdf-autotable';
+import autoTable, { UserOptions } from 'jspdf-autotable';
 import { useState } from "react";
 import { File, FileText, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -162,14 +162,15 @@ const Reports = () => {
 
       // Add summary table
       doc.setFontSize(12);
-      autoTable(doc, {
+      const summaryOptions: UserOptions = {
         head: [['Total Seats', 'Occupied Seats']],
         body: [[
           assignments.length.toString(),
           assignments.filter((a) => a.reg_no).length.toString()
         ]],
         startY: 25,
-      });
+      };
+      autoTable(doc, summaryOptions);
 
       // Add detailed seating plan
       const seatingData = assignments.map(assignment => [
@@ -178,11 +179,12 @@ const Reports = () => {
         assignment.department || 'N/A'
       ]);
 
-      autoTable(doc, {
+      const detailsOptions: UserOptions = {
         head: [['Seat Number', 'Registration Number', 'Department']],
         body: seatingData,
-        startY: doc.lastAutoTable.finalY + 10,
-      });
+        startY: (doc as any).lastAutoTable.finalY + 10, // Type assertion to handle the dynamic property
+      };
+      autoTable(doc, detailsOptions);
 
       const fileName = `seating-plan-${hall.room_no}-${hall.floor_no}.pdf`;
       doc.save(fileName);
