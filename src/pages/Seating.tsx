@@ -10,11 +10,12 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import { useState } from "react";
-import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw, Plus, Trash2 } from "lucide-react";
+import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw, Plus, Trash2, LogIn } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Label } from "@/components/ui/label";
 
 interface DepartmentConfig {
   id: string;
@@ -35,6 +36,11 @@ interface Seat {
 }
 
 const Seating = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const { toast } = useToast();
+
   const [departments, setDepartments] = useState<DepartmentConfig[]>([
     { id: '1', department: '', startRegNo: '', endRegNo: '', prefix: 'A' },
     { id: '2', department: '', startRegNo: '', endRegNo: '', prefix: 'B' }
@@ -46,7 +52,6 @@ const Seating = () => {
   const [rows, setRows] = useState(5);
   const [cols, setColumns] = useState(6);
   const [seats, setSeats] = useState<Seat[]>([]);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch exam centers from Supabase
@@ -311,6 +316,77 @@ const Seating = () => {
       description: `Students rotated ${direction}`,
     });
   };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Here we're using a simple check - in a real app, you'd want to use proper authentication
+    if (username === "admin" && password === "admin123") {
+      setIsLoggedIn(true);
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Invalid credentials",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!isLoggedIn) {
+    return (
+      <Layout>
+        <div className="max-w-md mx-auto mt-8">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">Login Required</h2>
+              <p className="text-muted-foreground mt-2">
+                Please log in to access the seating arrangement system
+              </p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Enter username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+
+              <Button type="submit" className="w-full">
+                <LogIn className="mr-2 h-4 w-4" />
+                Login
+              </Button>
+
+              <p className="text-sm text-muted-foreground text-center mt-4">
+                Default credentials: username: admin, password: admin123
+              </p>
+            </form>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
