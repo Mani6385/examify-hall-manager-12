@@ -24,7 +24,6 @@ interface SeatingAssignment {
 
 const Reports = () => {
   const { toast } = useToast();
-  const [isLoadingPDF, setIsLoadingPDF] = useState(false);
   const [isLoadingExcel, setIsLoadingExcel] = useState(false);
 
   const { data: assignments, isLoading } = useQuery({
@@ -37,7 +36,7 @@ const Reports = () => {
           seat_no,
           reg_no,
           department,
-          seating_arrangements!inner (
+          seating_arrangements!seating_assignments_arrangement_id_fkey (
             room_no,
             floor_no
           )
@@ -63,100 +62,6 @@ const Reports = () => {
       return transformedData;
     },
   });
-
-  const generateHallSeatingPlanPDF = async (roomNo: string, floorNo: string, hallAssignments: SeatingAssignment[]) => {
-    const doc = new jsPDF();
-    
-    // Page Title
-    doc.setFontSize(16);
-    doc.text(`Hall Seating Plan`, doc.internal.pageSize.width/2, 20, { align: 'center' });
-    
-    // Hall Details
-    doc.setFontSize(14);
-    doc.text(`Room: ${roomNo} | Floor: ${floorNo}`, doc.internal.pageSize.width/2, 30, { align: 'center' });
-
-    // Create table data
-    const tableData = hallAssignments.map(assignment => [
-      assignment.seat_no,
-      assignment.reg_no || "N/A",
-      assignment.department || "N/A"
-    ]);
-
-    // Add the table using autoTable
-    (doc as any).autoTable({
-      head: [['Seat No', 'Registration No', 'Department']],
-      body: tableData,
-      startY: 40,
-      margin: { top: 40 },
-      styles: {
-        fontSize: 10,
-        cellPadding: 3,
-      },
-      headStyles: {
-        fillColor: [240, 240, 240],
-        textColor: [0, 0, 0],
-        fontStyle: 'bold',
-      },
-      columnStyles: {
-        0: { cellWidth: 40 }, // Seat No
-        1: { cellWidth: 60 }, // Registration No
-        2: { cellWidth: 60 }, // Department
-      },
-      didDrawPage: (data: any) => {
-        // Add footer with page info
-        doc.setFontSize(10);
-        doc.text(
-          `Total Seats: ${hallAssignments.length}`,
-          doc.internal.pageSize.width / 2,
-          doc.internal.pageSize.height - 10,
-          { align: 'center' }
-        );
-      },
-    });
-
-    return doc;
-  };
-
-  const generateOverallSeatingPlanPDF = async () => {
-    try {
-      setIsLoadingPDF(true);
-      
-      if (!assignments || assignments.length === 0) {
-        throw new Error("No seating assignments available");
-      }
-
-      // Group assignments by room
-      const assignmentsByRoom = assignments.reduce((acc: Record<string, SeatingAssignment[]>, curr) => {
-        const roomKey = `${curr.seating_arrangements.room_no}-${curr.seating_arrangements.floor_no}`;
-        if (!acc[roomKey]) {
-          acc[roomKey] = [];
-        }
-        acc[roomKey].push(curr);
-        return acc;
-      }, {});
-
-      // Generate separate PDF for each hall
-      for (const [roomKey, roomAssignments] of Object.entries(assignmentsByRoom)) {
-        const [roomNo, floorNo] = roomKey.split('-');
-        const doc = await generateHallSeatingPlanPDF(roomNo, floorNo, roomAssignments);
-        doc.save(`hall-seating-plan-room-${roomNo}-floor-${floorNo}.pdf`);
-      }
-      
-      toast({
-        title: "Success",
-        description: "Hall seating plans generated successfully",
-      });
-    } catch (error) {
-      console.error('PDF Generation Error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to generate hall seating plans",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingPDF(false);
-    }
-  };
 
   const generateOverallSeatingPlanExcel = async () => {
     try {
@@ -249,46 +154,28 @@ const Reports = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <div className="border rounded-lg p-4 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold">Hall Seating Plans</h3>
+              <h3 className="text-lg font-semibold">Seating Summary</h3>
               <p className="text-sm text-muted-foreground">
-                Generate individual seating plans for each hall
+                Download seating summary in Excel format
               </p>
             </div>
-            <div className="space-x-2">
-              <Button
-                onClick={generateOverallSeatingPlanPDF}
-                disabled={isLoadingPDF || isLoading}
-              >
-                {isLoadingPDF ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="mr-2 h-4 w-4" />
-                    PDF
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={generateOverallSeatingPlanExcel}
-                disabled={isLoadingExcel || isLoading}
-              >
-                {isLoadingExcel ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <File className="mr-2 h-4 w-4" />
-                    Excel
-                  </>
-                )}
-              </Button>
-            </div>
+            <Button
+              variant="secondary"
+              onClick={generateOverallSeatingPlanExcel}
+              disabled={isLoadingExcel || isLoading}
+            >
+              {isLoadingExcel ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <File className="mr-2 h-4 w-4" />
+                  Excel
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </div>
