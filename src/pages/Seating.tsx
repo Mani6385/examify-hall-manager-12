@@ -340,9 +340,9 @@ const Seating = () => {
     return (
       <Layout>
         <div className="max-w-md mx-auto mt-8">
-          <div className="space-y-6">
+          <div className="space-y-6 bg-gradient-to-br from-blue-50 to-purple-50 p-8 rounded-lg border border-blue-100 shadow-lg animate-fadeIn">
             <div>
-              <h2 className="text-3xl font-bold tracking-tight">Login Required</h2>
+              <h2 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Login Required</h2>
               <p className="text-muted-foreground mt-2">
                 Please log in to access the seating arrangement system
               </p>
@@ -358,6 +358,7 @@ const Seating = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
+                  className="border-blue-200 focus:border-blue-400 transition-colors"
                 />
               </div>
 
@@ -370,10 +371,11 @@ const Seating = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="border-blue-200 focus:border-blue-400 transition-colors"
                 />
               </div>
 
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300">
                 <LogIn className="mr-2 h-4 w-4" />
                 Login
               </Button>
@@ -390,17 +392,19 @@ const Seating = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Exam Hall Seating Arrangement</h2>
+      <div className="space-y-6 animate-fadeIn">
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border border-blue-100">
+          <h2 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            Exam Hall Seating Arrangement
+          </h2>
           <p className="text-muted-foreground mt-2">
             Generate and manage exam hall seating arrangements for multiple departments
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-semibold">Examination Center Details</h3>
+          <div className="space-y-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100 shadow-sm">
+            <h3 className="font-semibold text-blue-800">Examination Center Details</h3>
             <div className="grid grid-cols-2 gap-4">
               <Select value={centerName} onValueChange={(value) => {
                 setCenterName(value);
@@ -409,7 +413,7 @@ const Seating = () => {
                   setCenterCode(center.code);
                 }
               }}>
-                <SelectTrigger>
+                <SelectTrigger className="border-blue-200 focus:border-blue-400">
                   <SelectValue placeholder="Select Center" />
                 </SelectTrigger>
                 <SelectContent>
@@ -425,19 +429,21 @@ const Seating = () => {
                 placeholder="Center Code"
                 value={centerCode}
                 readOnly
-                className="bg-gray-50"
+                className="bg-white/50 border-blue-200"
               />
 
               <Input
                 placeholder="Room Number"
                 value={roomNo}
                 onChange={(e) => setRoomNo(e.target.value)}
+                className="border-blue-200 focus:border-blue-400"
               />
 
               <Input
                 placeholder="Floor Number"
                 value={floorNo}
                 onChange={(e) => setFloorNo(e.target.value)}
+                className="border-blue-200 focus:border-blue-400"
               />
             </div>
           </div>
@@ -446,14 +452,15 @@ const Seating = () => {
         {/* Department Configurations */}
         <div className="space-y-4">
           {departments.map((dept, index) => (
-            <div key={dept.id} className="p-4 border rounded-lg">
+            <div key={dept.id} className="p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-lg border border-blue-100 shadow-sm transition-all hover:shadow-md">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold">Department {index + 1} ({dept.prefix} Series)</h3>
+                <h3 className="font-semibold text-blue-800">Department {index + 1} ({dept.prefix} Series)</h3>
                 {departments.length > 2 && (
                   <Button
                     variant="outline"
                     size="icon"
                     onClick={() => removeDepartment(dept.id)}
+                    className="hover:bg-red-50 hover:text-red-600 transition-colors"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -464,7 +471,7 @@ const Seating = () => {
                   value={dept.department} 
                   onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="border-blue-200 focus:border-blue-400">
                     <SelectValue placeholder="Select department and module" />
                   </SelectTrigger>
                   <SelectContent>
@@ -484,11 +491,13 @@ const Seating = () => {
                   placeholder="Start Reg No"
                   value={dept.startRegNo}
                   onChange={(e) => updateDepartment(dept.id, 'startRegNo', e.target.value)}
+                  className="border-blue-200 focus:border-blue-400"
                 />
                 <Input
                   placeholder="End Reg No"
                   value={dept.endRegNo}
                   onChange={(e) => updateDepartment(dept.id, 'endRegNo', e.target.value)}
+                  className="border-blue-200 focus:border-blue-400"
                 />
               </div>
             </div>
@@ -498,6 +507,7 @@ const Seating = () => {
             variant="outline" 
             onClick={addDepartment}
             disabled={departments.length >= 5}
+            className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 hover:border-blue-400 transition-all"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Department
@@ -505,7 +515,7 @@ const Seating = () => {
         </div>
 
         <div className="flex flex-wrap gap-4 items-center">
-          <Button onClick={generateSeating}>
+          <Button onClick={generateSeating} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300">
             <Grid3X3 className="mr-2 h-4 w-4" />
             Generate Seating
           </Button>
@@ -514,6 +524,7 @@ const Seating = () => {
             variant="outline"
             onClick={() => rotateStudents('left')}
             disabled={seats.length === 0}
+            className="hover:bg-blue-50 transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Rotate Left
@@ -523,6 +534,7 @@ const Seating = () => {
             variant="outline"
             onClick={() => rotateStudents('right')}
             disabled={seats.length === 0}
+            className="hover:bg-blue-50 transition-colors"
           >
             <ArrowRight className="mr-2 h-4 w-4" />
             Rotate Right
@@ -532,6 +544,7 @@ const Seating = () => {
             variant="outline"
             onClick={() => setSeats([])}
             disabled={seats.length === 0}
+            className="hover:bg-red-50 hover:text-red-600 transition-colors"
           >
             <RotateCcw className="mr-2 h-4 w-4" />
             Reset
@@ -545,21 +558,18 @@ const Seating = () => {
             {seats.map((seat) => (
               <div
                 key={seat.id}
-                className={`p-4 rounded-lg border ${
+                className={`p-4 rounded-lg shadow-sm transition-all hover:shadow-md ${
                   seat.studentName
                     ? departments.find(d => d.department === seat.department)?.department === seat.department
-                      ? `bg-${departments.findIndex(d => d.department === seat.department) % 5 === 0 ? 'blue' : 
-                          departments.findIndex(d => d.department === seat.department) % 5 === 1 ? 'green' :
-                          departments.findIndex(d => d.department === seat.department) % 5 === 2 ? 'yellow' :
-                          departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'purple' :
-                          'pink'}-100 border-${departments.findIndex(d => d.department === seat.department) % 5 === 0 ? 'blue' :
-                          departments.findIndex(d => d.department === seat.department) % 5 === 1 ? 'green' :
-                          departments.findIndex(d => d.department === seat.department) % 5 === 2 ? 'yellow' :
-                          departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'purple' :
-                          'pink'}-200`
-                      : "bg-gray-100 border-gray-200"
-                    : "bg-muted border-muted-foreground/20"
-                } flex flex-col items-center justify-center text-center min-h-[120px] text-sm`}
+                      ? `bg-gradient-to-br ${
+                          departments.findIndex(d => d.department === seat.department) % 5 === 0 ? 'from-blue-50 to-blue-100 border-blue-200' : 
+                          departments.findIndex(d => d.department === seat.department) % 5 === 1 ? 'from-green-50 to-green-100 border-green-200' :
+                          departments.findIndex(d => d.department === seat.department) % 5 === 2 ? 'from-yellow-50 to-yellow-100 border-yellow-200' :
+                          departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'from-purple-50 to-purple-100 border-purple-200' :
+                          'from-pink-50 to-pink-100 border-pink-200'}`
+                      : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
+                    : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 opacity-50"
+                } flex flex-col items-center justify-center text-center min-h-[120px] text-sm border animate-fadeIn`}
               >
                 {seat.studentName ? (
                   <>
