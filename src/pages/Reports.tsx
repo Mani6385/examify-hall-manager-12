@@ -27,16 +27,20 @@ const Reports = () => {
   const [isLoadingPDF, setIsLoadingPDF] = useState(false);
   const [isLoadingExcel, setIsLoadingExcel] = useState(false);
 
-  // Update the query to also fetch the subject field
   const { data: assignments, isLoading } = useQuery({
     queryKey: ['seating-assignments'],
     queryFn: async () => {
       const { data: assignmentsData, error } = await supabase
         .from('seating_assignments')
         .select(`
-          *,
-          seating_arrangements!inner(room_no, floor_no),
-          department_configs!inner(department)
+          id,
+          seat_no,
+          reg_no,
+          department,
+          seating_arrangements!inner (
+            room_no,
+            floor_no
+          )
         `);
 
       if (error) {
@@ -50,7 +54,7 @@ const Reports = () => {
         seat_no: assignment.seat_no,
         reg_no: assignment.reg_no,
         department: assignment.department,
-        subject: assignment.department_configs?.department || null,
+        subject: null, // Set subject as null since we're not using it currently
         seating_arrangements: {
           room_no: assignment.seating_arrangements.room_no,
           floor_no: assignment.seating_arrangements.floor_no
@@ -64,7 +68,10 @@ const Reports = () => {
   const generateOverallSeatingPlanPDF = async () => {
     try {
       setIsLoadingPDF(true);
-      if (!assignments) throw new Error("No assignments data available");
+      
+      if (!assignments || assignments.length === 0) {
+        throw new Error("No seating assignments available");
+      }
 
       const doc = new jsPDF();
       
@@ -95,13 +102,12 @@ const Reports = () => {
         const tableData = roomAssignments.map(assignment => [
           assignment.seat_no,
           assignment.reg_no || "N/A",
-          assignment.department || "N/A",
-          assignment.subject || "N/A"
+          assignment.department || "N/A"
         ]);
 
         // Add the table using autoTable
         (doc as any).autoTable({
-          head: [['Seat No', 'Registration No', 'Department', 'Subject']],
+          head: [['Seat No', 'Registration No', 'Department']],
           body: tableData,
           startY: 30,
           margin: { top: 30 },
@@ -116,9 +122,8 @@ const Reports = () => {
           },
           columnStyles: {
             0: { cellWidth: 40 }, // Seat No
-            1: { cellWidth: 50 }, // Registration No
-            2: { cellWidth: 50 }, // Department
-            3: { cellWidth: 50 }, // Subject
+            1: { cellWidth: 60 }, // Registration No
+            2: { cellWidth: 60 }, // Department
           },
           didDrawPage: (data: any) => {
             // Add footer with page info
@@ -140,9 +145,10 @@ const Reports = () => {
         description: "Hall seating plans PDF generated successfully",
       });
     } catch (error) {
+      console.error('PDF Generation Error:', error);
       toast({
         title: "Error",
-        description: "Failed to generate hall seating plans PDF",
+        description: error instanceof Error ? error.message : "Failed to generate hall seating plans PDF",
         variant: "destructive",
       });
     } finally {
