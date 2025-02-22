@@ -54,7 +54,6 @@ const Seating = () => {
   const [seats, setSeats] = useState<Seat[]>([]);
   const queryClient = useQueryClient();
 
-  // Fetch exam centers from Supabase
   const { data: examCenters = [] } = useQuery({
     queryKey: ['examCenters'],
     queryFn: async () => {
@@ -68,7 +67,6 @@ const Seating = () => {
     },
   });
 
-  // Fetch departments and their subjects from Supabase
   const { data: departmentsList = [] } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
@@ -82,7 +80,6 @@ const Seating = () => {
     },
   });
 
-  // Group subjects by department
   const groupedSubjects = departmentsList.reduce((acc, subject) => {
     if (!acc[subject.department]) {
       acc[subject.department] = [];
@@ -91,10 +88,8 @@ const Seating = () => {
     return acc;
   }, {} as Record<string, typeof departmentsList>);
 
-  // Create seating arrangement mutation
   const createSeatingMutation = useMutation({
     mutationFn: async () => {
-      // First create the seating arrangement
       const { data: arrangement, error: arrangementError } = await supabase
         .from('seating_arrangements')
         .insert([{
@@ -108,7 +103,6 @@ const Seating = () => {
 
       if (arrangementError) throw arrangementError;
 
-      // Then create department configs
       const departmentConfigPromises = departments.map(dept => 
         supabase
           .from('department_configs')
@@ -123,7 +117,6 @@ const Seating = () => {
 
       await Promise.all(departmentConfigPromises);
 
-      // Finally create seating assignments
       const seatingAssignments = seats.map((seat, index) => ({
         arrangement_id: arrangement.id,
         seat_no: seat.seatNo,
@@ -168,7 +161,7 @@ const Seating = () => {
       return;
     }
 
-    const newPrefix = String.fromCharCode(65 + departments.length); // A, B, C, D, E
+    const newPrefix = String.fromCharCode(65 + departments.length);
     setDepartments([...departments, {
       id: (departments.length + 1).toString(),
       department: '',
@@ -202,7 +195,6 @@ const Seating = () => {
     const end = parseInt(deptConfig.endRegNo);
     let seatNumber = 1;
     
-    // Find the department and subject details
     const subject = departmentsList.find(d => d.name === deptConfig.department);
     const departmentName = subject?.department || 'Unknown Department';
     const subjectName = subject?.name || deptConfig.department;
@@ -222,7 +214,6 @@ const Seating = () => {
   };
 
   const generateSeating = () => {
-    // Validate required fields
     if (!centerName || !centerCode || !roomNo || !floorNo) {
       toast({
         title: "Error",
@@ -232,7 +223,6 @@ const Seating = () => {
       return;
     }
 
-    // Validate department configurations
     const invalidDept = departments.find(dept => 
       !dept.department || !dept.startRegNo || !dept.endRegNo
     );
@@ -245,10 +235,8 @@ const Seating = () => {
       return;
     }
 
-    // Generate student lists for all departments
     const allStudentsLists = departments.map(dept => generateStudentList(dept));
     
-    // Create an array of all seats
     const totalSeats = rows * cols;
     const emptySeats: Seat[] = Array.from({ length: totalSeats }, (_, index) => ({
       id: index,
@@ -258,7 +246,6 @@ const Seating = () => {
       department: null,
     }));
 
-    // Interleave students from all departments
     const allStudents: any[] = [];
     let maxLength = Math.max(...allStudentsLists.map(list => list.length));
     
@@ -270,7 +257,6 @@ const Seating = () => {
       }
     }
 
-    // Assign students to seats
     const assignedSeats = emptySeats.map((seat, index) => ({
       ...seat,
       seatNo: allStudents[index]?.seatNo || '',
@@ -283,7 +269,6 @@ const Seating = () => {
 
     setSeats(assignedSeats);
 
-    // Save to Supabase
     createSeatingMutation.mutate();
 
     toast({
@@ -320,7 +305,6 @@ const Seating = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Here we're using a simple check - in a real app, you'd want to use proper authentication
     if (username === "admin" && password === "admin123") {
       setIsLoggedIn(true);
       toast({
@@ -341,7 +325,6 @@ const Seating = () => {
       <Layout>
         <div className="min-h-[80vh] flex items-center justify-center p-4">
           <div className="w-full max-w-md relative">
-            {/* Decorative background elements */}
             <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
             <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
             <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
@@ -492,7 +475,6 @@ const Seating = () => {
           </div>
         </div>
 
-        {/* Department Configurations */}
         <div className="space-y-4">
           {departments.map((dept, index) => (
             <div key={dept.id} className="p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-lg border border-blue-100 shadow-sm transition-all hover:shadow-md">
@@ -609,7 +591,8 @@ const Seating = () => {
                           departments.findIndex(d => d.department === seat.department) % 5 === 1 ? 'from-green-50 to-green-100 border-green-200' :
                           departments.findIndex(d => d.department === seat.department) % 5 === 2 ? 'from-yellow-50 to-yellow-100 border-yellow-200' :
                           departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'from-purple-50 to-purple-100 border-purple-200' :
-                          'from-pink-50 to-pink-100 border-pink-200'}`
+                          'from-pink-50 to-pink-100 border-pink-200'
+                        }`
                       : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
                     : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 opacity-50"
                 } flex flex-col items-center justify-center text-center min-h-[120px] text-sm border animate-fadeIn`}
