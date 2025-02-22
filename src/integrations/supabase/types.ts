@@ -144,6 +144,41 @@ export type Database = {
             referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_exam_attendance_exam"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exam_attendance_summary"
+            referencedColumns: ["exam_id"]
+          },
+          {
+            foreignKeyName: "fk_exam_attendance_exam"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_exam_attendance_student"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_attendance_history"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "fk_exam_attendance_student"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_exam_attendance_teacher"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       exam_centers: {
@@ -250,6 +285,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_seating_arrangements_exam"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exam_attendance_summary"
+            referencedColumns: ["exam_id"]
+          },
+          {
+            foreignKeyName: "fk_seating_arrangements_exam"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "seating_arrangements_exam_id_fkey"
             columns: ["exam_id"]
             isOneToOne: false
@@ -300,6 +349,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_seating_assignments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "seating_arrangements"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "seating_assignments_arrangement_id_fkey"
             columns: ["arrangement_id"]
