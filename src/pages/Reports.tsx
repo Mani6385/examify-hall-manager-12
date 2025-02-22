@@ -3,12 +3,17 @@ import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { useState } from "react";
-import { CalendarDays, File, FileText, Loader2 } from "lucide-react";
+import { File, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface SeatingAssignment {
   id: string;
@@ -17,19 +22,41 @@ interface SeatingAssignment {
   department: string | null;
   subject: string | null;
   seating_arrangements: {
+    id: string;
     room_no: string;
     floor_no: string;
   };
 }
 
+interface Hall {
+  id: string;
+  room_no: string;
+  floor_no: string;
+}
+
 const Reports = () => {
   const { toast } = useToast();
   const [isLoadingExcel, setIsLoadingExcel] = useState(false);
+  const [selectedHall, setSelectedHall] = useState<string>("");
 
-  const { data: assignments, isLoading } = useQuery({
-    queryKey: ['seating-assignments'],
+  const { data: halls = [], isLoading: isLoadingHalls } = useQuery({
+    queryKey: ['halls'],
     queryFn: async () => {
-      const { data: assignmentsData, error } = await supabase
+      const { data, error } = await supabase
+        .from('seating_arrangements')
+        .select('id, room_no, floor_no')
+        .order('room_no, floor_no');
+
+      if (error) throw error;
+      return data as Hall[];
+    },
+  });
+
+  const { data: assignments, isLoading: isLoadingAssignments } = useQuery({
+    queryKey: ['seating-assignments', selectedHall],
+    enabled: !!selectedHall,
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from('seating_assignments')
         .select(`
           id,
@@ -37,75 +64,48 @@ const Reports = () => {
           reg_no,
           department,
           seating_arrangements!seating_assignments_arrangement_id_fkey (
+            id,
             room_no,
             floor_no
           )
-        `);
+        `)
+        .eq('arrangement_id', selectedHall);
 
-      if (error) {
-        console.error('Error fetching seating assignments:', error);
-        throw error;
-      }
-
-      const transformedData: SeatingAssignment[] = assignmentsData.map((assignment: any) => ({
-        id: assignment.id,
-        seat_no: assignment.seat_no,
-        reg_no: assignment.reg_no,
-        department: assignment.department,
-        subject: null,
-        seating_arrangements: {
-          room_no: assignment.seating_arrangements.room_no,
-          floor_no: assignment.seating_arrangements.floor_no
-        }
-      }));
-
-      return transformedData;
+      if (error) throw error;
+      return data as SeatingAssignment[];
     },
   });
 
-  const generateOverallSeatingPlanExcel = async () => {
+  const generateHallSeatingPlanExcel = async () => {
     try {
       setIsLoadingExcel(true);
-      if (!assignments) throw new Error("No assignments data available");
+      if (!assignments || assignments.length === 0) {
+        throw new Error("No assignments data available");
+      }
 
       const wb = XLSX.utils.book_new();
-
-      // Process assignments by room
-      const assignmentsByRoom = assignments.reduce((acc: Record<string, SeatingAssignment[]>, curr) => {
-        const roomKey = `${curr.seating_arrangements.room_no}-${curr.seating_arrangements.floor_no}`;
-        if (!acc[roomKey]) {
-          acc[roomKey] = [];
-        }
-        acc[roomKey].push(curr);
-        return acc;
-      }, {});
+      const hall = assignments[0].seating_arrangements;
 
       // Create summary worksheet
-      const summaryData = Object.entries(assignmentsByRoom).map(([roomKey, roomAssignments]) => {
-        const [roomNo, floorNo] = roomKey.split('-');
-        return {
-          "Room Number": roomNo,
-          "Floor Number": floorNo,
-          "Total Seats": roomAssignments.length,
-          "Occupied Seats": roomAssignments.filter((a) => a.reg_no).length
-        };
-      });
+      const summaryData = [{
+        "Room Number": hall.room_no,
+        "Floor Number": hall.floor_no,
+        "Total Seats": assignments.length,
+        "Occupied Seats": assignments.filter((a) => a.reg_no).length
+      }];
 
       const summaryWS = XLSX.utils.json_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(wb, summaryWS, "Summary");
 
       // Create detailed seating plan worksheet
-      const allSeatingData = assignments.map((assignment) => ({
-        "Room Number": assignment.seating_arrangements.room_no,
-        "Floor Number": assignment.seating_arrangements.floor_no,
+      const seatingData = assignments.map((assignment) => ({
         "Seat Number": assignment.seat_no,
         "Registration Number": assignment.reg_no || "N/A",
         "Department": assignment.department || "N/A",
-        "Subject": assignment.subject || "N/A"
       }));
 
-      const seatingWS = XLSX.utils.json_to_sheet(allSeatingData);
-      XLSX.utils.book_append_sheet(wb, seatingWS, "All Seating Plans");
+      const seatingWS = XLSX.utils.json_to_sheet(seatingData);
+      XLSX.utils.book_append_sheet(wb, seatingWS, "Seating Plan");
 
       // Auto-size columns for both worksheets
       [summaryWS, seatingWS].forEach((ws) => {
@@ -124,16 +124,18 @@ const Reports = () => {
         }
       });
 
-      XLSX.writeFile(wb, 'overall-seating-plan.xlsx');
+      const fileName = `seating-plan-${hall.room_no}-${hall.floor_no}.xlsx`;
+      XLSX.writeFile(wb, fileName);
       
       toast({
         title: "Success",
-        description: "Overall seating plan Excel file generated successfully",
+        description: "Hall seating plan Excel file generated successfully",
       });
     } catch (error) {
+      console.error('Error generating Excel:', error);
       toast({
         title: "Error",
-        description: "Failed to generate overall seating plan Excel file",
+        description: "Failed to generate hall seating plan Excel file",
         variant: "destructive",
       });
     } finally {
@@ -141,41 +143,67 @@ const Reports = () => {
     }
   };
 
+  const isLoading = isLoadingHalls || isLoadingAssignments;
+
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Reports</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Hall-wise Reports</h2>
           <p className="text-muted-foreground mt-2">
-            Generate and download exam hall seating arrangement reports
+            Generate and download exam hall seating arrangements by room
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <div className="border rounded-lg p-4 flex items-center justify-between">
+        <div className="grid gap-6">
+          <div className="border rounded-lg p-4 space-y-4">
             <div>
-              <h3 className="text-lg font-semibold">Seating Summary</h3>
-              <p className="text-sm text-muted-foreground">
-                Download seating summary in Excel format
-              </p>
+              <h3 className="text-lg font-semibold mb-2">Select Hall</h3>
+              <Select
+                value={selectedHall}
+                onValueChange={setSelectedHall}
+                disabled={isLoadingHalls}
+              >
+                <SelectTrigger className="w-full md:w-[300px]">
+                  <SelectValue placeholder="Select a hall..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {halls.map((hall) => (
+                    <SelectItem key={hall.id} value={hall.id}>
+                      Room {hall.room_no} - Floor {hall.floor_no}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Button
-              variant="secondary"
-              onClick={generateOverallSeatingPlanExcel}
-              disabled={isLoadingExcel || isLoading}
-            >
-              {isLoadingExcel ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <File className="mr-2 h-4 w-4" />
-                  Excel
-                </>
-              )}
-            </Button>
+
+            {selectedHall && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Generate Seating Plan</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Download hall-specific seating plan in Excel format
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={generateHallSeatingPlanExcel}
+                  disabled={isLoading || isLoadingExcel || !assignments?.length}
+                >
+                  {isLoadingExcel ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <File className="mr-2 h-4 w-4" />
+                      Excel
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
