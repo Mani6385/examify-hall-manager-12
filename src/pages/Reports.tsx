@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from 'xlsx';
+import { jsPDF } from "jspdf";
+import autoTable from 'jspdf-autotable';
 import { useState } from "react";
-import { File, Loader2 } from "lucide-react";
+import { File, FileText, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Select,
@@ -37,6 +39,7 @@ interface Hall {
 const Reports = () => {
   const { toast } = useToast();
   const [isLoadingExcel, setIsLoadingExcel] = useState(false);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [selectedHall, setSelectedHall] = useState<string>("");
 
   const { data: halls = [], isLoading: isLoadingHalls } = useQuery({
@@ -143,6 +146,63 @@ const Reports = () => {
     }
   };
 
+  const generateHallSeatingPlanPDF = async () => {
+    try {
+      setIsLoadingPdf(true);
+      if (!assignments || assignments.length === 0) {
+        throw new Error("No assignments data available");
+      }
+
+      const hall = assignments[0].seating_arrangements;
+      const doc = new jsPDF();
+
+      // Add title
+      doc.setFontSize(16);
+      doc.text(`Hall Seating Plan - Room ${hall.room_no} Floor ${hall.floor_no}`, 14, 15);
+
+      // Add summary table
+      doc.setFontSize(12);
+      autoTable(doc, {
+        head: [['Total Seats', 'Occupied Seats']],
+        body: [[
+          assignments.length.toString(),
+          assignments.filter((a) => a.reg_no).length.toString()
+        ]],
+        startY: 25,
+      });
+
+      // Add detailed seating plan
+      const seatingData = assignments.map(assignment => [
+        assignment.seat_no,
+        assignment.reg_no || 'N/A',
+        assignment.department || 'N/A'
+      ]);
+
+      autoTable(doc, {
+        head: [['Seat Number', 'Registration Number', 'Department']],
+        body: seatingData,
+        startY: doc.lastAutoTable.finalY + 10,
+      });
+
+      const fileName = `seating-plan-${hall.room_no}-${hall.floor_no}.pdf`;
+      doc.save(fileName);
+      
+      toast({
+        title: "Success",
+        description: "Hall seating plan PDF file generated successfully",
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate hall seating plan PDF file",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingPdf(false);
+    }
+  };
+
   const isLoading = isLoadingHalls || isLoadingAssignments;
 
   return (
@@ -182,26 +242,45 @@ const Reports = () => {
                 <div>
                   <h4 className="font-medium">Generate Seating Plan</h4>
                   <p className="text-sm text-muted-foreground">
-                    Download hall-specific seating plan in Excel format
+                    Download hall-specific seating plan in Excel or PDF format
                   </p>
                 </div>
-                <Button
-                  variant="secondary"
-                  onClick={generateHallSeatingPlanExcel}
-                  disabled={isLoading || isLoadingExcel || !assignments?.length}
-                >
-                  {isLoadingExcel ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <File className="mr-2 h-4 w-4" />
-                      Excel
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={generateHallSeatingPlanPDF}
+                    disabled={isLoading || isLoadingPdf || !assignments?.length}
+                  >
+                    {isLoadingPdf ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2 h-4 w-4" />
+                        PDF
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={generateHallSeatingPlanExcel}
+                    disabled={isLoading || isLoadingExcel || !assignments?.length}
+                  >
+                    {isLoadingExcel ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <File className="mr-2 h-4 w-4" />
+                        Excel
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
