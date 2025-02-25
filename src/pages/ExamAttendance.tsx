@@ -466,121 +466,122 @@ const ExamAttendance = () => {
             </div>
           )}
 
-        {selectedExam && (
-          <>
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Registration No</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Seat Number</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoadingStudents || isLoadingAttendance ? (
+          {selectedExam && (
+            <>
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center">
-                        Loading...
-                      </TableCell>
+                      <TableHead>Registration No</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Seat Number</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
                     </TableRow>
-                  ) : students.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
-                        No students found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    students.map((student) => {
-                      const attendanceRecord = attendanceRecords.find(
-                        record => record.student_id === student.id
-                      );
-                      const isPresent = isStudentPresent(student.id);
+                  </TableHeader>
+                  <TableBody>
+                    {isLoadingStudents || isLoadingAttendance ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center">
+                          Loading...
+                        </TableCell>
+                      </TableRow>
+                    ) : students.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">
+                          No students found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      students.map((student) => {
+                        const attendanceRecord = attendanceRecords.find(
+                          record => record.student_id === student.id
+                        );
+                        const isPresent = isStudentPresent(student.id);
 
-                      return (
-                        <TableRow key={student.id}>
-                          <TableCell>{student.roll_number}</TableCell>
-                          <TableCell>{student.name}</TableCell>
-                          <TableCell>{student.department}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              isPresent ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {isPresent ? 'Present' : 'Absent'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {attendanceRecord?.seat_number || '-'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              {!isPresent ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => markAttendance(student.id)}
-                                >
-                                  Mark Present
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {}}
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  Remove
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                        return (
+                          <TableRow key={student.id}>
+                            <TableCell>{student.roll_number}</TableCell>
+                            <TableCell>{student.name}</TableCell>
+                            <TableCell>{student.department}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                isPresent ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                              }`}>
+                                {isPresent ? 'Present' : 'Absent'}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {attendanceRecord?.seat_number || '-'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                {!isPresent ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => markAttendance(student.id)}
+                                  >
+                                    Mark Present
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDelete(student.id)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    Remove
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
 
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-muted-foreground">Teacher Signature:</span>
-                <span className="border-b border-gray-300 w-40">
-                  {selectedExamSession.subject || "_____________"}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addTeacherSignature(selectedExam, "Teacher Name")}
-                >
-                  <Signature className="h-4 w-4 mr-1" />
-                  Sign
-                </Button>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-muted-foreground">Teacher Signature:</span>
+                  <span className="border-b border-gray-300 w-40">
+                    {selectedExamSession.subject || "_____________"}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addTeacherSignature(selectedExam, "Teacher Name")}
+                  >
+                    <Signature className="h-4 w-4 mr-1" />
+                    Sign
+                  </Button>
+                </div>
+                <div className="flex space-x-4">
+                  <Button variant="outline" onClick={generatePDF}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export to PDF
+                  </Button>
+                  <Button variant="outline" onClick={generateWord}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export to Word
+                  </Button>
+                  <Button variant="outline" onClick={downloadAttendanceSheet}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export to Excel
+                  </Button>
+                  <Button onClick={handleSaveAttendance}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Attendance
+                  </Button>
+                </div>
               </div>
-              <div className="flex space-x-4">
-                <Button variant="outline" onClick={generatePDF}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Export to PDF
-                </Button>
-                <Button variant="outline" onClick={generateWord}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Export to Word
-                </Button>
-                <Button variant="outline" onClick={downloadAttendanceSheet}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Export to Excel
-                </Button>
-                <Button onClick={handleSaveAttendance}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Attendance
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </Layout>
   );
