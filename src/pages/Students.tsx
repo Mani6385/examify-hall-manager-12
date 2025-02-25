@@ -15,6 +15,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
@@ -26,6 +33,7 @@ import type { Database } from "@/integrations/supabase/types";
 import * as XLSX from 'xlsx';
 
 type Student = Database['public']['Tables']['students']['Row'];
+type Teacher = Database['public']['Tables']['teachers']['Row'];
 
 const Students = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -38,11 +46,11 @@ const Students = () => {
     name: "",
     signature: "",
     department: "",
+    assigned_teacher_id: "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch students
   const { data: students = [], isLoading } = useQuery({
     queryKey: ['students'],
     queryFn: async () => {
@@ -56,7 +64,59 @@ const Students = () => {
     },
   });
 
-  // Bulk import students mutation
+  const { data: teachers = [] } = useQuery({
+    queryKey: ['teachers'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('teachers')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const getDepartmentTeachers = (department: string) => {
+    return teachers.filter(teacher => teacher.department === department);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const workbook = XLSX.read(e.target?.result, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(worksheet) as Array<{
+          roll_number: string;
+          name: string;
+          department: string;
+          signature?: string;
+        }>;
+
+        const formattedData = data.map(row => ({
+          roll_number: String(row.roll_number),
+          name: String(row.name),
+          department: String(row.department),
+          signature: row.signature ? String(row.signature) : null,
+        }));
+
+        bulkImportMutation.mutate(formattedData);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to parse the Excel file. Please check the format.",
+          variant: "destructive",
+        });
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   const bulkImportMutation = useMutation({
     mutationFn: async (students: Omit<Student, 'id' | 'created_at' | 'updated_at'>[]) => {
       const { data, error } = await supabase
@@ -84,44 +144,6 @@ const Students = () => {
     },
   });
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const workbook = XLSX.read(e.target?.result, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(worksheet) as Array<{
-          roll_number: string;
-          name: string;
-          department: string;
-          signature?: string;
-        }>;
-
-        // Validate and format the data
-        const formattedData = data.map(row => ({
-          roll_number: String(row.roll_number),
-          name: String(row.name),
-          department: String(row.department),
-          signature: row.signature ? String(row.signature) : null,
-        }));
-
-        bulkImportMutation.mutate(formattedData);
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to parse the Excel file. Please check the format.",
-          variant: "destructive",
-        });
-      }
-    };
-    reader.readAsBinaryString(file);
-  };
-
-  // Add student mutation
   const addStudentMutation = useMutation({
     mutationFn: async (newStudent: Omit<Student, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
@@ -140,7 +162,13 @@ const Students = () => {
         description: "New student has been added successfully.",
       });
       setIsAddDialogOpen(false);
-      setFormData({ roll_number: "", name: "", signature: "", department: "" });
+      setFormData({
+        roll_number: "",
+        name: "",
+        signature: "",
+        department: "",
+        assigned_teacher_id: "",
+      });
     },
     onError: (error) => {
       toast({
@@ -151,7 +179,6 @@ const Students = () => {
     },
   });
 
-  // Update student mutation
   const updateStudentMutation = useMutation({
     mutationFn: async ({ id, ...updateData }: Partial<Student> & { id: string }) => {
       const { data, error } = await supabase
@@ -172,7 +199,13 @@ const Students = () => {
       });
       setIsEditDialogOpen(false);
       setSelectedStudent(null);
-      setFormData({ roll_number: "", name: "", signature: "", department: "" });
+      setFormData({
+        roll_number: "",
+        name: "",
+        signature: "",
+        department: "",
+        assigned_teacher_id: "",
+      });
     },
     onError: (error) => {
       toast({
@@ -183,7 +216,6 @@ const Students = () => {
     },
   });
 
-  // Delete student mutation
   const deleteStudentMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -229,6 +261,7 @@ const Students = () => {
       name: student.name,
       signature: student.signature || "",
       department: student.department || "",
+      assigned_teacher_id: student.assigned_teacher_id || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -342,14 +375,26 @@ const Students = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signature">Signature</Label>
-                    <Input
-                      id="signature"
-                      value={formData.signature}
-                      onChange={(e) =>
-                        setFormData({ ...formData, signature: e.target.value })
+                    <Label htmlFor="teacher">Assigned Teacher</Label>
+                    <Select
+                      value={formData.assigned_teacher_id}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, assigned_teacher_id: value })
                       }
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a teacher" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teachers
+                          .filter(teacher => teacher.department === formData.department)
+                          .map(teacher => (
+                            <SelectItem key={teacher.id} value={teacher.id}>
+                              {teacher.name} - {teacher.subject}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Button type="submit" className="w-full">
                     Add Student
@@ -410,14 +455,26 @@ const Students = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-signature">Signature</Label>
-                <Input
-                  id="edit-signature"
-                  value={formData.signature}
-                  onChange={(e) =>
-                    setFormData({ ...formData, signature: e.target.value })
+                <Label htmlFor="edit-teacher">Assigned Teacher</Label>
+                <Select
+                  value={formData.assigned_teacher_id}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, assigned_teacher_id: value })
                   }
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a teacher" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teachers
+                      .filter(teacher => teacher.department === formData.department)
+                      .map(teacher => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.name} - {teacher.subject}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Button type="submit" className="w-full">
                 Update Student
@@ -433,48 +490,68 @@ const Students = () => {
                 <TableHead>Roll Number</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Department</TableHead>
+                <TableHead>Assigned Teachers</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
+                  <TableCell colSpan={5} className="text-center">
                     Loading...
                   </TableCell>
                 </TableRow>
-              ) : filteredStudents.length === 0 ? (
+              ) : students.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No students found. Add your first student to get started.
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    No students found.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredStudents.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell>{student.roll_number}</TableCell>
-                    <TableCell>{student.name}</TableCell>
-                    <TableCell>{student.department}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(student)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(student.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                students.map((student) => {
+                  const departmentTeachers = getDepartmentTeachers(student.department || '');
+                  
+                  return (
+                    <TableRow key={student.id}>
+                      <TableCell>{student.roll_number}</TableCell>
+                      <TableCell>{student.name}</TableCell>
+                      <TableCell>{student.department}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {departmentTeachers.length > 0 ? (
+                            <ul className="list-disc list-inside">
+                              {departmentTeachers.map(teacher => (
+                                <li key={teacher.id}>
+                                  {teacher.name} ({teacher.subject})
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <span className="text-muted-foreground">No teachers assigned</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(student)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(student.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
