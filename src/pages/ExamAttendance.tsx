@@ -87,40 +87,94 @@ const ExamAttendance = () => {
     enabled: !!selectedExam,
   });
 
-  // Add/Update attendance record mutation
-  const updateAttendanceMutation = useMutation({
-    mutationFn: async ({ studentId, signature }: { studentId: string; signature: string }) => {
-      const existingRecord = attendanceRecords.find(record => record.student_id === studentId);
+  // Add query for seating arrangements
+  const { data: seatingArrangements = [] } = useQuery({
+    queryKey: ['seatingArrangements', selectedExam],
+    queryFn: async () => {
+      if (!selectedExam) return [];
+      const { data, error } = await supabase
+        .from('seating_arrangements')
+        .select(`
+          *,
+          seating_assignments (
+            seat_no,
+            student_name,
+            reg_no,
+            department
+          )
+        `)
+        .eq('exam_id', selectedExam);
       
-      if (existingRecord) {
-        // Update existing record
-        const { data, error } = await supabase
-          .from('exam_attendance')
-          .update({ student_id: studentId })
-          .eq('id', existingRecord.id)
-          .select();
-        
-        if (error) throw error;
-        return data;
-      } else {
-        // Create new record
-        const { data, error } = await supabase
-          .from('exam_attendance')
-          .insert([{
-            exam_id: selectedExam,
-            student_id: studentId,
-            seat_number: `SEAT-${attendanceRecords.length + 1}`,
-          }])
-          .select();
-        
-        if (error) throw error;
-        return data;
-      }
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedExam,
+  });
+
+  // Add mutation for updating attendance with seating info
+  const updateAttendanceMutation = useMutation({
+    mutationFn: async ({ studentId, seatNumber }: { studentId: string; seatNumber: string }) => {
+      const { data, error } = await supabase
+        .from('exam_attendance')
+        .upsert([{
+          exam_id: selectedExam,
+          student_id: studentId,
+          seat_number: seatNumber
+        }])
+        .select();
+      
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance', selectedExam] });
+      toast({
+        title: "Success",
+        description: "Attendance and seating updated successfully",
+      });
     },
   });
+
+  // Function to find seat number for a student
+  const findStudentSeatNumber = (studentId: string) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return null;
+
+    for (const arrangement of seatingArrangements) {
+      const assignment = arrangement.seating_assignments?.find(
+        assign => assign.reg_no === student.roll_number
+      );
+      if (assignment) {
+        return assignment.seat_no;
+      }
+    }
+    return null;
+  };
+
+  // Update markAttendance to include seating information
+  const markAttendance = async (studentId: string) => {
+    if (!selectedExam) {
+      toast({
+        title: "Error",
+        description: "Please select an exam session first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const seatNumber = findStudentSeatNumber(studentId);
+    if (!seatNumber) {
+      toast({
+        title: "Warning",
+        description: "No seating assignment found for this student.",
+      });
+    }
+
+    updateAttendanceMutation.mutate({ 
+      studentId,
+      seatNumber: seatNumber || 'Not Assigned'
+    });
+  };
 
   // Update teacher signature mutation
   const updateTeacherSignatureMutation = useMutation({
@@ -144,7 +198,7 @@ const ExamAttendance = () => {
   });
 
   const addStudentSignature = (studentId: string, signature: string) => {
-    updateAttendanceMutation.mutate({ studentId, signature });
+    updateAttendanceMutation.mutate({ studentId, seatNumber: signature });
   };
 
   const addTeacherSignature = (teacherId: string, signature: string) => {
@@ -428,7 +482,7 @@ const ExamAttendance = () => {
 
     updateAttendanceMutation.mutate({ 
       studentId,
-      signature: "Present" // We mark the signature as "Present" to indicate attendance
+      seatNumber: "Present" // We mark the signature as "Present" to indicate attendance
     });
   };
 
@@ -532,6 +586,7 @@ const ExamAttendance = () => {
                           record => record.student_id === student.id
                         );
                         const isPresent = isStudentPresent(student.id);
+                        const seatNumber = findStudentSeatNumber(student.id);
 
                         return (
                           <TableRow key={student.id}>
@@ -546,7 +601,7 @@ const ExamAttendance = () => {
                               </span>
                             </TableCell>
                             <TableCell>
-                              {attendanceRecord?.seat_number || '-'}
+                              {seatNumber || attendanceRecord?.seat_number || '-'}
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
