@@ -382,6 +382,39 @@ const ExamAttendance = () => {
 
   const selectedExamSession = examSessions.find((exam) => exam.id === selectedExam);
 
+  // Add mutation for deleting attendance records
+  const deleteAttendanceMutation = useMutation({
+    mutationFn: async (recordId: string) => {
+      const { error } = await supabase
+        .from('exam_attendance')
+        .delete()
+        .eq('id', recordId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance', selectedExam] });
+      toast({
+        title: "Success",
+        description: "Attendance record removed successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove attendance record",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDelete = async (studentId: string) => {
+    const record = attendanceRecords.find(r => r.student_id === studentId);
+    if (!record) return;
+    
+    deleteAttendanceMutation.mutate(record.id);
+  };
+
   // Update to handle student attendance marking
   const markAttendance = async (studentId: string) => {
     if (!selectedExam) {
