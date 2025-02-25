@@ -151,7 +151,7 @@ const ExamAttendance = () => {
     return null;
   };
 
-  // Update markAttendance to include seating information
+  // Single implementation of markAttendance with seating information
   const markAttendance = async (studentId: string) => {
     if (!selectedExam) {
       toast({
@@ -467,23 +467,6 @@ const ExamAttendance = () => {
     if (!record) return;
     
     deleteAttendanceMutation.mutate(record.id);
-  };
-
-  // Update to handle student attendance marking
-  const markAttendance = async (studentId: string) => {
-    if (!selectedExam) {
-      toast({
-        title: "Error",
-        description: "Please select an exam session first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    updateAttendanceMutation.mutate({ 
-      studentId,
-      seatNumber: "Present" // We mark the signature as "Present" to indicate attendance
-    });
   };
 
   // Add function to check if student is present
