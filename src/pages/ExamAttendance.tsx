@@ -474,7 +474,6 @@ const ExamAttendance = () => {
     return attendanceRecords.some(record => record.student_id === studentId);
   };
 
-  // Update table to show present/absent status and add mark attendance button
   return (
     <Layout>
       <div className="space-y-6">
