@@ -169,6 +169,11 @@ const Seating = () => {
       endRegNo: '',
       prefix: newPrefix
     }]);
+
+    toast({
+      title: "Success",
+      description: `Added new department with ${newPrefix} series`,
+    });
   };
 
   const removeDepartment = (id: string) => {
@@ -180,7 +185,20 @@ const Seating = () => {
       });
       return;
     }
-    setDepartments(departments.filter(dept => dept.id !== id));
+    
+    const newDepartments = departments
+      .filter(dept => dept.id !== id)
+      .map((dept, index) => ({
+        ...dept,
+        prefix: String.fromCharCode(65 + index)
+      }));
+    
+    setDepartments(newDepartments);
+    
+    toast({
+      title: "Success",
+      description: "Department removed and series updated",
+    });
   };
 
   const updateDepartment = (id: string, field: keyof DepartmentConfig, value: string) => {
@@ -479,7 +497,12 @@ const Seating = () => {
           {departments.map((dept, index) => (
             <div key={dept.id} className="p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-lg border border-blue-100 shadow-sm transition-all hover:shadow-md">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold text-blue-800">Department {index + 1} ({dept.prefix} Series)</h3>
+                <h3 className="font-semibold text-blue-800">
+                  Department {index + 1} 
+                  <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm">
+                    {dept.prefix} Series
+                  </span>
+                </h3>
                 {departments.length > 2 && (
                   <Button
                     variant="outline"
@@ -532,10 +555,10 @@ const Seating = () => {
             variant="outline" 
             onClick={addDepartment}
             disabled={departments.length >= 5}
-            className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 hover:border-blue-400 transition-all"
+            className="w-full bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 hover:border-blue-400 transition-all"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Department
+            Add Department ({String.fromCharCode(65 + departments.length)} Series)
           </Button>
         </div>
 
