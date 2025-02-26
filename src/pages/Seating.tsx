@@ -151,54 +151,13 @@ const Seating = () => {
     },
   });
 
-  const addDepartment = () => {
-    if (departments.length >= 5) {
-      toast({
-        title: "Error",
-        description: "Maximum 5 departments allowed per hall",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newPrefix = String.fromCharCode(65 + departments.length);
-    setDepartments([...departments, {
-      id: (departments.length + 1).toString(),
-      department: '',
-      startRegNo: '',
-      endRegNo: '',
-      prefix: newPrefix
-    }]);
-
-    toast({
-      title: "Success",
-      description: `Added new department with ${newPrefix} series`,
-    });
-  };
-
   const removeDepartment = (id: string) => {
-    if (departments.length <= 2) {
-      toast({
-        title: "Error",
-        description: "Minimum 2 departments required",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const newDepartments = departments
-      .filter(dept => dept.id !== id)
-      .map((dept, index) => ({
-        ...dept,
-        prefix: String.fromCharCode(65 + index)
-      }));
-    
-    setDepartments(newDepartments);
-    
     toast({
-      title: "Success",
-      description: "Department removed and series updated",
+      title: "Error",
+      description: "Cannot remove departments - fixed to A and B series",
+      variant: "destructive",
     });
+    return;
   };
 
   const updateDepartment = (id: string, field: keyof DepartmentConfig, value: string) => {
@@ -503,16 +462,6 @@ const Seating = () => {
                     {dept.prefix} Series
                   </span>
                 </h3>
-                {departments.length > 2 && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => removeDepartment(dept.id)}
-                    className="hover:bg-red-50 hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Select 
@@ -550,16 +499,6 @@ const Seating = () => {
               </div>
             </div>
           ))}
-          
-          <Button 
-            variant="outline" 
-            onClick={addDepartment}
-            disabled={departments.length >= 5}
-            className="w-full bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 hover:border-blue-400 transition-all"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Department ({String.fromCharCode(65 + departments.length)} Series)
-          </Button>
         </div>
 
         <div className="flex flex-wrap gap-4 items-center">
