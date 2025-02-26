@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,19 +15,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { BookOpen, Loader2, Pencil, Trash2 } from "lucide-react";
+import { BookOpen, Loader2, Pencil, Trash2, Users, GraduationCap, CalendarDays } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
 interface Class {
   id: string;
   name: string;
   section: string;
   capacity: string;
+  department: string | null;
 }
 
 const Classes = () => {
@@ -39,11 +47,12 @@ const Classes = () => {
     name: "",
     section: "",
     capacity: "",
+    department: "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch classes
+  // Fetch classes with related data
   const { data: classes = [], isLoading } = useQuery({
     queryKey: ['classes'],
     queryFn: async () => {
@@ -52,14 +61,48 @@ const Classes = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching classes:', error);
-        throw error;
-      }
-
+      if (error) throw error;
       return data as Class[];
     },
   });
+
+  // Fetch teachers
+  const { data: teachers = [] } = useQuery({
+    queryKey: ['teachers'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('teachers')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch subjects
+  const { data: subjects = [] } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Get teachers by department
+  const getTeachersForDepartment = (department: string) => {
+    return teachers.filter(teacher => teacher.department === department);
+  };
+
+  // Get subjects by department
+  const getSubjectsForDepartment = (department: string) => {
+    return subjects.filter(subject => subject.department === department);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +138,7 @@ const Classes = () => {
 
       // Refresh the classes data
       queryClient.invalidateQueries({ queryKey: ['classes'] });
-      setFormData({ name: "", section: "", capacity: "" });
+      setFormData({ name: "", section: "", capacity: "", department: "" });
       setSelectedClass(null);
     } catch (error) {
       console.error('Error saving class:', error);
@@ -113,6 +156,7 @@ const Classes = () => {
       name: classItem.name,
       section: classItem.section,
       capacity: classItem.capacity,
+      department: classItem.department,
     });
     setIsEditDialogOpen(true);
   };
@@ -198,12 +242,115 @@ const Classes = () => {
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <Input
+                    id="department"
+                    value={formData.department}
+                    onChange={(e) =>
+                      setFormData({ ...formData, department: e.target.value })
+                    }
+                    required
+                  />
+                </div>
                 <Button type="submit" className="w-full">
                   Add Class
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {classes.map((classItem) => {
+            const departmentTeachers = getTeachersForDepartment(classItem.department || '');
+            const departmentSubjects = getSubjectsForDepartment(classItem.department || '');
+            
+            return (
+              <div key={classItem.id} className="border rounded-lg p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold text-lg">{classItem.name}</h3>
+                    <p className="text-sm text-muted-foreground">Section {classItem.section}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(classItem)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(classItem.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users className="h-4 w-4" />
+                    <span>Capacity: {classItem.capacity}</span>
+                  </div>
+                  {classItem.department && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <BookOpen className="h-4 w-4" />
+                      <span>Department: {classItem.department}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4" />
+                      Teachers
+                    </h4>
+                    <ul className="text-sm space-y-1">
+                      {departmentTeachers.map(teacher => (
+                        <li key={teacher.id} className="text-muted-foreground">
+                          {teacher.name} - {teacher.subject}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <BookOpen className="h-4 w-4" />
+                      Subjects
+                    </h4>
+                    <ul className="text-sm space-y-1">
+                      {departmentSubjects.map(subject => (
+                        <li key={subject.id} className="text-muted-foreground">
+                          {subject.name} ({subject.code})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex flex-wrap gap-2">
+                  <Link to="/exams">
+                    <Button variant="outline" size="sm">
+                      <CalendarDays className="h-4 w-4 mr-1" />
+                      View Exams
+                    </Button>
+                  </Link>
+                  <Link to="/seating">
+                    <Button variant="outline" size="sm">
+                      <Users className="h-4 w-4 mr-1" />
+                      Seating Plan
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -246,73 +393,26 @@ const Classes = () => {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-department">Department</Label>
+                <Input
+                  id="edit-department"
+                  value={formData.department}
+                  onChange={(e) =>
+                    setFormData({ ...formData, department: e.target.value })
+                  }
+                  required
+                />
+              </div>
               <Button type="submit" className="w-full">
                 Update Class
               </Button>
             </form>
           </DialogContent>
         </Dialog>
-
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Section</TableHead>
-                <TableHead>Capacity</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-10">
-                    <div className="flex justify-center items-center">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                      <span className="ml-2">Loading classes...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : classes.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No classes found. Add your first class to get started.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                classes.map((classItem) => (
-                  <TableRow key={classItem.id}>
-                    <TableCell>{classItem.name}</TableCell>
-                    <TableCell>{classItem.section}</TableCell>
-                    <TableCell>{classItem.capacity}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(classItem)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(classItem.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
       </div>
     </Layout>
   );
 };
 
 export default Classes;
-
