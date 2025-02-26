@@ -46,11 +46,11 @@ const Students = () => {
     name: "",
     signature: "",
     department: "",
-    assigned_teacher_id: "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Query for students
   const { data: students = [], isLoading } = useQuery({
     queryKey: ['students'],
     queryFn: async () => {
@@ -64,6 +64,7 @@ const Students = () => {
     },
   });
 
+  // Query for teachers
   const { data: teachers = [] } = useQuery({
     queryKey: ['teachers'],
     queryFn: async () => {
@@ -80,6 +81,137 @@ const Students = () => {
   const getDepartmentTeachers = (department: string) => {
     return teachers.filter(teacher => teacher.department === department);
   };
+
+  // Add student mutation
+  const addStudentMutation = useMutation({
+    mutationFn: async (newStudent: Omit<Student, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('students')
+        .insert([newStudent])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast({
+        title: "Student Added",
+        description: "New student has been added successfully.",
+      });
+      setIsAddDialogOpen(false);
+      setFormData({
+        roll_number: "",
+        name: "",
+        signature: "",
+        department: "",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update student mutation
+  const updateStudentMutation = useMutation({
+    mutationFn: async ({ id, ...updateData }: Partial<Student> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('students')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast({
+        title: "Student Updated",
+        description: "Student information has been updated successfully.",
+      });
+      setIsEditDialogOpen(false);
+      setSelectedStudent(null);
+      setFormData({
+        roll_number: "",
+        name: "",
+        signature: "",
+        department: "",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteStudentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('students')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast({
+        title: "Student Deleted",
+        description: "Student has been removed successfully.",
+        variant: "destructive",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedStudent) {
+      updateStudentMutation.mutate({
+        id: selectedStudent.id,
+        ...formData,
+      });
+    } else {
+      addStudentMutation.mutate(formData);
+    }
+  };
+
+  const handleEdit = (student: Student) => {
+    setSelectedStudent(student);
+    setFormData({
+      roll_number: student.roll_number,
+      name: student.name,
+      signature: student.signature || "",
+      department: student.department || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteStudentMutation.mutate(id);
+  };
+
+  const filteredStudents = students.filter(
+    student =>
+      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.roll_number.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -143,138 +275,6 @@ const Students = () => {
       });
     },
   });
-
-  const addStudentMutation = useMutation({
-    mutationFn: async (newStudent: Omit<Student, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
-        .from('students')
-        .insert([newStudent])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast({
-        title: "Student Added",
-        description: "New student has been added successfully.",
-      });
-      setIsAddDialogOpen(false);
-      setFormData({
-        roll_number: "",
-        name: "",
-        signature: "",
-        department: "",
-        assigned_teacher_id: "",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateStudentMutation = useMutation({
-    mutationFn: async ({ id, ...updateData }: Partial<Student> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('students')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast({
-        title: "Student Updated",
-        description: "Student information has been updated successfully.",
-      });
-      setIsEditDialogOpen(false);
-      setSelectedStudent(null);
-      setFormData({
-        roll_number: "",
-        name: "",
-        signature: "",
-        department: "",
-        assigned_teacher_id: "",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteStudentMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('students')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast({
-        title: "Student Deleted",
-        description: "Student has been removed successfully.",
-        variant: "destructive",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedStudent) {
-      updateStudentMutation.mutate({
-        id: selectedStudent.id,
-        ...formData,
-      });
-    } else {
-      addStudentMutation.mutate(formData);
-    }
-  };
-
-  const handleEdit = (student: Student) => {
-    setSelectedStudent(student);
-    setFormData({
-      roll_number: student.roll_number,
-      name: student.name,
-      signature: student.signature || "",
-      department: student.department || "",
-      assigned_teacher_id: student.assigned_teacher_id || "",
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  const handleDelete = (id: string) => {
-    deleteStudentMutation.mutate(id);
-  };
-
-  const filteredStudents = students.filter(
-    student =>
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.roll_number.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <Layout>
@@ -374,114 +374,14 @@ const Students = () => {
                       required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="teacher">Assigned Teacher</Label>
-                    <Select
-                      value={formData.assigned_teacher_id}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, assigned_teacher_id: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a teacher" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teachers
-                          .filter(teacher => teacher.department === formData.department)
-                          .map(teacher => (
-                            <SelectItem key={teacher.id} value={teacher.id}>
-                              {teacher.name} - {teacher.subject}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <Button type="submit" className="w-full">
-                    Add Student
+                    {selectedStudent ? "Update Student" : "Add Student"}
                   </Button>
                 </form>
               </DialogContent>
             </Dialog>
           </div>
         </div>
-
-        <div className="flex items-center space-x-2 mb-4">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search students..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
-
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Student</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-roll_number">Roll Number</Label>
-                <Input
-                  id="edit-roll_number"
-                  value={formData.roll_number}
-                  onChange={(e) =>
-                    setFormData({ ...formData, roll_number: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Student Name</Label>
-                <Input
-                  id="edit-name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-department">Department</Label>
-                <Input
-                  id="edit-department"
-                  value={formData.department}
-                  onChange={(e) =>
-                    setFormData({ ...formData, department: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-teacher">Assigned Teacher</Label>
-                <Select
-                  value={formData.assigned_teacher_id}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, assigned_teacher_id: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a teacher" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teachers
-                      .filter(teacher => teacher.department === formData.department)
-                      .map(teacher => (
-                        <SelectItem key={teacher.id} value={teacher.id}>
-                          {teacher.name} - {teacher.subject}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" className="w-full">
-                Update Student
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
 
         <div className="border rounded-lg">
           <Table>
@@ -490,7 +390,7 @@ const Students = () => {
                 <TableHead>Roll Number</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Department</TableHead>
-                <TableHead>Assigned Teachers</TableHead>
+                <TableHead>Department Teachers</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
