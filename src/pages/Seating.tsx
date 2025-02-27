@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -158,12 +159,28 @@ const Seating = () => {
       department: '',
       startRegNo: '',
       endRegNo: '',
-      prefix: 'A'
+      prefix: 'A'  // Always 'A' for the A series
     }]);
 
     toast({
       title: "Success",
       description: "Added new department to A series",
+    });
+  };
+
+  const addBSeries = () => {
+    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    setDepartments([...departments, {
+      id: newId,
+      department: '',
+      startRegNo: '',
+      endRegNo: '',
+      prefix: 'B'  // Always 'B' for the B series
+    }]);
+
+    toast({
+      title: "Success",
+      description: "Added new department to B series",
     });
   };
 
@@ -495,14 +512,24 @@ const Seating = () => {
         <div className="space-y-4">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-semibold text-blue-800">Department Configuration</h3>
-            <Button 
-              variant="outline" 
-              onClick={addASeries}
-              className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:border-blue-400 transition-all"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add A Series Department
-            </Button>
+            <div className="space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={addASeries}
+                className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:border-blue-400 transition-all"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add A Series Department
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={addBSeries}
+                className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200 hover:border-purple-400 transition-all"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add B Series Department
+              </Button>
+            </div>
           </div>
 
           {departments.map((dept, index) => (
