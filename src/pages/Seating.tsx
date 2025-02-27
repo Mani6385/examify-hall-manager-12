@@ -36,6 +36,15 @@ interface Seat {
   subjectName?: string | null;
 }
 
+interface Student {
+  name: string;
+  regNo: string;
+  department: string;
+  subjectCode?: string;
+  subjectName?: string;
+  seatNo: string;
+}
+
 const Seating = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState("");
@@ -223,10 +232,20 @@ const Seating = () => {
     ));
   };
 
-  const generateStudentList = (deptConfig: DepartmentConfig) => {
-    const students = [];
+  const generateStudentList = (deptConfig: DepartmentConfig): Student[] => {
+    const students: Student[] = [];
+    
+    if (!deptConfig.startRegNo || !deptConfig.endRegNo || !deptConfig.department) {
+      return students;
+    }
+    
     const start = parseInt(deptConfig.startRegNo);
     const end = parseInt(deptConfig.endRegNo);
+    
+    if (isNaN(start) || isNaN(end) || end < start) {
+      return students;
+    }
+    
     let seatNumber = 1;
     
     const subject = departmentsList.find(d => d.name === deptConfig.department);
@@ -244,6 +263,7 @@ const Seating = () => {
         seatNo: `${deptConfig.prefix}${seatNumber++}`
       });
     }
+    
     return students;
   };
 
@@ -260,6 +280,7 @@ const Seating = () => {
     const invalidDept = departments.find(dept => 
       !dept.department || !dept.startRegNo || !dept.endRegNo
     );
+    
     if (invalidDept) {
       toast({
         title: "Error",
@@ -269,9 +290,23 @@ const Seating = () => {
       return;
     }
 
-    const allStudentsLists = departments.map(dept => generateStudentList(dept));
-    
+    // Improved seating arrangement algorithm
     const totalSeats = rows * cols;
+    const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
+    const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
+    
+    // Generate all students from all departments
+    const aSeriesStudents: Student[] = [];
+    aSeriesDepts.forEach(dept => {
+      aSeriesStudents.push(...generateStudentList(dept));
+    });
+    
+    const bSeriesStudents: Student[] = [];
+    bSeriesDepts.forEach(dept => {
+      bSeriesStudents.push(...generateStudentList(dept));
+    });
+    
+    // Initialize seats with empty values
     const emptySeats: Seat[] = Array.from({ length: totalSeats }, (_, index) => ({
       id: index,
       seatNo: '',
@@ -279,36 +314,73 @@ const Seating = () => {
       regNo: null,
       department: null,
     }));
-
-    const allStudents: any[] = [];
-    let maxLength = Math.max(...allStudentsLists.map(list => list.length));
     
-    for (let i = 0; i < maxLength; i++) {
-      for (let deptList of allStudentsLists) {
-        if (deptList[i]) {
-          allStudents.push(deptList[i]);
-        }
+    // Distribute students in a zigzag pattern (alternating A and B series)
+    const assignedStudents: (Student | null)[] = Array(totalSeats).fill(null);
+    
+    // Calculate how many students we can place from each series
+    const maxPerSeries = Math.ceil(totalSeats / 2);
+    const aCount = Math.min(aSeriesStudents.length, maxPerSeries);
+    const bCount = Math.min(bSeriesStudents.length, maxPerSeries);
+    
+    // Place A series students in even positions
+    for (let i = 0; i < aCount; i++) {
+      const position = i * 2; // Even positions (0, 2, 4, ...)
+      if (position < totalSeats) {
+        assignedStudents[position] = aSeriesStudents[i];
       }
     }
-
-    const assignedSeats = emptySeats.map((seat, index) => ({
-      ...seat,
-      seatNo: allStudents[index]?.seatNo || '',
-      studentName: allStudents[index]?.name || null,
-      regNo: allStudents[index]?.regNo || null,
-      department: allStudents[index]?.department || null,
-      subjectCode: allStudents[index]?.subjectCode || null,
-      subjectName: allStudents[index]?.subjectName || null,
-    }));
-
-    setSeats(assignedSeats);
-
-    createSeatingMutation.mutate();
-
+    
+    // Place B series students in odd positions
+    for (let i = 0; i < bCount; i++) {
+      const position = i * 2 + 1; // Odd positions (1, 3, 5, ...)
+      if (position < totalSeats) {
+        assignedStudents[position] = bSeriesStudents[i];
+      }
+    }
+    
+    // Fill remaining seats with any leftover students
+    let remainingIndex = 0;
+    for (let i = aCount * 2; i < totalSeats; i += 2) {
+      if (assignedStudents[i] === null && remainingIndex + aCount < aSeriesStudents.length) {
+        assignedStudents[i] = aSeriesStudents[aCount + remainingIndex];
+        remainingIndex++;
+      }
+    }
+    
+    remainingIndex = 0;
+    for (let i = bCount * 2 + 1; i < totalSeats; i += 2) {
+      if (assignedStudents[i] === null && remainingIndex + bCount < bSeriesStudents.length) {
+        assignedStudents[i] = bSeriesStudents[bCount + remainingIndex];
+        remainingIndex++;
+      }
+    }
+    
+    // Convert to the final seats format
+    const finalSeats = emptySeats.map((seat, index) => {
+      const student = assignedStudents[index];
+      if (student) {
+        return {
+          ...seat,
+          seatNo: student.seatNo,
+          studentName: student.name,
+          regNo: student.regNo,
+          department: student.department,
+          subjectCode: student.subjectCode,
+          subjectName: student.subjectName,
+        };
+      }
+      return seat;
+    });
+    
+    setSeats(finalSeats);
+    
     toast({
       title: "Success",
       description: "Seating arrangement generated successfully",
     });
+    
+    createSeatingMutation.mutate();
   };
 
   const rotateStudents = (direction: 'left' | 'right') => {
