@@ -44,6 +44,12 @@ interface Student {
   seatNo: string;
 }
 
+interface Hall {
+  id: string;
+  name: string;
+  capacity: number;
+}
+
 const Seating = () => {
   const { toast } = useToast();
 
@@ -55,6 +61,7 @@ const Seating = () => {
   const [centerCode, setCenterCode] = useState("");
   const [roomNo, setRoomNo] = useState("");
   const [floorNo, setFloorNo] = useState("");
+  const [selectedHall, setSelectedHall] = useState("");
   const [rows, setRows] = useState(5);
   const [cols, setColumns] = useState(6);
   const [seats, setSeats] = useState<Seat[]>([]);
@@ -70,6 +77,24 @@ const Seating = () => {
       
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: halls = [] } = useQuery({
+    queryKey: ['halls'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('halls')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      // If there's no data, return a default set of halls
+      return data || [
+        { id: '1', name: 'Hall A', capacity: 30 },
+        { id: '2', name: 'Hall B', capacity: 40 },
+        { id: '3', name: 'Hall C', capacity: 50 }
+      ];
     },
   });
 
@@ -103,6 +128,7 @@ const Seating = () => {
           floor_no: floorNo,
           rows: rows,
           columns: cols,
+          hall_id: selectedHall || null,
         }])
         .select()
         .single();
@@ -156,6 +182,25 @@ const Seating = () => {
       console.error("Error saving seating arrangement:", error);
     },
   });
+
+  const handleHallSelect = (hallId: string) => {
+    setSelectedHall(hallId);
+    const selectedHallData = halls.find(h => h.id === hallId);
+    if (selectedHallData) {
+      // Calculate appropriate rows and columns based on hall capacity
+      const capacity = selectedHallData.capacity;
+      const optimalColumns = Math.ceil(Math.sqrt(capacity));
+      const optimalRows = Math.ceil(capacity / optimalColumns);
+      
+      setRows(optimalRows);
+      setColumns(optimalColumns);
+      
+      toast({
+        title: "Hall Selected",
+        description: `${selectedHallData.name} selected with ${capacity} seats (${optimalRows} rows × ${optimalColumns} columns)`,
+      });
+    }
+  };
 
   const addASeries = () => {
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
@@ -446,19 +491,63 @@ const Seating = () => {
                 className="bg-white/50 border-blue-200"
               />
 
-              <Input
-                placeholder="Room Number"
-                value={roomNo}
-                onChange={(e) => setRoomNo(e.target.value)}
-                className="border-blue-200 focus:border-blue-400"
-              />
+              <Select 
+                value={selectedHall} 
+                onValueChange={handleHallSelect}
+              >
+                <SelectTrigger className="border-blue-200 focus:border-blue-400">
+                  <SelectValue placeholder="Select Hall" />
+                </SelectTrigger>
+                <SelectContent>
+                  {halls.map((hall) => (
+                    <SelectItem key={hall.id} value={hall.id}>
+                      {hall.name} (Capacity: {hall.capacity})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-              <Input
-                placeholder="Floor Number"
-                value={floorNo}
-                onChange={(e) => setFloorNo(e.target.value)}
-                className="border-blue-200 focus:border-blue-400"
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  placeholder="Room Number"
+                  value={roomNo}
+                  onChange={(e) => setRoomNo(e.target.value)}
+                  className="border-blue-200 focus:border-blue-400"
+                />
+
+                <Input
+                  placeholder="Floor Number"
+                  value={floorNo}
+                  onChange={(e) => setFloorNo(e.target.value)}
+                  className="border-blue-200 focus:border-blue-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">Rows</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={rows}
+                    onChange={(e) => setRows(parseInt(e.target.value) || 5)}
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">Columns</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={cols}
+                    onChange={(e) => setColumns(parseInt(e.target.value) || 6)}
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
