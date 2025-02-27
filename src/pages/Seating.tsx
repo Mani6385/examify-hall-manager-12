@@ -151,13 +151,53 @@ const Seating = () => {
     },
   });
 
-  const removeDepartment = (id: string) => {
+  const addASeries = () => {
+    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    setDepartments([...departments, {
+      id: newId,
+      department: '',
+      startRegNo: '',
+      endRegNo: '',
+      prefix: 'A'
+    }]);
+
     toast({
-      title: "Error",
-      description: "Cannot remove departments - fixed to A and B series",
-      variant: "destructive",
+      title: "Success",
+      description: "Added new department to A series",
     });
-    return;
+  };
+
+  const removeDepartment = (id: string) => {
+    const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
+    const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
+    
+    const targetDept = departments.find(d => d.id === id);
+    if (!targetDept) return;
+
+    if (targetDept.prefix === 'A' && aSeriesDepts.length <= 1) {
+      toast({
+        title: "Error",
+        description: "Cannot remove the only A series department",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (targetDept.prefix === 'B' && bSeriesDepts.length <= 1) {
+      toast({
+        title: "Error",
+        description: "Cannot remove the only B series department",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDepartments(departments.filter(d => d.id !== id));
+    
+    toast({
+      title: "Success",
+      description: `Removed department from ${targetDept.prefix} series`,
+    });
   };
 
   const updateDepartment = (id: string, field: keyof DepartmentConfig, value: string) => {
@@ -453,15 +493,43 @@ const Seating = () => {
         </div>
 
         <div className="space-y-4">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-semibold text-blue-800">Department Configuration</h3>
+            <Button 
+              variant="outline" 
+              onClick={addASeries}
+              className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:border-blue-400 transition-all"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add A Series Department
+            </Button>
+          </div>
+
           {departments.map((dept, index) => (
-            <div key={dept.id} className="p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-lg border border-blue-100 shadow-sm transition-all hover:shadow-md">
+            <div key={dept.id} className={`p-6 rounded-lg border shadow-sm transition-all hover:shadow-md ${
+              dept.prefix === 'A' 
+                ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200' 
+                : 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200'
+            }`}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold text-blue-800">
                   Department {index + 1} 
-                  <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm">
+                  <span className={`ml-2 px-2 py-1 rounded-md text-sm ${
+                    dept.prefix === 'A' 
+                      ? 'bg-blue-100 text-blue-700' 
+                      : 'bg-purple-100 text-purple-700'
+                  }`}>
                     {dept.prefix} Series
                   </span>
                 </h3>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => removeDepartment(dept.id)}
+                  className="hover:bg-red-50 hover:text-red-600 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Select 
