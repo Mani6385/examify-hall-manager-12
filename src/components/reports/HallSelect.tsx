@@ -20,7 +20,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
         <SelectValue placeholder="Select Hall" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="">All Halls</SelectItem>
+        <SelectItem value="all">All Halls</SelectItem>
         {HALLS.map((hall) => (
           <SelectItem key={hall.id} value={hall.id}>
             {hall.name}

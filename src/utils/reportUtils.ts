@@ -40,7 +40,7 @@ export const filterArrangementsByHall = (
   arrangements: SeatingArrangement[],
   hallId: string
 ): SeatingArrangement[] => {
-  if (!hallId) return arrangements;
+  if (!hallId || hallId === "all") return arrangements;
   
   return arrangements.filter(arrangement => {
     // Map rooms to halls (just for demonstration)
@@ -54,5 +54,6 @@ export const filterArrangementsByHall = (
 
 // Get hall name by ID
 export const getHallNameById = (hallId: string): string => {
-  return hallId ? HALLS.find(h => h.id === hallId)?.name || 'Selected Hall' : 'All Halls';
+  if (!hallId || hallId === "all") return 'All Halls';
+  return HALLS.find(h => h.id === hallId)?.name || 'Selected Hall';
 };

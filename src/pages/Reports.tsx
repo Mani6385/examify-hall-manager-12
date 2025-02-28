@@ -14,7 +14,7 @@ const Reports = () => {
   const { toast } = useToast();
   const [isLoadingExcel, setIsLoadingExcel] = useState(false);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
-  const [selectedHall, setSelectedHall] = useState<string>("");
+  const [selectedHall, setSelectedHall] = useState<string>("all");
 
   const { data: allSeatingArrangements = [], isLoading } = useQuery({
     queryKey: ['all-seating-arrangements'],
