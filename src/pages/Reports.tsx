@@ -9,6 +9,28 @@ import autoTable from 'jspdf-autotable';
 import { useState } from "react";
 import { File, FileText, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
 
 interface SeatingAssignment {
   id: string;
@@ -23,10 +45,18 @@ interface SeatingAssignment {
   };
 }
 
+// Define hall data since we don't have a halls table in the database
+const HALLS = [
+  { id: '1', name: 'Hall A', capacity: 30 },
+  { id: '2', name: 'Hall B', capacity: 40 },
+  { id: '3', name: 'Hall C', capacity: 50 }
+];
+
 const Reports = () => {
   const { toast } = useToast();
   const [isLoadingExcel, setIsLoadingExcel] = useState(false);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const [selectedHall, setSelectedHall] = useState<string>("");
 
   const { data: allSeatingArrangements = [], isLoading } = useQuery({
     queryKey: ['all-seating-arrangements'],
@@ -54,6 +84,18 @@ const Reports = () => {
     },
   });
 
+  // Filter the data based on the selected hall
+  const filteredArrangements = selectedHall 
+    ? allSeatingArrangements.filter(arrangement => {
+        // Map rooms to halls (just for demonstration)
+        // In a real app, this mapping would come from the database
+        const roomFirstDigit = arrangement.room_no.charAt(0);
+        const hallId = roomFirstDigit === '1' ? '1' : 
+                       roomFirstDigit === '2' ? '2' : '3';
+        return hallId === selectedHall;
+      })
+    : allSeatingArrangements;
+
   const generateConsolidatedExcel = async () => {
     try {
       setIsLoadingExcel(true);
@@ -61,7 +103,7 @@ const Reports = () => {
       const wb = XLSX.utils.book_new();
       
       // Prepare data for the consolidated view
-      const consolidatedData = allSeatingArrangements.map(arrangement => {
+      const consolidatedData = filteredArrangements.map(arrangement => {
         // Group students by department and class
         const studentsByClass = arrangement.seating_assignments.reduce((acc: any, assignment) => {
           if (assignment.reg_no) {
@@ -99,26 +141,28 @@ const Reports = () => {
       ];
 
       // Add title rows
+      const hallName = selectedHall ? HALLS.find(h => h.id === selectedHall)?.name || 'Selected Hall' : 'All Halls';
+      
       XLSX.utils.sheet_add_aoa(ws, [
         ["DEPARTMENT OF COMPUTER SCIENCE AND BCA"],
-        ["SEATING PLAN (EXAM DATE)"],
+        [`SEATING PLAN - ${hallName} (EXAM DATE)`],
         [],
       ], { origin: "A1" });
 
       XLSX.utils.book_append_sheet(wb, ws, "Seating Plan");
 
       // Save the file
-      XLSX.writeFile(wb, "consolidated-seating-plan.xlsx");
+      XLSX.writeFile(wb, `seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}.xlsx`);
       
       toast({
         title: "Success",
-        description: "Consolidated seating plan Excel file generated successfully",
+        description: `${hallName} seating plan Excel file generated successfully`,
       });
     } catch (error) {
       console.error('Error generating Excel:', error);
       toast({
         title: "Error",
-        description: "Failed to generate consolidated seating plan Excel file",
+        description: "Failed to generate seating plan Excel file",
         variant: "destructive",
       });
     } finally {
@@ -133,13 +177,15 @@ const Reports = () => {
       const doc = new jsPDF();
       
       // Add title
+      const hallName = selectedHall ? HALLS.find(h => h.id === selectedHall)?.name || 'Selected Hall' : 'All Halls';
+      
       doc.setFontSize(16);
       doc.text("DEPARTMENT OF COMPUTER SCIENCE AND BCA", doc.internal.pageSize.width / 2, 15, { align: "center" });
       doc.setFontSize(14);
-      doc.text("SEATING PLAN (EXAM DATE)", doc.internal.pageSize.width / 2, 25, { align: "center" });
+      doc.text(`SEATING PLAN - ${hallName} (EXAM DATE)`, doc.internal.pageSize.width / 2, 25, { align: "center" });
 
       // Prepare data for the table
-      const tableData = allSeatingArrangements.map(arrangement => {
+      const tableData = filteredArrangements.map(arrangement => {
         const studentsByClass = arrangement.seating_assignments.reduce((acc: any, assignment) => {
           if (assignment.reg_no) {
             const key = `${assignment.department}`;
@@ -186,22 +232,22 @@ const Reports = () => {
             doc.setFontSize(16);
             doc.text("DEPARTMENT OF COMPUTER SCIENCE AND BCA", doc.internal.pageSize.width / 2, 15, { align: "center" });
             doc.setFontSize(14);
-            doc.text("SEATING PLAN (EXAM DATE)", doc.internal.pageSize.width / 2, 25, { align: "center" });
+            doc.text(`SEATING PLAN - ${hallName} (EXAM DATE)`, doc.internal.pageSize.width / 2, 25, { align: "center" });
           }
         },
       });
 
-      doc.save("consolidated-seating-plan.pdf");
+      doc.save(`seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
       
       toast({
         title: "Success",
-        description: "Consolidated seating plan PDF file generated successfully",
+        description: `${hallName} seating plan PDF file generated successfully`,
       });
     } catch (error) {
       console.error('Error generating PDF:', error);
       toast({
         title: "Error",
-        description: "Failed to generate consolidated seating plan PDF file",
+        description: "Failed to generate seating plan PDF file",
         variant: "destructive",
       });
     } finally {
@@ -219,14 +265,115 @@ const Reports = () => {
           </p>
         </div>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Hall-wise Reports</CardTitle>
+            <CardDescription>
+              Filter and generate reports by hall
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-6">
+              <div className="flex items-center gap-4 mb-4">
+                <Select value={selectedHall} onValueChange={setSelectedHall}>
+                  <SelectTrigger className="w-[240px]">
+                    <SelectValue placeholder="Select Hall" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Halls</SelectItem>
+                    {HALLS.map((hall) => (
+                      <SelectItem key={hall.id} value={hall.id}>
+                        {hall.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <div className="flex gap-4">
+                  <Button
+                    variant="outline"
+                    onClick={generateConsolidatedPDF}
+                    disabled={isLoading || isLoadingPdf}
+                  >
+                    {isLoadingPdf ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Download PDF
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={generateConsolidatedExcel}
+                    disabled={isLoading || isLoadingExcel}
+                  >
+                    {isLoadingExcel ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <File className="mr-2 h-4 w-4" />
+                        Download Excel
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            
+              {isLoading ? (
+                <div className="flex justify-center items-center h-40">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  {filteredArrangements.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Room</TableHead>
+                          <TableHead>Floor</TableHead>
+                          <TableHead>Dimensions</TableHead>
+                          <TableHead>Students</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredArrangements.map((arrangement) => (
+                          <TableRow key={arrangement.id}>
+                            <TableCell className="font-medium">{arrangement.room_no}</TableCell>
+                            <TableCell>{arrangement.floor_no}</TableCell>
+                            <TableCell>{arrangement.rows} × {arrangement.columns}</TableCell>
+                            <TableCell>{arrangement.seating_assignments.length}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-10 text-muted-foreground">
+                      No seating arrangements found {selectedHall && "for this hall"}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid gap-6">
-          <div className="border rounded-lg p-6 space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Generate Consolidated Report</h3>
-              <p className="text-sm text-muted-foreground mb-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Consolidated Reports</CardTitle>
+              <CardDescription>
                 Download a consolidated view of all seating arrangements
-              </p>
-              
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="flex gap-4">
                 <Button
                   variant="outline"
@@ -263,8 +410,8 @@ const Reports = () => {
                   )}
                 </Button>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </Layout>
