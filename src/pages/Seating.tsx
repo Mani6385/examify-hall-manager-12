@@ -50,6 +50,13 @@ interface Hall {
   capacity: number;
 }
 
+// Define some default halls since we don't have a halls table in the database
+const DEFAULT_HALLS: Hall[] = [
+  { id: '1', name: 'Hall A', capacity: 30 },
+  { id: '2', name: 'Hall B', capacity: 40 },
+  { id: '3', name: 'Hall C', capacity: 50 }
+];
+
 const Seating = () => {
   const { toast } = useToast();
 
@@ -66,6 +73,9 @@ const Seating = () => {
   const [cols, setColumns] = useState(6);
   const [seats, setSeats] = useState<Seat[]>([]);
   const queryClient = useQueryClient();
+  
+  // Instead of fetching halls from the database (which doesn't exist), we'll use our default halls
+  const halls = DEFAULT_HALLS;
 
   const { data: examCenters = [] } = useQuery({
     queryKey: ['examCenters'],
@@ -77,24 +87,6 @@ const Seating = () => {
       
       if (error) throw error;
       return data;
-    },
-  });
-
-  const { data: halls = [] } = useQuery({
-    queryKey: ['halls'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('halls')
-        .select('*')
-        .order('name');
-      
-      if (error) throw error;
-      // If there's no data, return a default set of halls
-      return data || [
-        { id: '1', name: 'Hall A', capacity: 30 },
-        { id: '2', name: 'Hall B', capacity: 40 },
-        { id: '3', name: 'Hall C', capacity: 50 }
-      ];
     },
   });
 
@@ -128,7 +120,8 @@ const Seating = () => {
           floor_no: floorNo,
           rows: rows,
           columns: cols,
-          hall_id: selectedHall || null,
+          // Don't store hall_id in database since we don't have a halls table
+          // hall_id: selectedHall || null,
         }])
         .select()
         .single();
