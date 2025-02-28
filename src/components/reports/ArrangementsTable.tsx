@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
 import { SeatingArrangement } from "@/utils/reportUtils";
+import { DetailedReportView } from "./DetailedReportView";
 
 interface ArrangementsTableProps {
   arrangements: SeatingArrangement[];
@@ -41,6 +42,7 @@ export function ArrangementsTable({ arrangements, isLoading, selectedHall }: Arr
           <TableHead>Floor</TableHead>
           <TableHead>Dimensions</TableHead>
           <TableHead>Students</TableHead>
+          <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -50,6 +52,9 @@ export function ArrangementsTable({ arrangements, isLoading, selectedHall }: Arr
             <TableCell>{arrangement.floor_no}</TableCell>
             <TableCell>{arrangement.rows} × {arrangement.columns}</TableCell>
             <TableCell>{arrangement.seating_assignments.length}</TableCell>
+            <TableCell>
+              <DetailedReportView arrangement={arrangement} />
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
