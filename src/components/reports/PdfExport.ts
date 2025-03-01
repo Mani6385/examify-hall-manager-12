@@ -3,6 +3,15 @@ import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { SeatingArrangement, getHallNameById } from '@/utils/reportUtils';
 
+// Extend the jsPDF type to include the lastAutoTable property
+declare module 'jspdf' {
+  interface jsPDF {
+    lastAutoTable: {
+      finalY: number;
+    };
+  }
+}
+
 export const generatePdfReport = (
   arrangements: SeatingArrangement[],
   hallId: string
@@ -184,10 +193,11 @@ function addRoomDetailPage(doc: jsPDF, arrangement: SeatingArrangement) {
   
   // Department breakdown
   if (deptData.length > 0) {
+    const tableEnd = doc.lastAutoTable ? doc.lastAutoTable.finalY : 100;
     autoTable(doc, {
       head: [['Department', 'Students', 'Percentage']],
       body: deptData,
-      startY: doc.lastAutoTable.finalY + 15,
+      startY: tableEnd + 15,
       theme: 'grid',
       styles: {
         fontSize: 10,
@@ -298,8 +308,10 @@ function addSeatingLayout(doc: jsPDF, arrangement: SeatingArrangement) {
   // Add legend
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text("Legend:", 14, doc.lastAutoTable.finalY + 15);
-  doc.text("• Blank = Unoccupied seat", 20, doc.lastAutoTable.finalY + 25);
-  doc.text("• X = Occupied seat (no registration number)", 20, doc.lastAutoTable.finalY + 35);
-  doc.text("• Registration Number = Occupied seat with student information", 20, doc.lastAutoTable.finalY + 45);
+  
+  const tableEnd = doc.lastAutoTable ? doc.lastAutoTable.finalY : 200;
+  doc.text("Legend:", 14, tableEnd + 15);
+  doc.text("• Blank = Unoccupied seat", 20, tableEnd + 25);
+  doc.text("• X = Occupied seat (no registration number)", 20, tableEnd + 35);
+  doc.text("• Registration Number = Occupied seat with student information", 20, tableEnd + 45);
 }
