@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState, useEffect } from "react";
-import { Save, FileText, Signature, Search, UserCheck, UsersRound } from "lucide-react";
+import { Save, FileText, Signature, Search, UserCheck, UsersRound, Building } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -42,6 +41,7 @@ const ExamAttendance = () => {
   const [selectedCenter, setSelectedCenter] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -343,29 +343,89 @@ const ExamAttendance = () => {
     return attendanceRecords.some(record => record.student_id === studentId);
   };
 
+  // Get unique departments from students
+  const departments = ["all", ...new Set(students.map(student => student.department || "Unassigned").filter(Boolean))];
+
+  // Mark all students of a specific department present
+  const markDepartmentAttendance = async (department: string) => {
+    if (!selectedExam) {
+      toast({
+        title: "Error",
+        description: "Please select an exam session first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get all students from the selected department
+    const departmentStudents = students.filter(student => 
+      student.department === department
+    );
+
+    if (departmentStudents.length === 0) {
+      toast({
+        title: "Warning",
+        description: `No students found in the ${department} department.`,
+      });
+      return;
+    }
+
+    // Mark attendance for each student in the department
+    const promises = departmentStudents.map(student => {
+      const seatNumber = findStudentSeatNumber(student.id);
+      return updateAttendanceMutation.mutateAsync({ 
+        studentId: student.id,
+        seatNumber: seatNumber || 'Not Assigned'
+      });
+    });
+
+    Promise.all(promises)
+      .then(() => {
+        toast({
+          title: "Success",
+          description: `Marked attendance for ${departmentStudents.length} students in ${department} department`,
+        });
+      })
+      .catch(error => {
+        toast({
+          title: "Error",
+          description: `Failed to mark attendance for ${department} department students`,
+          variant: "destructive",
+        });
+      });
+  };
+
   // Generate attendance data for reports
   const generateAttendanceData = () => {
     const selectedExamSession = examSessions.find((exam) => exam.id === selectedExam);
     if (!selectedExamSession) return null;
 
-    const attendanceData = students.map(student => {
+    // Group students by department
+    const departmentGroups: {[key: string]: any[]} = {};
+    
+    students.forEach(student => {
+      const dept = student.department || "Unassigned";
+      if (!departmentGroups[dept]) {
+        departmentGroups[dept] = [];
+      }
+      
       const attendanceRecord = attendanceRecords.find(record => record.student_id === student.id);
-      return {
+      departmentGroups[dept].push({
         regNo: student.roll_number,
         name: student.name,
         signature: student.signature || '_____________',
         isPresent: !!attendanceRecord,
         seatNumber: attendanceRecord?.seat_number || findStudentSeatNumber(student.id) || '-'
-      };
+      });
     });
 
     return {
       examSession: selectedExamSession,
-      attendance: attendanceData
+      departmentGroups
     };
   };
 
-  // Download as Excel
+  // Download as Excel with departments
   const downloadAttendanceSheet = () => {
     const data = generateAttendanceData();
     if (!data) {
@@ -378,7 +438,10 @@ const ExamAttendance = () => {
     }
 
     try {
-      const wsData = [
+      const wb = XLSX.utils.book_new();
+      
+      // Add summary sheet
+      const summaryData = [
         ['Exam Attendance Report'],
         [],
         ['Center Name:', data.examSession.exam_centers?.name],
@@ -388,19 +451,62 @@ const ExamAttendance = () => {
         ['Date:', data.examSession.date],
         ['Time:', data.examSession.start_time],
         [],
-        ['Registration No', 'Name', 'Present', 'Seat Number', 'Student Signature'],
-        ...data.attendance.map(student => [
-          student.regNo,
-          student.name,
-          student.isPresent ? 'Yes' : 'No',
-          student.seatNumber,
-          student.signature
-        ]),
+        ['Department', 'Total Students', 'Present', 'Absent', 'Attendance Rate']
       ];
-
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+      
+      // Add department summaries
+      let totalStudents = 0;
+      let totalPresent = 0;
+      
+      Object.entries(data.departmentGroups).forEach(([dept, students]) => {
+        const deptTotal = students.length;
+        const deptPresent = students.filter(s => s.isPresent).length;
+        const deptAbsent = deptTotal - deptPresent;
+        const deptRate = deptTotal > 0 ? Math.round((deptPresent / deptTotal) * 100) : 0;
+        
+        totalStudents += deptTotal;
+        totalPresent += deptPresent;
+        
+        summaryData.push([
+          dept,
+          deptTotal.toString(),
+          deptPresent.toString(),
+          deptAbsent.toString(),
+          `${deptRate}%`
+        ]);
+      });
+      
+      // Add total row
+      const totalAbsent = totalStudents - totalPresent;
+      const totalRate = totalStudents > 0 ? Math.round((totalPresent / totalStudents) * 100) : 0;
+      
+      summaryData.push(
+        [],
+        ['Total', totalStudents.toString(), totalPresent.toString(), totalAbsent.toString(), `${totalRate}%`]
+      );
+      
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
+      
+      // Create department sheets
+      Object.entries(data.departmentGroups).forEach(([dept, students]) => {
+        const deptData = [
+          [`${dept} Department - Attendance List`],
+          [],
+          ['Registration No', 'Name', 'Present', 'Seat Number', 'Student Signature'],
+          ...students.map(student => [
+            student.regNo,
+            student.name,
+            student.isPresent ? 'Yes' : 'No',
+            student.seatNumber,
+            student.signature
+          ]),
+        ];
+        
+        const deptSheet = XLSX.utils.aoa_to_sheet(deptData);
+        XLSX.utils.book_append_sheet(wb, deptSheet, dept.substring(0, 31)); // Excel sheet names limited to 31 chars
+      });
+      
       XLSX.writeFile(wb, `attendance-${data.examSession.subject}-${data.examSession.date}.xlsx`);
 
       toast({
@@ -416,7 +522,7 @@ const ExamAttendance = () => {
     }
   };
 
-  // Generate PDF
+  // Generate PDF with departments
   const generatePDF = () => {
     const data = generateAttendanceData();
     if (!data) {
@@ -441,25 +547,69 @@ const ExamAttendance = () => {
       doc.text(`Subject: ${data.examSession.subject}`, 15, 51);
       doc.text(`Date: ${data.examSession.date}`, 15, 58);
       doc.text(`Time: ${data.examSession.start_time}`, 15, 65);
-
-      const headers = [["Reg No", "Name", "Present", "Seat Number", "Student Signature"]];
       
-      const tableData = data.attendance.map(student => [
-        student.regNo,
-        student.name,
-        student.isPresent ? 'Yes' : 'No',
-        student.seatNumber,
-        student.signature
-      ]);
-
+      // Add department summary table
+      const summaryHeaders = [["Department", "Total", "Present", "Absent", "Rate"]];
+      const summaryData: any[] = [];
+      
+      Object.entries(data.departmentGroups).forEach(([dept, students]) => {
+        const deptTotal = students.length;
+        const deptPresent = students.filter(s => s.isPresent).length;
+        const deptAbsent = deptTotal - deptPresent;
+        const deptRate = deptTotal > 0 ? Math.round((deptPresent / deptTotal) * 100) : 0;
+        
+        summaryData.push([
+          dept,
+          deptTotal,
+          deptPresent,
+          deptAbsent,
+          `${deptRate}%`
+        ]);
+      });
+      
       (doc as any).autoTable({
-        head: headers,
-        body: tableData,
+        head: summaryHeaders,
+        body: summaryData,
         startY: 75,
         styles: { fontSize: 10 },
         headStyles: { fillColor: [41, 128, 185] },
       });
-
+      
+      let currentY = (doc as any).lastAutoTable?.finalY + 15 || 150;
+      
+      // Add department tables
+      Object.entries(data.departmentGroups).forEach(([dept, students]) => {
+        // Add page if not enough space
+        if (currentY > doc.internal.pageSize.height - 40) {
+          doc.addPage();
+          currentY = 20;
+        }
+        
+        doc.setFontSize(14);
+        doc.text(`${dept} Department`, 15, currentY);
+        currentY += 10;
+        
+        const headers = [["Reg No", "Name", "Present", "Seat Number"]];
+        
+        const tableData = students.map(student => [
+          student.regNo,
+          student.name,
+          student.isPresent ? 'Yes' : 'No',
+          student.seatNumber
+        ]);
+        
+        (doc as any).autoTable({
+          head: headers,
+          body: tableData,
+          startY: currentY,
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [41, 128, 185] },
+        });
+        
+        currentY = (doc as any).lastAutoTable?.finalY + 15 || (currentY + 10 + students.length * 10);
+      });
+      
+      // Add signature line on the last page
       doc.text("Teacher Signature: _________________", 15, doc.internal.pageSize.height - 20);
 
       doc.save(`attendance-${data.examSession.subject}-${data.examSession.date}.pdf`);
@@ -477,7 +627,7 @@ const ExamAttendance = () => {
     }
   };
 
-  // Generate Word
+  // Generate Word with departments
   const generateWord = async () => {
     const data = generateAttendanceData();
     if (!data) {
@@ -490,31 +640,78 @@ const ExamAttendance = () => {
     }
 
     try {
-      const doc = new Document({
-        sections: [{
+      // Create doc sections for each department
+      const sections = [{
+        properties: {},
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: "Exam Attendance Report", bold: true, size: 32 })],
+          }),
+          new Paragraph({ children: [] }),
+          new Paragraph({
+            children: [new TextRun({ text: `Center Name: ${data.examSession.exam_centers?.name}` })],
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Center Code: ${data.examSession.exam_centers?.code}` })],
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Room: ${data.examSession.venue}` })],
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Subject: ${data.examSession.subject}` })],
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Date: ${data.examSession.date}` })],
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `Time: ${data.examSession.start_time}` })],
+          }),
+          new Paragraph({ children: [] }),
+          new Paragraph({
+            children: [new TextRun({ text: "Department Summary", bold: true, size: 28 })],
+          }),
+          new Paragraph({ children: [] }),
+          new DocxTable({
+            rows: [
+              new DocxTableRow({
+                children: [
+                  new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Department", bold: true })] })] }),
+                  new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Total", bold: true })] })] }),
+                  new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Present", bold: true })] })] }),
+                  new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Absent", bold: true })] })] }),
+                  new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Rate", bold: true })] })] }),
+                ],
+              }),
+              ...Object.entries(data.departmentGroups).map(([dept, students]) => {
+                const deptTotal = students.length;
+                const deptPresent = students.filter(s => s.isPresent).length;
+                const deptAbsent = deptTotal - deptPresent;
+                const deptRate = deptTotal > 0 ? Math.round((deptPresent / deptTotal) * 100) : 0;
+                
+                return new DocxTableRow({
+                  children: [
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: dept })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: deptTotal.toString() })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: deptPresent.toString() })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: deptAbsent.toString() })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: `${deptRate}%` })] })] }),
+                  ],
+                });
+              })
+            ],
+          }),
+        ],
+      }];
+
+      // Add department sections
+      Object.entries(data.departmentGroups).forEach(([dept, students]) => {
+        sections.push({
           properties: {},
           children: [
-            new Paragraph({
-              children: [new TextRun({ text: "Exam Attendance Report", bold: true, size: 32 })],
-            }),
+            new Paragraph({ children: [] }),
             new Paragraph({ children: [] }),
             new Paragraph({
-              children: [new TextRun({ text: `Center Name: ${data.examSession.exam_centers?.name}` })],
-            }),
-            new Paragraph({
-              children: [new TextRun({ text: `Center Code: ${data.examSession.exam_centers?.code}` })],
-            }),
-            new Paragraph({
-              children: [new TextRun({ text: `Room: ${data.examSession.venue}` })],
-            }),
-            new Paragraph({
-              children: [new TextRun({ text: `Subject: ${data.examSession.subject}` })],
-            }),
-            new Paragraph({
-              children: [new TextRun({ text: `Date: ${data.examSession.date}` })],
-            }),
-            new Paragraph({
-              children: [new TextRun({ text: `Time: ${data.examSession.start_time}` })],
+              children: [new TextRun({ text: `${dept} Department`, bold: true, size: 28 })],
             }),
             new Paragraph({ children: [] }),
             new DocxTable({
@@ -525,30 +722,35 @@ const ExamAttendance = () => {
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Name", bold: true })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Present", bold: true })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Seat Number", bold: true })] })] }),
-                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Student Signature", bold: true })] })] }),
                   ],
                 }),
-                ...data.attendance.map(
-                  student => new DocxTableRow({
-                    children: [
-                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.regNo })] })] }),
-                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.name })] })] }),
-                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.isPresent ? 'Yes' : 'No' })] })] }),
-                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.seatNumber })] })] }),
-                      new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.signature })] })] }),
-                    ],
-                  })
-                ),
+                ...students.map(student => new DocxTableRow({
+                  children: [
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.regNo })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.name })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.isPresent ? 'Yes' : 'No' })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.seatNumber })] })] }),
+                  ],
+                }))
               ],
             }),
-            new Paragraph({ children: [] }),
-            new Paragraph({
-              children: [new TextRun({ text: "Teacher Signature: _____________" })],
-            }),
           ],
-        }],
+        });
       });
 
+      // Add signature section
+      sections.push({
+        properties: {},
+        children: [
+          new Paragraph({ children: [] }),
+          new Paragraph({ children: [] }),
+          new Paragraph({
+            children: [new TextRun({ text: "Teacher Signature: _____________" })],
+          }),
+        ],
+      });
+
+      const doc = new Document({ sections });
       const blob = await Packer.toBlob(doc);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -579,15 +781,19 @@ const ExamAttendance = () => {
         student.roll_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
         student.department?.toLowerCase().includes(searchQuery.toLowerCase());
       
+      // Apply department filter
+      const matchesDepartment = selectedDepartment === "all" || 
+        student.department === selectedDepartment;
+      
       // Apply attendance filter
       if (activeTab === "present") {
-        return matchesSearch && isStudentPresent(student.id);
+        return matchesSearch && matchesDepartment && isStudentPresent(student.id);
       } else if (activeTab === "absent") {
-        return matchesSearch && !isStudentPresent(student.id);
+        return matchesSearch && matchesDepartment && !isStudentPresent(student.id);
       }
       
       // "all" tab
-      return matchesSearch;
+      return matchesSearch && matchesDepartment;
     });
   };
 
@@ -601,6 +807,23 @@ const ExamAttendance = () => {
   ).length;
   const absentStudents = totalStudents - presentStudents;
   const attendanceRate = totalStudents > 0 ? (presentStudents / totalStudents) * 100 : 0;
+
+  // Department stats
+  const departmentStats = departments
+    .filter(dept => dept !== "all")
+    .map(dept => {
+      const deptStudents = students.filter(student => student.department === dept);
+      const deptPresent = deptStudents.filter(student => isStudentPresent(student.id)).length;
+      return {
+        name: dept,
+        total: deptStudents.length,
+        present: deptPresent,
+        absent: deptStudents.length - deptPresent,
+        rate: deptStudents.length > 0 ? (deptPresent / deptStudents.length) * 100 : 0
+      };
+    })
+    .filter(dept => dept.total > 0)
+    .sort((a, b) => b.total - a.total);
 
   return (
     <Layout>
@@ -690,7 +913,7 @@ const ExamAttendance = () => {
 
           {selectedExam && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Total Students</CardTitle>
@@ -709,165 +932,4 @@ const ExamAttendance = () => {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Absent</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-red-600">{absentStudents}</div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex gap-2 w-full">
-                  <div className="relative w-full md:w-64">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder="Search students..."
-                      className="pl-8"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <Tabs 
-                    defaultValue="all" 
-                    className="w-full"
-                    value={activeTab}
-                    onValueChange={setActiveTab}
-                  >
-                    <TabsList>
-                      <TabsTrigger value="all">All</TabsTrigger>
-                      <TabsTrigger value="present">Present</TabsTrigger>
-                      <TabsTrigger value="absent">Absent</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                <Button
-                  onClick={markAllAttendance}
-                  variant="outline"
-                  className="whitespace-nowrap"
-                >
-                  <UserCheck className="h-4 w-4 mr-2" />
-                  Mark All Present
-                </Button>
-              </div>
-
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Registration No</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Seat Number</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoadingStudents || isLoadingAttendance ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center">
-                          Loading...
-                        </TableCell>
-                      </TableRow>
-                    ) : filteredStudents.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground">
-                          No students found.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredStudents.map((student) => {
-                        const attendanceRecord = attendanceRecords.find(
-                          record => record.student_id === student.id
-                        );
-                        const isPresent = isStudentPresent(student.id);
-                        const seatNumber = findStudentSeatNumber(student.id);
-
-                        return (
-                          <TableRow key={student.id}>
-                            <TableCell>{student.roll_number}</TableCell>
-                            <TableCell>{student.name}</TableCell>
-                            <TableCell>{student.department}</TableCell>
-                            <TableCell>
-                              <Badge variant={isPresent ? "success" : "destructive"} className="h-6">
-                                {isPresent ? 'Present' : 'Absent'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {seatNumber || attendanceRecord?.seat_number || '-'}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                {!isPresent ? (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => markAttendance(student.id)}
-                                  >
-                                    Mark Present
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleDelete(student.id)}
-                                    className="text-red-600 hover:text-red-700"
-                                  >
-                                    Remove
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-muted-foreground">Teacher Signature:</span>
-                  <span className="border-b border-gray-300 w-40">
-                    {selectedExamSession.subject || "_____________"}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addTeacherSignature(selectedExam, "Teacher Name")}
-                  >
-                    <Signature className="h-4 w-4 mr-1" />
-                    Sign
-                  </Button>
-                </div>
-                <div className="flex space-x-4">
-                  <Button variant="outline" onClick={generatePDF}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Export to PDF
-                  </Button>
-                  <Button variant="outline" onClick={generateWord}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Export to Word
-                  </Button>
-                  <Button variant="outline" onClick={downloadAttendanceSheet}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Export to Excel
-                  </Button>
-                  <Button onClick={handleSaveAttendance}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Attendance
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </Layout>
-  );
-};
-
-export default ExamAttendance;
+                    <CardTitle className="text-sm font-medium">Absent</
