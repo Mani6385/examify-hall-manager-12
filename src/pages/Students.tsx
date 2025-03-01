@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -25,7 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { UserPlus, Pencil, Trash2, Search, FileSpreadsheet, FileUp } from "lucide-react";
+import { UserPlus, Pencil, Trash2, Search, FileSpreadsheet, FileUp, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -213,6 +215,7 @@ const Students = () => {
       student.roll_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Updated file upload handler with duplicate check
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -231,13 +234,48 @@ const Students = () => {
         }>;
 
         const formattedData = data.map(row => ({
-          roll_number: String(row.roll_number),
-          name: String(row.name),
-          department: String(row.department),
+          roll_number: String(row.roll_number).trim(),
+          name: String(row.name).trim(),
+          department: String(row.department).trim(),
           signature: row.signature ? String(row.signature) : null,
         }));
 
-        bulkImportMutation.mutate(formattedData);
+        // Check for duplicates within the imported data
+        const rollNumbers = formattedData.map(s => s.roll_number);
+        const duplicatesInFile = rollNumbers.filter((item, index) => rollNumbers.indexOf(item) !== index);
+        
+        if (duplicatesInFile.length > 0) {
+          toast({
+            title: "Duplicate Roll Numbers",
+            description: `Your import file contains duplicate roll numbers: ${duplicatesInFile.join(', ')}`,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Check against existing students in database
+        const existingRollNumbers = students.map(s => s.roll_number);
+        const newStudents = [];
+        const updatedStudents = [];
+
+        for (const student of formattedData) {
+          if (existingRollNumbers.includes(student.roll_number)) {
+            updatedStudents.push(student);
+          } else {
+            newStudents.push(student);
+          }
+        }
+
+        if (updatedStudents.length > 0) {
+          setImportData({
+            newStudents,
+            updatedStudents
+          });
+          setShowImportConfirm(true);
+        } else {
+          // If no duplicates, proceed with import directly
+          bulkImportMutation.mutate(formattedData);
+        }
       } catch (error) {
         toast({
           title: "Error",
@@ -249,6 +287,7 @@ const Students = () => {
     reader.readAsBinaryString(file);
   };
 
+  // Updated bulk import mutation
   const bulkImportMutation = useMutation({
     mutationFn: async (students: Omit<Student, 'id' | 'created_at' | 'updated_at'>[]) => {
       const { data, error } = await supabase
@@ -263,9 +302,10 @@ const Students = () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast({
         title: "Students Imported",
-        description: "Students have been imported successfully.",
+        description: "New students have been imported successfully.",
       });
       setIsImportDialogOpen(false);
+      setShowImportConfirm(false);
     },
     onError: (error) => {
       toast({
@@ -275,6 +315,66 @@ const Students = () => {
       });
     },
   });
+
+  // New mutation for updating existing students during import
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async (students: Omit<Student, 'id' | 'created_at' | 'updated_at'>[]) => {
+      // For each student that already exists, we need to update them
+      const promises = students.map(async (student) => {
+        const { error } = await supabase
+          .from('students')
+          .update({
+            name: student.name,
+            department: student.department,
+            signature: student.signature
+          })
+          .eq('roll_number', student.roll_number);
+        
+        if (error) throw error;
+      });
+      
+      await Promise.all(promises);
+      return students;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast({
+        title: "Students Updated",
+        description: "Existing students have been updated successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // New state for handling import confirmation
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [importData, setImportData] = useState<{
+    newStudents: Omit<Student, 'id' | 'created_at' | 'updated_at'>[];
+    updatedStudents: Omit<Student, 'id' | 'created_at' | 'updated_at'>[];
+  }>({
+    newStudents: [],
+    updatedStudents: []
+  });
+
+  // Function to handle confirmed import
+  const handleConfirmImport = () => {
+    if (importData.newStudents.length > 0) {
+      bulkImportMutation.mutate(importData.newStudents);
+    }
+    
+    if (importData.updatedStudents.length > 0) {
+      bulkUpdateMutation.mutate(importData.updatedStudents);
+    }
+    
+    setShowImportConfirm(false);
+    setIsImportDialogOpen(false);
+  };
 
   return (
     <Layout>
@@ -297,6 +397,9 @@ const Students = () => {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Import Students from Excel</DialogTitle>
+                  <DialogDescription>
+                    Upload an Excel file with student details. Make sure roll numbers are unique.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
@@ -329,6 +432,56 @@ const Students = () => {
                 </div>
               </DialogContent>
             </Dialog>
+            
+            <Dialog open={showImportConfirm} onOpenChange={setShowImportConfirm}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Confirm Student Import</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5" />
+                    <div>
+                      <p>Your import file contains {importData.updatedStudents.length} students with roll numbers that already exist in the database.</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Do you want to update the existing students with the new information?
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {importData.updatedStudents.length > 0 && (
+                    <div className="max-h-40 overflow-y-auto border rounded-md">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Roll Number</TableHead>
+                            <TableHead>Name</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {importData.updatedStudents.map((student) => (
+                            <TableRow key={student.roll_number}>
+                              <TableCell>{student.roll_number}</TableCell>
+                              <TableCell>{student.name}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={() => setShowImportConfirm(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleConfirmImport}>
+                      Update and Import
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
