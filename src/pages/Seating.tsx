@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -324,7 +323,7 @@ const Seating = () => {
       return;
     }
 
-    // Improved seating arrangement algorithm
+    // Updated seating arrangement algorithm for contiguous A and B series
     const totalSeats = rows * cols;
     const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
     const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
@@ -349,44 +348,38 @@ const Seating = () => {
       department: null,
     }));
     
-    // Distribute students in a zigzag pattern (alternating A and B series)
+    // Distribute students in contiguous blocks (first A series, then B series)
+    // Calculate how many seats to allocate for each series
+    const aSeriesCount = aSeriesStudents.length;
+    const bSeriesCount = bSeriesStudents.length;
+    
+    // If total students exceed total seats, allocate proportionally
+    let aSeriesAllocation: number;
+    let bSeriesAllocation: number;
+    
+    if (aSeriesCount + bSeriesCount <= totalSeats) {
+      // If we have enough seats for all students, allocate exactly what we need
+      aSeriesAllocation = aSeriesCount;
+      bSeriesAllocation = bSeriesCount;
+    } else {
+      // If we don't have enough seats, allocate proportionally
+      const totalStudents = aSeriesCount + bSeriesCount;
+      aSeriesAllocation = Math.floor((aSeriesCount / totalStudents) * totalSeats);
+      bSeriesAllocation = totalSeats - aSeriesAllocation;
+    }
+    
+    // Assign A series students to the first section of seats
     const assignedStudents: (Student | null)[] = Array(totalSeats).fill(null);
     
-    // Calculate how many students we can place from each series
-    const maxPerSeries = Math.ceil(totalSeats / 2);
-    const aCount = Math.min(aSeriesStudents.length, maxPerSeries);
-    const bCount = Math.min(bSeriesStudents.length, maxPerSeries);
-    
-    // Place A series students in even positions
-    for (let i = 0; i < aCount; i++) {
-      const position = i * 2; // Even positions (0, 2, 4, ...)
-      if (position < totalSeats) {
-        assignedStudents[position] = aSeriesStudents[i];
-      }
+    for (let i = 0; i < aSeriesAllocation && i < aSeriesStudents.length; i++) {
+      assignedStudents[i] = aSeriesStudents[i];
     }
     
-    // Place B series students in odd positions
-    for (let i = 0; i < bCount; i++) {
-      const position = i * 2 + 1; // Odd positions (1, 3, 5, ...)
+    // Assign B series students to the second section of seats
+    for (let i = 0; i < bSeriesAllocation && i < bSeriesStudents.length; i++) {
+      const position = aSeriesAllocation + i;
       if (position < totalSeats) {
         assignedStudents[position] = bSeriesStudents[i];
-      }
-    }
-    
-    // Fill remaining seats with any leftover students
-    let remainingIndex = 0;
-    for (let i = aCount * 2; i < totalSeats; i += 2) {
-      if (assignedStudents[i] === null && remainingIndex + aCount < aSeriesStudents.length) {
-        assignedStudents[i] = aSeriesStudents[aCount + remainingIndex];
-        remainingIndex++;
-      }
-    }
-    
-    remainingIndex = 0;
-    for (let i = bCount * 2 + 1; i < totalSeats; i += 2) {
-      if (assignedStudents[i] === null && remainingIndex + bCount < bSeriesStudents.length) {
-        assignedStudents[i] = bSeriesStudents[bCount + remainingIndex];
-        remainingIndex++;
       }
     }
     
