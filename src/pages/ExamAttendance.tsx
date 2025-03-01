@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -932,4 +933,313 @@ const ExamAttendance = () => {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Absent</
+                    <CardTitle className="text-sm font-medium">Absent</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-red-600">{absentStudents}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Attendance Rate</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{attendanceRate.toFixed(0)}%</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                    <Input
+                      placeholder="Search by name, reg no, or department..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="max-w-xs"
+                      prefix={<Search className="h-4 w-4 text-muted-foreground" />}
+                    />
+                    <Select
+                      value={selectedDepartment}
+                      onValueChange={setSelectedDepartment}
+                    >
+                      <SelectTrigger className="max-w-[200px]">
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept === "all" ? "All Departments" : dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Tabs value={activeTab} onValueChange={setActiveTab}>
+                    <TabsList className="mb-4">
+                      <TabsTrigger value="all">
+                        All Students <Badge variant="outline" className="ml-2">{totalStudents}</Badge>
+                      </TabsTrigger>
+                      <TabsTrigger value="present">
+                        Present <Badge variant="outline" className="ml-2">{presentStudents}</Badge>
+                      </TabsTrigger>
+                      <TabsTrigger value="absent">
+                        Absent <Badge variant="outline" className="ml-2">{absentStudents}</Badge>
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="all" className="mt-0">
+                      <Card>
+                        <CardContent className="p-0">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-[100px]">Reg. No</TableHead>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Department</TableHead>
+                                <TableHead>Seat</TableHead>
+                                <TableHead className="w-[120px]">Attendance</TableHead>
+                                <TableHead className="w-[80px]"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredStudents.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                    No students found matching your criteria
+                                  </TableCell>
+                                </TableRow>
+                              ) : (
+                                filteredStudents.map((student) => {
+                                  const isPresent = isStudentPresent(student.id);
+                                  return (
+                                    <TableRow key={student.id}>
+                                      <TableCell className="font-mono text-xs">{student.roll_number}</TableCell>
+                                      <TableCell>{student.name}</TableCell>
+                                      <TableCell>{student.department || "Unassigned"}</TableCell>
+                                      <TableCell>
+                                        {attendanceRecords.find(r => r.student_id === student.id)?.seat_number || 
+                                          findStudentSeatNumber(student.id) || "-"}
+                                      </TableCell>
+                                      <TableCell>
+                                        {isPresent ? (
+                                          <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-100">Present</Badge>
+                                        ) : (
+                                          <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-100">Absent</Badge>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        {isPresent ? (
+                                          <Button variant="ghost" size="icon" onClick={() => handleDelete(student.id)}>
+                                            <span className="sr-only">Remove</span>
+                                            ×
+                                          </Button>
+                                        ) : (
+                                          <Button variant="ghost" size="sm" onClick={() => markAttendance(student.id)}>
+                                            Mark Present
+                                          </Button>
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })
+                              )}
+                            </TableBody>
+                          </Table>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="present" className="mt-0">
+                      <Card>
+                        <CardContent className="p-0">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-[100px]">Reg. No</TableHead>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Department</TableHead>
+                                <TableHead>Seat</TableHead>
+                                <TableHead className="w-[80px]"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredStudents.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                    No present students found
+                                  </TableCell>
+                                </TableRow>
+                              ) : (
+                                filteredStudents.map((student) => (
+                                  <TableRow key={student.id}>
+                                    <TableCell className="font-mono text-xs">{student.roll_number}</TableCell>
+                                    <TableCell>{student.name}</TableCell>
+                                    <TableCell>{student.department || "Unassigned"}</TableCell>
+                                    <TableCell>
+                                      {attendanceRecords.find(r => r.student_id === student.id)?.seat_number || 
+                                        findStudentSeatNumber(student.id) || "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button variant="ghost" size="icon" onClick={() => handleDelete(student.id)}>
+                                        <span className="sr-only">Remove</span>
+                                        ×
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              )}
+                            </TableBody>
+                          </Table>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="absent" className="mt-0">
+                      <Card>
+                        <CardContent className="p-0">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-[100px]">Reg. No</TableHead>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Department</TableHead>
+                                <TableHead>Seat</TableHead>
+                                <TableHead className="w-[120px]"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredStudents.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                    No absent students found
+                                  </TableCell>
+                                </TableRow>
+                              ) : (
+                                filteredStudents.map((student) => (
+                                  <TableRow key={student.id}>
+                                    <TableCell className="font-mono text-xs">{student.roll_number}</TableCell>
+                                    <TableCell>{student.name}</TableCell>
+                                    <TableCell>{student.department || "Unassigned"}</TableCell>
+                                    <TableCell>
+                                      {findStudentSeatNumber(student.id) || "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button variant="ghost" size="sm" onClick={() => markAttendance(student.id)}>
+                                        Mark Present
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              )}
+                            </TableBody>
+                          </Table>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+
+                <div className="w-full md:w-80 space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Department Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {departmentStats.map(dept => (
+                          <div key={dept.name} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-8 w-8" 
+                                onClick={() => markDepartmentAttendance(dept.name)}
+                              >
+                                <UserCheck className="h-4 w-4" />
+                                <span className="sr-only">Mark all in {dept.name}</span>
+                              </Button>
+                              <div>
+                                <p className="font-medium">{dept.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {dept.present}/{dept.total} · {dept.rate.toFixed(0)}%
+                                </p>
+                              </div>
+                            </div>
+                            <Badge variant="outline">
+                              {dept.present}/{dept.total}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <Button 
+                        className="w-full" 
+                        onClick={markAllAttendance}
+                        disabled={isLoadingExams || isLoadingStudents || isLoadingAttendance}
+                      >
+                        <UserCheck className="mr-2 h-4 w-4" />
+                        Mark All Present
+                      </Button>
+                      <Button 
+                        className="w-full" 
+                        variant="secondary" 
+                        onClick={handleSaveAttendance}
+                        disabled={isLoadingExams || isLoadingStudents || isLoadingAttendance}
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Attendance
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Export</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <Button 
+                        className="w-full" 
+                        variant="outline" 
+                        onClick={downloadAttendanceSheet}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Excel
+                      </Button>
+                      <Button 
+                        className="w-full" 
+                        variant="outline" 
+                        onClick={generatePDF}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        PDF
+                      </Button>
+                      <Button 
+                        className="w-full" 
+                        variant="outline" 
+                        onClick={generateWord}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Word
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default ExamAttendance;
