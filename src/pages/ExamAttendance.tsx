@@ -957,7 +957,6 @@ const ExamAttendance = () => {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="max-w-xs"
-                      prefix={<Search className="h-4 w-4 text-muted-foreground" />}
                     />
                     <Select
                       value={selectedDepartment}
@@ -1024,7 +1023,7 @@ const ExamAttendance = () => {
                                       </TableCell>
                                       <TableCell>
                                         {isPresent ? (
-                                          <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-100">Present</Badge>
+                                          <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">Present</Badge>
                                         ) : (
                                           <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-100">Absent</Badge>
                                         )}
