@@ -189,7 +189,7 @@ const Seating = () => {
       
       toast({
         title: "Hall Selected",
-        description: `${selectedHallData.name} selected with ${capacity} seats (${optimalRows} rows × ${optimalColumns} columns)`,
+        description: `${selectedHallData.name} selected with ${capacity} seats (${optimalRows} rows × ${optimalColumns})`,
       });
     }
   };
@@ -293,6 +293,7 @@ const Seating = () => {
         department: departmentName,
         subjectCode: subjectCode,
         subjectName: subjectName,
+        // Change the format here to combine prefix and number without space
         seatNo: `${deptConfig.prefix}${seatNumber++}`
       });
     }

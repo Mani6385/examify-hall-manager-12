@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { SeatingArrangement } from "@/utils/reportUtils";
 import { 
@@ -129,6 +128,7 @@ export function DetailedReportView({ arrangement }: DetailedReportViewProps) {
                   {Array.from({ length: arrangement.rows * arrangement.columns }).map((_, index) => {
                     const rowIndex = Math.floor(index / arrangement.columns);
                     const colIndex = index % arrangement.columns;
+                    // Updated to match the A1, B1 format without a space
                     const seatLabel = `${String.fromCharCode(65 + rowIndex)}${colIndex + 1}`;
                     
                     const assignment = arrangement.seating_assignments.find(
