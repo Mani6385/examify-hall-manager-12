@@ -2,7 +2,7 @@
 import { Layout } from "@/components/dashboard/Layout";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { HallReportsCard } from "@/components/reports/HallReportsCard";
 import { ConsolidatedReportsCard } from "@/components/reports/ConsolidatedReportsCard";
@@ -11,14 +11,18 @@ import { generatePdfReport } from "@/components/reports/PdfExport";
 import { filterArrangementsByHall, SeatingArrangement, getHallNameById } from "@/utils/reportUtils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { PlusCircle } from "lucide-react";
 
 const Reports = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isLoadingExcel, setIsLoadingExcel] = useState(false);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [selectedHall, setSelectedHall] = useState<string>("all");
 
-  const { data: allSeatingArrangements = [], isLoading } = useQuery({
+  const { data: allSeatingArrangements = [], isLoading, refetch } = useQuery({
     queryKey: ['all-seating-arrangements'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -43,6 +47,11 @@ const Reports = () => {
       return data as SeatingArrangement[];
     },
   });
+
+  // Automatically refetch data when component mounts to ensure latest data from Seating page
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   // Filter the data based on the selected hall
   const filteredArrangements = filterArrangementsByHall(allSeatingArrangements, selectedHall);
@@ -106,14 +115,25 @@ const Reports = () => {
     });
   });
 
+  // Navigate to Seating page
+  const goToSeatingPage = () => {
+    navigate('/seating');
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Seating Plan Reports</h2>
-          <p className="text-muted-foreground mt-2">
-            Generate hall-wise and consolidated seating arrangements reports
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Seating Plan Reports</h2>
+            <p className="text-muted-foreground mt-2">
+              Generate hall-wise and consolidated seating arrangements reports
+            </p>
+          </div>
+          <Button onClick={goToSeatingPage} className="bg-gradient-to-r from-blue-600 to-purple-600">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create New Seating Plan
+          </Button>
         </div>
 
         {/* Stats overview */}
