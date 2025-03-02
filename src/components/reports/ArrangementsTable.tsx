@@ -7,9 +7,11 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Loader2, PlusCircle } from "lucide-react";
 import { SeatingArrangement } from "@/utils/reportUtils";
 import { DetailedReportView } from "./DetailedReportView";
+import { useNavigate } from "react-router-dom";
 
 interface ArrangementsTableProps {
   arrangements: SeatingArrangement[];
@@ -18,6 +20,13 @@ interface ArrangementsTableProps {
 }
 
 export function ArrangementsTable({ arrangements, isLoading, selectedHall }: ArrangementsTableProps) {
+  const navigate = useNavigate();
+  
+  // Navigate to Seating page
+  const goToSeatingPage = () => {
+    navigate('/seating');
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -28,8 +37,20 @@ export function ArrangementsTable({ arrangements, isLoading, selectedHall }: Arr
 
   if (arrangements.length === 0) {
     return (
-      <div className="text-center py-10 text-muted-foreground">
-        No seating arrangements found {selectedHall && "for this hall"}
+      <div className="flex flex-col items-center justify-center py-10 space-y-4">
+        <div className="flex items-center text-amber-500">
+          <AlertCircle className="h-6 w-6 mr-2" />
+          <span className="font-medium">No seating arrangements found {selectedHall !== "all" ? "for this hall" : ""}</span>
+        </div>
+        <p className="text-muted-foreground text-center max-w-md">
+          {selectedHall !== "all" 
+            ? "There are no seating plans created for this hall yet. Please select a different hall or create a new seating plan."
+            : "There are no seating plans in the system. Create a seating plan first to view and generate reports."}
+        </p>
+        <Button onClick={goToSeatingPage} className="mt-4">
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Create Seating Plan
+        </Button>
       </div>
     );
   }

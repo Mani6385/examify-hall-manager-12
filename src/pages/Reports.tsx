@@ -58,6 +58,15 @@ const Reports = () => {
 
   const generateConsolidatedExcel = async () => {
     try {
+      if (!filteredArrangements.length) {
+        toast({
+          title: "No Data Available",
+          description: `No seating arrangements found for ${getHallNameById(selectedHall)}. Create a seating plan first.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
       setIsLoadingExcel(true);
       generateExcelReport(filteredArrangements, selectedHall);
       
@@ -79,6 +88,15 @@ const Reports = () => {
 
   const generateConsolidatedPDF = async () => {
     try {
+      if (!filteredArrangements.length) {
+        toast({
+          title: "No Data Available",
+          description: `No seating arrangements found for ${getHallNameById(selectedHall)}. Create a seating plan first.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
       setIsLoadingPdf(true);
       generatePdfReport(filteredArrangements, selectedHall);
       
