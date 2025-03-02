@@ -22,9 +22,6 @@ export const generatePdfReport = (
   // Add cover page
   addCoverPage(doc, hallName);
   
-  // Add hall layout page that matches the provided image
-  addHallLayoutPage(doc, arrangements);
-  
   // Add summary table
   addSummaryTable(doc, arrangements);
   
@@ -40,12 +37,6 @@ export const generatePdfReport = (
     if (arrangement.seating_assignments.length > 0) {
       doc.addPage();
       addStudentListTable(doc, arrangement);
-      
-      // Add seating layout visualization if room is not too large
-      if (arrangement.rows <= 10 && arrangement.columns <= 10) {
-        doc.addPage();
-        addSeatingLayout(doc, arrangement);
-      }
     }
   });
   
@@ -77,69 +68,6 @@ function addCoverPage(doc: jsPDF, hallName: string) {
   
   doc.setFontSize(10);
   doc.text("DEPARTMENT OF COMPUTER SCIENCE AND BCA", centerX, 240, { align: "center" });
-}
-
-function addHallLayoutPage(doc: jsPDF, arrangements: SeatingArrangement[]) {
-  doc.addPage();
-  
-  const pageWidth = doc.internal.pageSize.width;
-  const centerX = pageWidth / 2;
-  
-  // Add header
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text("Hall-wise Seating Arrangement", centerX, 20, { align: "center" });
-  
-  // Add center name and code 
-  doc.setFontSize(12);
-  doc.text("Center Name:", 20, 35);
-  doc.text("Center Code:", pageWidth - 80, 35);
-  
-  // Add Room Numbers text
-  doc.text("Room Numbers:", 20, 45);
-  
-  // Create a grid layout for showing room and student information
-  // We'll create a grid with 3 columns (3 rooms per row)
-  const startY = 60;
-  const seatsPerRow = 3;
-  const cellWidth = (pageWidth - 40) / seatsPerRow;
-  const cellHeight = 40;
-  const margin = 20;
-  
-  arrangements.forEach((arrangement, index) => {
-    const row = Math.floor(index / seatsPerRow);
-    const col = index % seatsPerRow;
-    
-    const x = margin + (col * cellWidth);
-    const y = startY + (row * cellHeight);
-    
-    // Draw cell border
-    doc.rect(x, y, cellWidth, cellHeight);
-    
-    // Add room number at the top of the cell
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Room ${arrangement.room_no}`, x + 5, y + 7);
-    
-    // Add student information (sample from assignments)
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    
-    // Get up to three assignments to show in the cell
-    const sampleAssignments = arrangement.seating_assignments.slice(0, 5);
-    sampleAssignments.forEach((assignment, i) => {
-      const seatText = `${assignment.seat_no}`;
-      const deptText = `${assignment.department || 'Unknown'}`;
-      const regText = `${assignment.reg_no || 'N/A'}`;
-      
-      const lineY = y + 15 + (i * 6);
-      if (lineY < y + cellHeight - 2) { // ensure we don't write outside the cell
-        doc.text(seatText, x + 5, lineY);
-        doc.text(deptText, x + 25, lineY);
-        doc.text(regText, x + 60, lineY);
-      }
-    });
-  });
 }
 
 function addSummaryTable(doc: jsPDF, arrangements: SeatingArrangement[]) {
@@ -323,61 +251,4 @@ function addStudentListTable(doc: jsPDF, arrangement: SeatingArrangement) {
       }
     },
   });
-}
-
-function addSeatingLayout(doc: jsPDF, arrangement: SeatingArrangement) {
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Room ${arrangement.room_no} - Seating Layout`, doc.internal.pageSize.width / 2, 20, { align: "center" });
-  
-  const rows = arrangement.rows;
-  const cols = arrangement.columns;
-  
-  // Create a grid representation of seats
-  const headerRow = [''].concat(Array.from({ length: cols }, (_, i) => (i + 1).toString()));
-  const gridData = [headerRow];
-  
-  for (let r = 0; r < rows; r++) {
-    const rowLetter = String.fromCharCode(65 + r);
-    const rowData = [rowLetter];
-    
-    for (let c = 0; c < cols; c++) {
-      const seatNo = `${rowLetter}${c + 1}`;
-      const assignment = arrangement.seating_assignments.find(a => a.seat_no === seatNo);
-      rowData.push(assignment ? (assignment.reg_no ? assignment.reg_no : 'X') : '');
-    }
-    
-    gridData.push(rowData);
-  }
-  
-  // Add seating grid
-  autoTable(doc, {
-    head: [gridData[0]],
-    body: gridData.slice(1),
-    startY: 30,
-    styles: {
-      fontSize: 8,
-      cellPadding: 5,
-      halign: 'center',
-      valign: 'middle',
-    },
-    columnStyles: {
-      0: { fontStyle: 'bold' },
-    },
-    headStyles: {
-      fillColor: [200, 200, 200],
-      textColor: 0,
-      fontStyle: 'bold',
-    },
-  });
-  
-  // Add legend
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  
-  const tableEnd = doc.lastAutoTable ? doc.lastAutoTable.finalY : 200;
-  doc.text("Legend:", 14, tableEnd + 15);
-  doc.text("• Blank = Unoccupied seat", 20, tableEnd + 25);
-  doc.text("• X = Occupied seat (no registration number)", 20, tableEnd + 35);
-  doc.text("• Registration Number = Occupied seat with student information", 20, tableEnd + 45);
 }
