@@ -22,6 +22,9 @@ export const generatePdfReport = (
   // Add cover page
   addCoverPage(doc, hallName);
   
+  // Add hall layout page that matches the provided image
+  addHallLayoutPage(doc, arrangements);
+  
   // Add summary table
   addSummaryTable(doc, arrangements);
   
@@ -74,6 +77,69 @@ function addCoverPage(doc: jsPDF, hallName: string) {
   
   doc.setFontSize(10);
   doc.text("DEPARTMENT OF COMPUTER SCIENCE AND BCA", centerX, 240, { align: "center" });
+}
+
+function addHallLayoutPage(doc: jsPDF, arrangements: SeatingArrangement[]) {
+  doc.addPage();
+  
+  const pageWidth = doc.internal.pageSize.width;
+  const centerX = pageWidth / 2;
+  
+  // Add header
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text("Hall-wise Seating Arrangement", centerX, 20, { align: "center" });
+  
+  // Add center name and code 
+  doc.setFontSize(12);
+  doc.text("Center Name:", 20, 35);
+  doc.text("Center Code:", pageWidth - 80, 35);
+  
+  // Add Room Numbers text
+  doc.text("Room Numbers:", 20, 45);
+  
+  // Create a grid layout for showing room and student information
+  // We'll create a grid with 3 columns (3 rooms per row)
+  const startY = 60;
+  const seatsPerRow = 3;
+  const cellWidth = (pageWidth - 40) / seatsPerRow;
+  const cellHeight = 40;
+  const margin = 20;
+  
+  arrangements.forEach((arrangement, index) => {
+    const row = Math.floor(index / seatsPerRow);
+    const col = index % seatsPerRow;
+    
+    const x = margin + (col * cellWidth);
+    const y = startY + (row * cellHeight);
+    
+    // Draw cell border
+    doc.rect(x, y, cellWidth, cellHeight);
+    
+    // Add room number at the top of the cell
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Room ${arrangement.room_no}`, x + 5, y + 7);
+    
+    // Add student information (sample from assignments)
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    
+    // Get up to three assignments to show in the cell
+    const sampleAssignments = arrangement.seating_assignments.slice(0, 5);
+    sampleAssignments.forEach((assignment, i) => {
+      const seatText = `${assignment.seat_no}`;
+      const deptText = `${assignment.department || 'Unknown'}`;
+      const regText = `${assignment.reg_no || 'N/A'}`;
+      
+      const lineY = y + 15 + (i * 6);
+      if (lineY < y + cellHeight - 2) { // ensure we don't write outside the cell
+        doc.text(seatText, x + 5, lineY);
+        doc.text(deptText, x + 25, lineY);
+        doc.text(regText, x + 60, lineY);
+      }
+    });
+  });
 }
 
 function addSummaryTable(doc: jsPDF, arrangements: SeatingArrangement[]) {

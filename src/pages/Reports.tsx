@@ -8,7 +8,9 @@ import { HallReportsCard } from "@/components/reports/HallReportsCard";
 import { ConsolidatedReportsCard } from "@/components/reports/ConsolidatedReportsCard";
 import { generateExcelReport } from "@/components/reports/ExcelExport";
 import { generatePdfReport } from "@/components/reports/PdfExport";
-import { filterArrangementsByHall, SeatingArrangement } from "@/utils/reportUtils";
+import { filterArrangementsByHall, SeatingArrangement, getHallNameById } from "@/utils/reportUtils";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const Reports = () => {
   const { toast } = useToast();
@@ -52,7 +54,7 @@ const Reports = () => {
       
       toast({
         title: "Success",
-        description: `Seating plan Excel file generated successfully`,
+        description: `Seating plan Excel file generated successfully for ${getHallNameById(selectedHall)}`,
       });
     } catch (error) {
       console.error('Error generating Excel:', error);
@@ -73,7 +75,7 @@ const Reports = () => {
       
       toast({
         title: "Success",
-        description: `Seating plan PDF file generated successfully`,
+        description: `Seating plan PDF file generated successfully for ${getHallNameById(selectedHall)}`,
       });
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -87,14 +89,79 @@ const Reports = () => {
     }
   };
 
+  // Count rooms and students in the filtered arrangements
+  const roomCount = filteredArrangements.length;
+  const studentCount = filteredArrangements.reduce(
+    (total, arr) => total + arr.seating_assignments.length, 
+    0
+  );
+
+  // Get unique departments
+  const departments = new Set<string>();
+  filteredArrangements.forEach(arr => {
+    arr.seating_assignments.forEach(assignment => {
+      if (assignment.department) {
+        departments.add(assignment.department);
+      }
+    });
+  });
+
   return (
     <Layout>
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Seating Plan Reports</h2>
           <p className="text-muted-foreground mt-2">
-            Generate consolidated seating arrangements reports
+            Generate hall-wise and consolidated seating arrangements reports
           </p>
+        </div>
+
+        {/* Stats overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Selected Hall</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{getHallNameById(selectedHall)}</div>
+              <p className="text-xs text-muted-foreground">
+                {selectedHall === "all" ? "All examination halls" : `Hall ID: ${selectedHall}`}
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Rooms & Students</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{roomCount} Rooms</div>
+              <p className="text-xs text-muted-foreground">
+                {studentCount} Students Assigned
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Departments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{departments.size}</div>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {Array.from(departments).slice(0, 3).map(dept => (
+                  <Badge key={dept} variant="outline" className="text-xs">
+                    {dept}
+                  </Badge>
+                ))}
+                {departments.size > 3 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{departments.size - 3} more
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <HallReportsCard
