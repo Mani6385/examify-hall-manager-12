@@ -119,8 +119,6 @@ const Seating = () => {
           floor_no: floorNo,
           rows: rows,
           columns: cols,
-          // Don't store hall_id in database since we don't have a halls table
-          // hall_id: selectedHall || null,
         }])
         .select()
         .single();
@@ -279,22 +277,21 @@ const Seating = () => {
       return students;
     }
     
-    let seatNumber = 1;
-    
     const subject = departmentsList.find(d => d.name === deptConfig.department);
     const departmentName = subject?.department || 'Unknown Department';
     const subjectName = subject?.name || deptConfig.department;
     const subjectCode = subject?.code;
     
-    for (let i = start; i <= end; i++) {
+    // Start from seat 1 for each department series
+    for (let i = start, seatNum = 1; i <= end; i++, seatNum++) {
       students.push({
         name: `${departmentName} Student`,
         regNo: i.toString().padStart(3, '0'),
         department: departmentName,
         subjectCode: subjectCode,
         subjectName: subjectName,
-        // Change the format here to combine prefix and number without space
-        seatNo: `${deptConfig.prefix}${seatNumber++}`
+        // Format: A1, A2, etc. or B1, B2, etc. (no space between letter and number)
+        seatNo: `${deptConfig.prefix}${seatNum}`
       });
     }
     
@@ -324,7 +321,7 @@ const Seating = () => {
       return;
     }
 
-    // Updated seating arrangement algorithm for contiguous A and B series
+    // Updated seating arrangement algorithm for A1, B1, A2, B2 format
     const totalSeats = rows * cols;
     const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
     const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
@@ -349,38 +346,21 @@ const Seating = () => {
       department: null,
     }));
     
-    // Distribute students in contiguous blocks (first A series, then B series)
-    // Calculate how many seats to allocate for each series
-    const aSeriesCount = aSeriesStudents.length;
-    const bSeriesCount = bSeriesStudents.length;
-    
-    // If total students exceed total seats, allocate proportionally
-    let aSeriesAllocation: number;
-    let bSeriesAllocation: number;
-    
-    if (aSeriesCount + bSeriesCount <= totalSeats) {
-      // If we have enough seats for all students, allocate exactly what we need
-      aSeriesAllocation = aSeriesCount;
-      bSeriesAllocation = bSeriesCount;
-    } else {
-      // If we don't have enough seats, allocate proportionally
-      const totalStudents = aSeriesCount + bSeriesCount;
-      aSeriesAllocation = Math.floor((aSeriesCount / totalStudents) * totalSeats);
-      bSeriesAllocation = totalSeats - aSeriesAllocation;
-    }
-    
-    // Assign A series students to the first section of seats
+    // Arrange students in A1, B1, A2, B2 pattern
+    const maxStudentsPerSeries = Math.max(aSeriesStudents.length, bSeriesStudents.length);
     const assignedStudents: (Student | null)[] = Array(totalSeats).fill(null);
     
-    for (let i = 0; i < aSeriesAllocation && i < aSeriesStudents.length; i++) {
-      assignedStudents[i] = aSeriesStudents[i];
-    }
-    
-    // Assign B series students to the second section of seats
-    for (let i = 0; i < bSeriesAllocation && i < bSeriesStudents.length; i++) {
-      const position = aSeriesAllocation + i;
-      if (position < totalSeats) {
-        assignedStudents[position] = bSeriesStudents[i];
+    // Assign students in A1, B1, A2, B2 pattern
+    let seatIndex = 0;
+    for (let i = 0; i < maxStudentsPerSeries; i++) {
+      // Add A series student (A1, A2, etc.)
+      if (i < aSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = aSeriesStudents[i];
+      }
+      
+      // Add B series student (B1, B2, etc.)
+      if (i < bSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = bSeriesStudents[i];
       }
     }
     

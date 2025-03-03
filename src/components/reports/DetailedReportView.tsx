@@ -39,6 +39,25 @@ export function DetailedReportView({ arrangement }: DetailedReportViewProps) {
     return acc;
   }, {});
 
+  // Function to sort seat numbers in proper alphanumeric order (A1, A2, B1, B2, etc.)
+  const sortSeatNumbers = (a: string, b: string) => {
+    // Extract the prefix and number
+    const aPrefix = a.charAt(0);
+    const bPrefix = b.charAt(0);
+    
+    // Extract numeric part
+    const aNum = parseInt(a.substring(1));
+    const bNum = parseInt(b.substring(1));
+    
+    // First sort by prefix
+    if (aPrefix !== bPrefix) {
+      return aPrefix.localeCompare(bPrefix);
+    }
+    
+    // Then sort by number
+    return aNum - bNum;
+  };
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -131,7 +150,7 @@ export function DetailedReportView({ arrangement }: DetailedReportViewProps) {
                   <TableBody>
                     {arrangement.seating_assignments.length > 0 ? (
                       arrangement.seating_assignments
-                        .sort((a, b) => a.seat_no.localeCompare(b.seat_no))
+                        .sort((a, b) => sortSeatNumbers(a.seat_no, b.seat_no))
                         .map((assignment) => (
                           <TableRow key={assignment.id}>
                             <TableCell className="font-medium">{assignment.seat_no}</TableCell>
