@@ -16,6 +16,12 @@ export const generatePdfReport = (
   arrangements: SeatingArrangement[],
   hallId: string
 ): void => {
+  // Check if we have arrangements data
+  if (!arrangements || arrangements.length === 0) {
+    console.error("No seating arrangements data available for PDF export");
+    return;
+  }
+
   const doc = new jsPDF();
   const hallName = getHallNameById(hallId);
   
@@ -209,7 +215,23 @@ function addStudentListTable(doc: jsPDF, arrangement: SeatingArrangement) {
   doc.text(`Room ${arrangement.room_no} - Student Assignments`, doc.internal.pageSize.width / 2, 20, { align: "center" });
   
   const sortedAssignments = [...arrangement.seating_assignments]
-    .sort((a, b) => a.seat_no.localeCompare(b.seat_no));
+    .sort((a, b) => {
+      // Extract the prefix and number
+      const aPrefix = a.seat_no.charAt(0);
+      const bPrefix = b.seat_no.charAt(0);
+      
+      // Extract numeric part
+      const aNum = parseInt(a.seat_no.substring(1));
+      const bNum = parseInt(b.seat_no.substring(1));
+      
+      // First sort by number
+      if (aNum !== bNum) {
+        return aNum - bNum;
+      }
+      
+      // Then sort by prefix
+      return aPrefix.localeCompare(bPrefix);
+    });
   
   const tableData = sortedAssignments.map((assignment, index) => [
     (index + 1).toString(),

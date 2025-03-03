@@ -39,7 +39,7 @@ export function DetailedReportView({ arrangement }: DetailedReportViewProps) {
     return acc;
   }, {});
 
-  // Function to sort seat numbers in proper alphanumeric order (A1, A2, B1, B2, etc.)
+  // Function to sort seat numbers in proper alphanumeric order (A1, B1, A2, B2, etc.)
   const sortSeatNumbers = (a: string, b: string) => {
     // Extract the prefix and number
     const aPrefix = a.charAt(0);
@@ -49,13 +49,13 @@ export function DetailedReportView({ arrangement }: DetailedReportViewProps) {
     const aNum = parseInt(a.substring(1));
     const bNum = parseInt(b.substring(1));
     
-    // First sort by prefix
-    if (aPrefix !== bPrefix) {
-      return aPrefix.localeCompare(bPrefix);
+    // First sort by number
+    if (aNum !== bNum) {
+      return aNum - bNum;
     }
     
-    // Then sort by number
-    return aNum - bNum;
+    // Then sort by prefix
+    return aPrefix.localeCompare(bPrefix);
   };
 
   return (
