@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,7 +61,10 @@ const ExamAttendance = () => {
         `)
         .order('date');
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching exams:", error);
+        throw error;
+      }
       return data as ExamWithCenter[];
     },
   });
@@ -84,7 +86,10 @@ const ExamAttendance = () => {
         .select('*')
         .order('name');
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching students:", error);
+        throw error;
+      }
       return data;
     },
   });
@@ -99,7 +104,10 @@ const ExamAttendance = () => {
         .select('*')
         .eq('exam_id', selectedExam);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching attendance:", error);
+        throw error;
+      }
       return data;
     },
     enabled: !!selectedExam,
@@ -123,7 +131,10 @@ const ExamAttendance = () => {
         `)
         .eq('exam_id', selectedExam);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching seating arrangements:", error);
+        throw error;
+      }
       return data;
     },
     enabled: !!selectedExam,
