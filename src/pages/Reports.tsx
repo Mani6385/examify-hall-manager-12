@@ -25,26 +25,43 @@ const Reports = () => {
   const { data: allSeatingArrangements = [], isLoading, refetch } = useQuery({
     queryKey: ['all-seating-arrangements'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('seating_arrangements')
-        .select(`
-          id,
-          room_no,
-          floor_no,
-          rows,
-          columns,
-          seating_assignments (
+      try {
+        const { data, error } = await supabase
+          .from('seating_arrangements')
+          .select(`
             id,
-            seat_no,
-            reg_no,
-            department,
-            student_name
-          )
-        `)
-        .order('room_no');
+            room_no,
+            floor_no,
+            rows,
+            columns,
+            seating_assignments (
+              id,
+              seat_no,
+              reg_no,
+              department,
+              student_name
+            )
+          `)
+          .order('room_no');
 
-      if (error) throw error;
-      return data as SeatingArrangement[];
+        if (error) {
+          console.error("Error fetching seating arrangements:", error);
+          throw error;
+        }
+        
+        // Log the data to see what we're getting
+        console.log("Fetched seating arrangements:", data);
+        
+        return data as SeatingArrangement[];
+      } catch (error) {
+        console.error("Failed to fetch seating arrangements:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load seating arrangements. Please try again.",
+          variant: "destructive",
+        });
+        return [];
+      }
     },
   });
 
@@ -58,7 +75,7 @@ const Reports = () => {
 
   const generateConsolidatedExcel = async () => {
     try {
-      if (!filteredArrangements.length) {
+      if (!filteredArrangements || filteredArrangements.length === 0) {
         toast({
           title: "No Data Available",
           description: `No seating arrangements found for ${getHallNameById(selectedHall)}. Create a seating plan first.`,
@@ -88,7 +105,7 @@ const Reports = () => {
 
   const generateConsolidatedPDF = async () => {
     try {
-      if (!filteredArrangements.length) {
+      if (!filteredArrangements || filteredArrangements.length === 0) {
         toast({
           title: "No Data Available",
           description: `No seating arrangements found for ${getHallNameById(selectedHall)}. Create a seating plan first.`,

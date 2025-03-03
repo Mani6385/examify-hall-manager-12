@@ -4,6 +4,7 @@ import { HallSelect } from "./HallSelect";
 import { ReportButtons } from "./ReportButtons";
 import { ArrangementsTable } from "./ArrangementsTable";
 import { SeatingArrangement } from "@/utils/reportUtils";
+import { useToast } from "@/components/ui/use-toast";
 
 interface HallReportsCardProps {
   selectedHall: string;
@@ -26,6 +27,32 @@ export function HallReportsCard({
   onGeneratePdf,
   onGenerateExcel
 }: HallReportsCardProps) {
+  const { toast } = useToast();
+  
+  const handleGenerateExcel = () => {
+    if (!filteredArrangements || filteredArrangements.length === 0) {
+      toast({
+        title: "No Data Available",
+        description: "No seating arrangements to export. Please create a seating plan first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    onGenerateExcel();
+  };
+
+  const handleGeneratePdf = () => {
+    if (!filteredArrangements || filteredArrangements.length === 0) {
+      toast({
+        title: "No Data Available",
+        description: "No seating arrangements to export. Please create a seating plan first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    onGeneratePdf();
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -43,8 +70,8 @@ export function HallReportsCard({
             />
             
             <ReportButtons
-              onGeneratePdf={onGeneratePdf}
-              onGenerateExcel={onGenerateExcel}
+              onGeneratePdf={handleGeneratePdf}
+              onGenerateExcel={handleGenerateExcel}
               isLoading={isLoading}
               isLoadingPdf={isLoadingPdf}
               isLoadingExcel={isLoadingExcel}
