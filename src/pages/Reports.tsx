@@ -2,7 +2,7 @@
 import { Layout } from "@/components/dashboard/Layout";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { HallReportsCard } from "@/components/reports/HallReportsCard";
 import { ConsolidatedReportsCard } from "@/components/reports/ConsolidatedReportsCard";
@@ -13,7 +13,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { AlertCircle, PlusCircle, RefreshCw } from "lucide-react";
+
+// Mock data for when the actual data fetch fails
+const mockArrangements: SeatingArrangement[] = [
+  {
+    id: "mock-1",
+    room_no: "101",
+    floor_no: "1", 
+    rows: 5,
+    columns: 5,
+    seating_assignments: Array(10).fill(null).map((_, i) => ({
+      id: `mock-assignment-${i}`,
+      seat_no: `${i % 2 === 0 ? 'A' : 'B'}${Math.floor(i/2) + 1}`,
+      reg_no: `10${i+1}`,
+      department: i % 2 === 0 ? "Computer Science" : "Electronics",
+      student_name: `Student ${i+1}`
+    }))
+  }
+];
 
 const Reports = () => {
   const { toast } = useToast();
@@ -21,57 +39,95 @@ const Reports = () => {
   const [isLoadingExcel, setIsLoadingExcel] = useState(false);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [selectedHall, setSelectedHall] = useState<string>("all");
+  const [useFallbackData, setUseFallbackData] = useState(false);
 
-  const { data: allSeatingArrangements = [], isLoading, refetch } = useQuery({
-    queryKey: ['all-seating-arrangements'],
-    queryFn: async () => {
-      try {
-        const { data, error } = await supabase
-          .from('seating_arrangements')
-          .select(`
+  const fetchSeatingArrangements = async () => {
+    console.log("Fetching seating arrangements...");
+    try {
+      const { data, error } = await supabase
+        .from('seating_arrangements')
+        .select(`
+          id,
+          room_no,
+          floor_no,
+          rows,
+          columns,
+          seating_assignments (
             id,
-            room_no,
-            floor_no,
-            rows,
-            columns,
-            seating_assignments (
-              id,
-              seat_no,
-              reg_no,
-              department,
-              student_name
-            )
-          `)
-          .order('room_no');
+            seat_no,
+            reg_no,
+            department,
+            student_name
+          )
+        `)
+        .order('room_no');
 
-        if (error) {
-          console.error("Error fetching seating arrangements:", error);
-          throw error;
-        }
-        
-        // Log the data to see what we're getting
-        console.log("Fetched seating arrangements:", data);
-        
-        return data as SeatingArrangement[];
-      } catch (error) {
-        console.error("Failed to fetch seating arrangements:", error);
+      if (error) {
+        console.error("Error fetching seating arrangements:", error);
+        throw error;
+      }
+      
+      console.log("Fetched seating arrangements:", data);
+      
+      if (!data || data.length === 0) {
         toast({
-          title: "Error",
-          description: "Failed to load seating arrangements. Please try again.",
+          title: "No seating arrangements found",
+          description: "Please create seating arrangements first in the Seating page.",
           variant: "destructive",
         });
-        return [];
       }
-    },
+      
+      return data as SeatingArrangement[];
+    } catch (error) {
+      console.error("Failed to fetch seating arrangements:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load seating arrangements. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const { data: allSeatingArrangements = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ['all-seating-arrangements'],
+    queryFn: fetchSeatingArrangements,
+    retry: 2,
+    retryDelay: 1000,
   });
+
+  // Handle failed data fetch by setting up mock data
+  useEffect(() => {
+    if (isError && !useFallbackData) {
+      console.log("Using fallback data due to fetch error");
+      setUseFallbackData(true);
+      toast({
+        title: "Connection Error",
+        description: "Using offline mode with sample data. Some features may be limited.",
+        variant: "destructive",
+      });
+    }
+  }, [isError, toast, useFallbackData]);
+
+  // Get the data to display (real or fallback)
+  const displayData = useFallbackData ? mockArrangements : allSeatingArrangements;
+
+  // Filter the data based on the selected hall
+  const filteredArrangements = filterArrangementsByHall(displayData, selectedHall);
+
+  const handleRetry = useCallback(() => {
+    setUseFallbackData(false);
+    refetch();
+    toast({
+      title: "Retrying connection",
+      description: "Attempting to reconnect to the database...",
+    });
+  }, [refetch, toast]);
 
   // Automatically refetch data when component mounts to ensure latest data from Seating page
   useEffect(() => {
     refetch();
   }, [refetch]);
-
-  // Filter the data based on the selected hall
-  const filteredArrangements = filterArrangementsByHall(allSeatingArrangements, selectedHall);
 
   const generateConsolidatedExcel = async () => {
     try {
@@ -155,6 +211,35 @@ const Reports = () => {
     navigate('/seating');
   };
 
+  // If we have an error but are not using fallback data yet
+  if (isError && !useFallbackData) {
+    return (
+      <Layout>
+        <div className="p-6 max-w-4xl mx-auto">
+          <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-lg bg-gray-50">
+            <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Connection Error</h2>
+            <p className="text-gray-600 text-center mb-6 max-w-md">
+              We couldn't connect to the database to load your seating arrangements. This could be due to network issues or server maintenance.
+            </p>
+            <div className="flex gap-4">
+              <Button onClick={handleRetry} className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" />
+                Retry Connection
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setUseFallbackData(true)}
+              >
+                Continue in Offline Mode
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -164,6 +249,11 @@ const Reports = () => {
             <p className="text-muted-foreground mt-2">
               Generate hall-wise and consolidated seating arrangements reports
             </p>
+            {useFallbackData && (
+              <Badge variant="outline" className="mt-2 bg-yellow-50 text-yellow-800 border-yellow-300">
+                Offline Mode
+              </Badge>
+            )}
           </div>
           <Button onClick={goToSeatingPage} className="bg-gradient-to-r from-blue-600 to-purple-600">
             <PlusCircle className="mr-2 h-4 w-4" />
@@ -226,8 +316,10 @@ const Reports = () => {
           isLoading={isLoading}
           isLoadingPdf={isLoadingPdf}
           isLoadingExcel={isLoadingExcel}
+          isError={isError && !useFallbackData}
           onGeneratePdf={generateConsolidatedPDF}
           onGenerateExcel={generateConsolidatedExcel}
+          onRetry={handleRetry}
         />
 
         <div className="grid gap-6">

@@ -5,6 +5,8 @@ import { ReportButtons } from "./ReportButtons";
 import { ArrangementsTable } from "./ArrangementsTable";
 import { SeatingArrangement } from "@/utils/reportUtils";
 import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 interface HallReportsCardProps {
   selectedHall: string;
@@ -13,8 +15,10 @@ interface HallReportsCardProps {
   isLoading: boolean;
   isLoadingPdf: boolean;
   isLoadingExcel: boolean;
+  isError: boolean;
   onGeneratePdf: () => void;
   onGenerateExcel: () => void;
+  onRetry: () => void;
 }
 
 export function HallReportsCard({
@@ -24,8 +28,10 @@ export function HallReportsCard({
   isLoading,
   isLoadingPdf,
   isLoadingExcel,
+  isError,
   onGeneratePdf,
-  onGenerateExcel
+  onGenerateExcel,
+  onRetry
 }: HallReportsCardProps) {
   const { toast } = useToast();
   
@@ -78,11 +84,29 @@ export function HallReportsCard({
             />
           </div>
         
-          <ArrangementsTable 
-            arrangements={filteredArrangements}
-            isLoading={isLoading}
-            selectedHall={selectedHall}
-          />
+          {isError ? (
+            <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-lg bg-gray-50">
+              <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Failed to load seating arrangements</h3>
+              <p className="text-gray-500 text-center mb-4">
+                There was a problem connecting to the database. This could be due to network issues or server maintenance.
+              </p>
+              <Button 
+                onClick={onRetry} 
+                variant="outline" 
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Retry
+              </Button>
+            </div>
+          ) : (
+            <ArrangementsTable 
+              arrangements={filteredArrangements}
+              isLoading={isLoading}
+              selectedHall={selectedHall}
+            />
+          )}
         </div>
       </CardContent>
     </Card>
