@@ -2,20 +2,26 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportButtons } from "./ReportButtons";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, BarChart, FileSpreadsheet, Users } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { ChevronDown, BarChart, FileSpreadsheet, Users, FileText, Table, Download } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
+import { SeatingArrangement, getHallNameById } from "@/utils/reportUtils";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 
 interface ConsolidatedReportsCardProps {
   isLoading: boolean;
   isLoadingPdf: boolean;
   isLoadingExcel: boolean;
+  selectedHall: string;
+  arrangements: SeatingArrangement[];
   onGeneratePdf: () => void;
   onGenerateExcel: () => void;
 }
@@ -24,12 +30,30 @@ export function ConsolidatedReportsCard({
   isLoading,
   isLoadingPdf,
   isLoadingExcel,
+  selectedHall,
+  arrangements,
   onGeneratePdf,
   onGenerateExcel
 }: ConsolidatedReportsCardProps) {
   const { toast } = useToast();
-  const [reportType, setReportType] = useState<string>("studentList");
+  const [detailedFormat, setDetailedFormat] = useState<boolean>(true);
+  const [includeStudentInfo, setIncludeStudentInfo] = useState<boolean>(true);
   
+  const handleFormatChange = (checked: boolean) => {
+    setDetailedFormat(checked);
+    toast({
+      title: `Format updated`,
+      description: `Using ${checked ? 'detailed' : 'summary'} format for reports`,
+    });
+  };
+
+  const handleStudentInfoChange = (checked: boolean) => {
+    setIncludeStudentInfo(checked);
+    toast({
+      description: `Student details will ${checked ? 'be included' : 'not be included'} in reports`,
+    });
+  };
+
   const handleGenerateSpecialReport = (type: string) => {
     toast({
       title: "Report generation started",
@@ -46,30 +70,92 @@ export function ConsolidatedReportsCard({
     }, 1500);
   };
 
+  // Count total students across all arrangements
+  const totalStudents = arrangements.reduce(
+    (sum, arrangement) => sum + arrangement.seating_assignments.length, 
+    0
+  );
+
+  // Count total rooms
+  const totalRooms = arrangements.length;
+
+  // Calculate departments
+  const departments = new Set<string>();
+  arrangements.forEach(arr => {
+    arr.seating_assignments.forEach(assignment => {
+      if (assignment.department) {
+        departments.add(assignment.department);
+      }
+    });
+  });
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Consolidated Reports</CardTitle>
-        <CardDescription>
-          Download a consolidated view of all seating arrangements
-        </CardDescription>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Consolidated Reports</CardTitle>
+            <CardDescription>
+              Download complete seating plan for {getHallNameById(selectedHall)}
+            </CardDescription>
+          </div>
+          <Badge variant="outline" className="px-3 py-1">
+            {totalStudents} Students • {totalRooms} Rooms
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          <div className="bg-muted/40 rounded-lg p-3 grid gap-3 sm:grid-cols-2">
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">Detailed Format</span>
+                <span className="text-xs text-muted-foreground">Class and reg. number details</span>
+              </div>
+              <Switch 
+                checked={detailedFormat} 
+                onCheckedChange={handleFormatChange} 
+              />
+            </div>
+            
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">Include Student Info</span>
+                <span className="text-xs text-muted-foreground">Names and registration numbers</span>
+              </div>
+              <Switch 
+                checked={includeStudentInfo} 
+                onCheckedChange={handleStudentInfoChange} 
+              />
+            </div>
+          </div>
+
           <div className="flex flex-wrap gap-4 items-center">
-            <ReportButtons
-              onGeneratePdf={onGeneratePdf}
-              onGenerateExcel={onGenerateExcel}
-              isLoading={isLoading}
-              isLoadingPdf={isLoadingPdf}
-              isLoadingExcel={isLoadingExcel}
-            />
+            <Button 
+              variant="default" 
+              onClick={onGeneratePdf} 
+              disabled={isLoadingPdf} 
+              className="gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              {isLoadingPdf ? "Generating PDF..." : "Generate PDF Report"}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={onGenerateExcel} 
+              disabled={isLoadingExcel}
+              className="gap-2"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              {isLoadingExcel ? "Generating Excel..." : "Generate Excel Report"}
+            </Button>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
                   <BarChart className="h-4 w-4" />
-                  Additional Reports
+                  Report Options
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -82,26 +168,77 @@ export function ConsolidatedReportsCard({
                   <BarChart className="mr-2 h-4 w-4" />
                   Room Utilization
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleGenerateSpecialReport("Floor-wise Capacity")}>
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Floor-wise Capacity
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleGenerateSpecialReport("Student Attendance")}>
+                  <Table className="mr-2 h-4 w-4" />
+                  Student Attendance Sheet
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleGenerateSpecialReport("Downloads Package")}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Package All Downloads
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <div className="bg-muted p-4 rounded-lg">
-              <h3 className="font-medium mb-2">Student Distribution</h3>
-              <p className="text-sm text-muted-foreground">Consolidated view of student distribution across departments and halls</p>
+          <div className="bg-muted/20 p-4 rounded-lg mt-2">
+            <h3 className="text-sm font-semibold mb-2">Preview of Report Format</h3>
+            <div className="border rounded overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-primary text-primary-foreground">
+                  <tr>
+                    <th className="p-2 text-left">S.No</th>
+                    <th className="p-2 text-left">Room No</th>
+                    <th className="p-2 text-left">Class</th>
+                    <th className="p-2 text-left">Seats (Reg. Numbers)</th>
+                    <th className="p-2 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {arrangements.slice(0, 3).map((arr, index) => {
+                    // Group students by department
+                    const deptGroups = new Map<string, any[]>();
+                    arr.seating_assignments.forEach(assignment => {
+                      const dept = assignment.department || 'Unassigned';
+                      if (!deptGroups.has(dept)) {
+                        deptGroups.set(dept, []);
+                      }
+                      deptGroups.get(dept)?.push(assignment);
+                    });
+                    
+                    return (
+                      <tr key={arr.id} className="border-t">
+                        <td className="p-2">{index + 1}</td>
+                        <td className="p-2 font-medium">{arr.room_no}</td>
+                        <td className="p-2">
+                          {Array.from(deptGroups.keys()).map(dept => (
+                            <div key={dept} className="mb-1">{dept}</div>
+                          ))}
+                        </td>
+                        <td className="p-2">
+                          {Array.from(deptGroups.entries()).map(([dept, students]) => (
+                            <div key={dept} className="mb-1 truncate max-w-[250px]">
+                              {students.slice(0, 3).map(s => s.reg_no).join(', ')}
+                              {students.length > 3 ? '...' : ''}
+                            </div>
+                          ))}
+                        </td>
+                        <td className="p-2 text-right font-medium">{arr.seating_assignments.length}</td>
+                      </tr>
+                    );
+                  })}
+                  {arrangements.length > 3 && (
+                    <tr className="border-t">
+                      <td colSpan={5} className="p-2 text-center text-muted-foreground">
+                        + {arrangements.length - 3} more rooms
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-            <div className="bg-muted p-4 rounded-lg">
-              <h3 className="font-medium mb-2">Room Occupancy</h3>
-              <p className="text-sm text-muted-foreground">Analysis of room occupancy rates and empty seats</p>
-            </div>
-            <div className="bg-muted p-4 rounded-lg">
-              <h3 className="font-medium mb-2">Department Stats</h3>
-              <p className="text-sm text-muted-foreground">Statistics by department, course, and year</p>
+            <div className="text-xs text-muted-foreground mt-2 text-right">
+              PDF and Excel reports will include complete student lists with registration numbers
             </div>
           </div>
         </div>

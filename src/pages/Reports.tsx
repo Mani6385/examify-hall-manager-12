@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -328,6 +327,8 @@ const Reports = () => {
             isLoading={isLoading}
             isLoadingPdf={isLoadingPdf}
             isLoadingExcel={isLoadingExcel}
+            selectedHall={selectedHall}
+            arrangements={filteredArrangements}
             onGeneratePdf={generateConsolidatedPDF}
             onGenerateExcel={generateConsolidatedExcel}
           />

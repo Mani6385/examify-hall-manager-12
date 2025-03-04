@@ -27,26 +27,19 @@ export const generatePdfReport = (
   // Add cover page
   addCoverPage(doc, hallName);
   
-  // Add summary table
-  addSummaryTable(doc, arrangements);
+  // Add consolidated table in new format
+  doc.addPage();
+  addConsolidatedTable(doc, arrangements, hallName);
   
   // For each arrangement, add a detailed page
   arrangements.forEach((arrangement, index) => {
-    if (index > 0 || arrangements.length > 3) {
+    // If there are more than 5 arrangements, put detailed reports on new pages
+    if (index > 0 && (index % 2 === 0 || arrangements.length > 5)) {
       doc.addPage();
     }
     
-    addRoomDetailPage(doc, arrangement);
-    
-    // Add visual seating grid layout
-    doc.addPage();
-    addVisualSeatingGrid(doc, arrangement);
-    
-    // If there are students, add a student table
-    if (arrangement.seating_assignments.length > 0) {
-      doc.addPage();
-      addStudentListTable(doc, arrangement);
-    }
+    // Add room-specific detail section with class-wise breakdowns
+    addRoomDetailClassWise(doc, arrangement, index === 0 ? 30 : doc.lastAutoTable.finalY + 15);
   });
   
   doc.save(`seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
@@ -77,6 +70,215 @@ function addCoverPage(doc: jsPDF, hallName: string) {
   
   doc.setFontSize(10);
   doc.text("DEPARTMENT OF COMPUTER SCIENCE AND BCA", centerX, 240, { align: "center" });
+}
+
+function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], hallName: string) {
+  const pageWidth = doc.internal.pageSize.width;
+  
+  // Add title
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text("DEPARTMENT OF COMPUTER SCIENCE AND BCA", pageWidth / 2, 20, { align: "center" });
+  
+  // Add seating plan info
+  doc.setFontSize(12);
+  doc.text(`SEATING PLAN (${new Date().toLocaleDateString()})`, pageWidth / 2, 30, { align: "center" });
+  
+  // Create department mapping for quick lookup
+  const deptAbbreviations: Record<string, string> = {
+    "Computer Science": "CS",
+    "Information Technology": "IT",
+    "Electronics": "EC",
+    "Electrical Engineering": "EE",
+    "Mechanical Engineering": "ME",
+    "Civil Engineering": "CE",
+    "Bachelor of Computer Applications": "BCA"
+  };
+  
+  // Get unique departments and years from all arrangements
+  const departmentsWithYears = new Set<string>();
+  arrangements.forEach(arr => {
+    arr.seating_assignments.forEach(assignment => {
+      if (assignment.department) {
+        // Extract department and year info
+        const deptParts = assignment.department.split(' ');
+        const lastPart = deptParts[deptParts.length - 1];
+        const year = lastPart.match(/^[IVX]+$/) ? lastPart : 'I'; // Roman numerals for year
+        
+        // Get department abbreviation
+        let deptKey = assignment.department;
+        if (lastPart.match(/^[IVX]+$/)) {
+          deptKey = deptParts.slice(0, -1).join(' ');
+        }
+        
+        const deptAbbr = deptAbbreviations[deptKey] || deptKey;
+        departmentsWithYears.add(`${year} ${deptAbbr}`);
+      }
+    });
+  });
+  
+  // Prepare table data in the format shown in the image
+  const tableData: string[][] = [];
+  
+  arrangements.forEach((arrangement, index) => {
+    // Group students by department and year
+    const deptGroups = new Map<string, any[]>();
+    arrangement.seating_assignments.forEach(assignment => {
+      // Get department and year
+      const deptParts = assignment.department?.split(' ') || ['Unassigned'];
+      const lastPart = deptParts[deptParts.length - 1];
+      const year = lastPart.match(/^[IVX]+$/) ? lastPart : 'I'; // Roman numerals for year
+      
+      // Get department abbreviation
+      let deptKey = assignment.department || 'Unassigned';
+      if (lastPart.match(/^[IVX]+$/)) {
+        deptKey = deptParts.slice(0, -1).join(' ');
+      }
+      
+      const deptAbbr = deptAbbreviations[deptKey] || deptKey;
+      const key = `${year} ${deptAbbr}`;
+      
+      if (!deptGroups.has(key)) {
+        deptGroups.set(key, []);
+      }
+      deptGroups.get(key)?.push(assignment);
+    });
+    
+    // Add a row for each department in this room
+    let firstDeptInRoom = true;
+    Array.from(deptGroups.entries()).forEach(([deptKey, students]) => {
+      // Sort students by registration number
+      students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
+      
+      // Format registration numbers
+      const regNos = students.map(s => s.reg_no).join(', ');
+      
+      // Create a row for this department
+      const row = [
+        firstDeptInRoom ? (index + 1).toString() : '',  // S.No
+        firstDeptInRoom ? arrangement.room_no : '',     // Room No
+        deptKey,                                        // Class (Dept + Year)
+        regNos,                                         // Registration Numbers
+        firstDeptInRoom ? students.length.toString() : '' // Total for the room
+      ];
+      
+      tableData.push(row);
+      firstDeptInRoom = false;
+    });
+    
+    // Add an empty row between rooms for better readability
+    if (index < arrangements.length - 1) {
+      tableData.push(['', '', '', '', '']);
+    }
+  });
+  
+  // Add the consolidated table
+  autoTable(doc, {
+    head: [['S.NO', 'ROOM NO', 'CLASS', 'SEATS', 'TOTAL']],
+    body: tableData,
+    startY: 40,
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+    },
+    columnStyles: {
+      0: { cellWidth: 10, halign: 'center' },
+      1: { cellWidth: 20, halign: 'center' },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 'auto' },
+      4: { cellWidth: 15, halign: 'center' },
+    },
+    headStyles: {
+      fillColor: [80, 80, 80],
+      textColor: 255,
+      fontStyle: 'bold',
+      halign: 'center',
+    },
+    alternateRowStyles: {
+      fillColor: [240, 240, 240],
+    },
+    // Don't draw horizontal line for empty rows
+    didDrawCell: (data) => {
+      const row = data.row.index;
+      const isEmptyRow = tableData[row] && tableData[row].every(cell => cell === '');
+      if (isEmptyRow && data.column.index === 0) {
+        // Remove the border for empty rows
+        const x = data.cell.x;
+        const y = data.cell.y;
+        const w = data.table.width;
+        doc.setDrawColor(255, 255, 255);
+        doc.line(x, y, x + w, y);
+      }
+    }
+  });
+}
+
+// New function to add room details with class-wise breakdowns
+function addRoomDetailClassWise(doc: jsPDF, arrangement: SeatingArrangement, startY: number) {
+  // Group students by department and year
+  const deptGroups = new Map<string, any[]>();
+  arrangement.seating_assignments.forEach(assignment => {
+    const dept = assignment.department || 'Unassigned';
+    if (!deptGroups.has(dept)) {
+      deptGroups.set(dept, []);
+    }
+    deptGroups.get(dept)?.push(assignment);
+  });
+  
+  // Format the data for the table
+  const tableData: string[][] = [];
+  
+  Array.from(deptGroups.entries()).forEach(([dept, students]) => {
+    // Sort students by reg_no
+    students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
+    
+    // Group students into maximum 4 per row to save space
+    const chunkSize = 4;
+    for (let i = 0; i < students.length; i += chunkSize) {
+      const chunk = students.slice(i, i + chunkSize);
+      const row = chunk.map(student => `${student.seat_no}: ${student.reg_no}`);
+      tableData.push([i === 0 ? dept : '', ...row]);
+    }
+    
+    // Add an empty row between departments
+    tableData.push(['', '', '', '', '']);
+  });
+  
+  // Add header
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Room ${arrangement.room_no} - Student Assignments by Department`, 14, startY - 5);
+  
+  // Add the table
+  autoTable(doc, {
+    body: tableData,
+    startY: startY,
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+    },
+    columnStyles: {
+      0: { cellWidth: 40, fontStyle: 'bold' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 'auto' },
+      3: { cellWidth: 'auto' },
+      4: { cellWidth: 'auto' },
+    },
+    // Remove borders for empty rows
+    didDrawCell: (data) => {
+      const row = data.row.index;
+      const isEmptyRow = tableData[row] && tableData[row].every(cell => cell === '');
+      if (isEmptyRow && data.column.index === 0) {
+        // Remove the border for empty rows
+        const x = data.cell.x;
+        const y = data.cell.y;
+        const w = data.table.width;
+        doc.setDrawColor(255, 255, 255);
+        doc.line(x, y, x + w, y);
+      }
+    }
+  });
 }
 
 function addSummaryTable(doc: jsPDF, arrangements: SeatingArrangement[]) {

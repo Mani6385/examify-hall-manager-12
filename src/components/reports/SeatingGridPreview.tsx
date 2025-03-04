@@ -20,6 +20,16 @@ export function SeatingGridPreview({ arrangement }: SeatingGridPreviewProps) {
     }
   });
 
+  // Group students by department for more organized display
+  const departmentGroups = new Map<string, any[]>();
+  arrangement.seating_assignments.forEach(assignment => {
+    const dept = assignment.department || 'Unassigned';
+    if (!departmentGroups.has(dept)) {
+      departmentGroups.set(dept, []);
+    }
+    departmentGroups.get(dept)?.push(assignment);
+  });
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -31,7 +41,7 @@ export function SeatingGridPreview({ arrangement }: SeatingGridPreviewProps) {
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
         <DialogTitle>Room {arrangement.room_no} - Seating Grid</DialogTitle>
         
-        <div className="p-4">
+        <div className="space-y-4 p-4">
           <div 
             className="grid gap-2 border rounded-lg p-4 overflow-auto" 
             style={{ 
@@ -69,6 +79,26 @@ export function SeatingGridPreview({ arrangement }: SeatingGridPreviewProps) {
                 </div>
               );
             })}
+          </div>
+
+          {/* Department-wise student list */}
+          <div className="mt-6 border rounded-lg p-4">
+            <h3 className="text-sm font-bold mb-2">Student Distribution by Department</h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              {Array.from(departmentGroups.entries()).map(([dept, students]) => (
+                <div key={dept} className="border rounded p-2">
+                  <div className="font-medium text-sm bg-muted p-1">{dept} ({students.length})</div>
+                  <div className="text-xs mt-1 space-y-1">
+                    {students.map(student => (
+                      <div key={student.reg_no} className="flex justify-between">
+                        <span>{student.reg_no}</span>
+                        <span className="text-muted-foreground">{student.seat_no}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </DialogContent>
