@@ -44,6 +44,7 @@ const Reports = () => {
   const fetchSeatingArrangements = async () => {
     console.log("Fetching seating arrangements...");
     try {
+      // Updated query to specify which relationship to use
       const { data, error } = await supabase
         .from('seating_arrangements')
         .select(`
@@ -52,7 +53,7 @@ const Reports = () => {
           floor_no,
           rows,
           columns,
-          seating_assignments (
+          seating_assignments!seating_assignments_arrangement_id_fkey (
             id,
             seat_no,
             reg_no,
