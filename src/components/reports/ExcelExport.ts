@@ -286,7 +286,7 @@ function createDetailedRoomWorksheet(arrangement: SeatingArrangement): XLSX.Work
   return ws;
 }
 
-// Function to create a visual seating grid worksheet
+// Function to create a visual seating grid worksheet with improved A1, B1, A2, B2 format
 function createVisualSeatingGrid(arrangement: SeatingArrangement): XLSX.WorkSheet {
   const rows = arrangement.rows;
   const columns = arrangement.columns;
@@ -308,41 +308,72 @@ function createVisualSeatingGrid(arrangement: SeatingArrangement): XLSX.WorkShee
       assignmentMap.set(assignment.seat_no, assignment);
     }
   });
+
+  // Create the seating grid - improved layout to match A1, B1, A2, B2 format
+  // First, create header row with column numbers
+  const headerRow = [""];
+  for (let col = 1; col <= columns; col++) {
+    headerRow.push(col.toString());
+  }
+  XLSX.utils.sheet_add_aoa(ws, [headerRow], { origin: { r: 4, c: 0 } });
   
-  // Create the seating grid
+  // Then create the actual grid with row labels (A, B, C...)
   for (let row = 0; row < rows; row++) {
+    const rowLabel = String.fromCharCode(65 + row); // A, B, C, ...
+    const gridRow = [rowLabel];
+    
     for (let col = 0; col < columns; col++) {
       // Calculate seat number
-      const rowLabel = String.fromCharCode(65 + row); // A, B, C, ...
       const colLabel = col + 1;
       const seatNo = `${rowLabel}${colLabel}`;
-      
-      // Calculate cell position (add offset for title rows and to alternate cells)
-      const cellRow = 4 + (row * 3); // 3 rows per grid cell
-      const cellCol = col * 2; // 2 columns per grid cell
       
       // Get assignment for this seat
       const assignment = assignmentMap.get(seatNo);
       
-      // Add cell content
-      const cellData = [
-        [seatNo],
-        [assignment ? (assignment.department || 'N/A') : 'Empty'],
-        [assignment ? (assignment.reg_no || 'N/A') : '']
-      ];
+      // Format cell content
+      let cellContent = seatNo;
+      if (assignment) {
+        cellContent += `\n${assignment.reg_no || 'N/A'}`;
+        if (assignment.student_name) {
+          cellContent += `\n${assignment.student_name}`;
+        }
+        if (assignment.department) {
+          cellContent += `\n(${assignment.department})`;
+        }
+      } else {
+        cellContent += '\nEmpty';
+      }
       
-      XLSX.utils.sheet_add_aoa(ws, cellData, {
-        origin: { r: cellRow, c: cellCol }
-      });
+      gridRow.push(cellContent);
     }
+    
+    // Add the row to the worksheet
+    XLSX.utils.sheet_add_aoa(ws, [gridRow], { origin: { r: 5 + row, c: 0 } });
   }
   
   // Set column widths
-  const colWidths = [];
-  for (let i = 0; i < columns * 2; i++) {
-    colWidths.push({ wch: 15 });
+  const colWidths = [{ wch: 6 }]; // For row labels (A, B, C...)
+  for (let i = 0; i < columns; i++) {
+    colWidths.push({ wch: 20 }); // Width for each seat cell
   }
   ws['!cols'] = colWidths;
+  
+  // Set row heights for better readability
+  const rowHeights = [];
+  for (let i = 0; i < rows + 5; i++) {
+    rowHeights.push({ hpt: i >= 5 ? 80 : 25 }); // Higher rows for grid cells
+  }
+  ws['!rows'] = rowHeights;
+  
+  // Add legend at the bottom
+  const legendStartRow = 6 + rows;
+  XLSX.utils.sheet_add_aoa(ws, [
+    [""],
+    ["Legend:"],
+    ["A1 - Seat position (Row A, Column 1)"],
+    ["reg_no - Student registration number"],
+    ["(dept) - Student department"]
+  ], { origin: { r: legendStartRow, c: 0 } });
   
   return ws;
 }

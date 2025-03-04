@@ -1,4 +1,3 @@
-
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { SeatingArrangement, getHallNameById } from '@/utils/reportUtils';
@@ -417,6 +416,7 @@ function addRoomDetailPage(doc: jsPDF, arrangement: SeatingArrangement) {
   }
 }
 
+// Updated function to create a visual seating grid with improved A1, B1, A2, B2 format
 function addVisualSeatingGrid(doc: jsPDF, arrangement: SeatingArrangement) {
   const pageWidth = doc.internal.pageSize.width;
   const centerX = pageWidth / 2;
@@ -448,51 +448,80 @@ function addVisualSeatingGrid(doc: jsPDF, arrangement: SeatingArrangement) {
     }
   });
   
-  // Draw the seating grid
+  // Draw column headers (1, 2, 3...)
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  for (let col = 0; col < columns; col++) {
+    const colX = startX + (col * cellWidth) + cellWidth / 2;
+    doc.text((col + 1).toString(), colX, startY - 10, { align: 'center' });
+  }
+  
+  // Draw the seating grid with row labels (A, B, C...)
   for (let row = 0; row < rows; row++) {
+    // Draw row label
+    const rowLabel = String.fromCharCode(65 + row); // A, B, C, ...
+    doc.text(rowLabel, startX - 10, startY + (row * cellHeight) + cellHeight / 2, { align: 'center' });
+    
     for (let col = 0; col < columns; col++) {
       const x = startX + (col * cellWidth);
       const y = startY + (row * cellHeight);
+      
+      // Calculate seat number
+      const colLabel = col + 1;
+      const seatNo = `${rowLabel}${colLabel}`;
       
       // Draw cell border
       doc.setDrawColor(0);
       doc.setLineWidth(0.5);
       doc.rect(x, y, cellWidth, cellHeight);
       
-      // Calculate seat number (based on common patterns)
-      const rowLabel = String.fromCharCode(65 + row); // A, B, C, ...
-      const colLabel = col + 1;
-      const seatNo = `${rowLabel}${colLabel}`;
-      
       // Get assignment details for this seat
       const assignment = assignmentMap.get(seatNo);
       
+      // Seat number
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(seatNo, x + cellWidth / 2, y + 10, { align: 'center' });
+      
       if (assignment) {
-        // Seat number
+        // Registration number
         doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text(seatNo, x + 5, y + 10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(assignment.reg_no || 'N/A', x + cellWidth / 2, y + 25, { align: 'center' });
         
         // Department
         doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text(assignment.department || 'N/A', x + 5, y + 20);
+        if (assignment.department) {
+          // Shorten department name if too long
+          let deptName = assignment.department;
+          if (deptName.length > 20) {
+            deptName = deptName.substring(0, 17) + '...';
+          }
+          doc.text(deptName, x + cellWidth / 2, y + 35, { align: 'center' });
+        }
         
-        // Registration number
-        doc.setFontSize(8);
-        doc.text(assignment.reg_no || 'N/A', x + 5, y + 30);
+        // Student name (if available)
+        if (assignment.student_name) {
+          doc.setFontSize(8);
+          let name = assignment.student_name;
+          if (name.length > 20) {
+            name = name.substring(0, 17) + '...';
+          }
+          doc.text(name, x + cellWidth / 2, y + 45, { align: 'center' });
+        }
       } else {
         // Empty seat
         doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text(seatNo, x + 5, y + 10);
-        
-        doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
-        doc.text("Empty", x + 5, y + 20);
+        doc.text("Empty", x + cellWidth / 2, y + 25, { align: 'center' });
       }
     }
   }
+  
+  // Add legend
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'italic');
+  doc.text("Legend: A1 = Row A, Column 1", startX, startY + (rows * cellHeight) + 20);
 }
 
 function addStudentListTable(doc: jsPDF, arrangement: SeatingArrangement) {
