@@ -6,7 +6,7 @@ import { ArrangementsTable } from "./ArrangementsTable";
 import { SeatingArrangement } from "@/utils/reportUtils";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, Grid, RefreshCw } from "lucide-react";
 
 interface HallReportsCardProps {
   selectedHall: string;
@@ -62,10 +62,15 @@ export function HallReportsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Hall-wise Reports</CardTitle>
-        <CardDescription>
-          Filter and generate reports by hall
-        </CardDescription>
+        <div className="flex items-center gap-2">
+          <Grid className="h-5 w-5 text-primary" />
+          <div>
+            <CardTitle>Hall-wise Seating Plans</CardTitle>
+            <CardDescription>
+              Visual grid-based seating plans by examination hall
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="mb-6">

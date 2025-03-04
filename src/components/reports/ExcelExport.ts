@@ -1,7 +1,7 @@
 
 import * as XLSX from 'xlsx';
 import { SeatingArrangement, getHallNameById } from '@/utils/reportUtils';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 export const generateExcelReport = (
   arrangements: SeatingArrangement[],
@@ -75,6 +75,10 @@ export const generateExcelReport = (
     
     // For each arrangement, create a detailed worksheet with students
     arrangements.forEach(arrangement => {
+      // Create a visual seating grid worksheet
+      const visualWs = createVisualSeatingGrid(arrangement);
+      XLSX.utils.book_append_sheet(wb, visualWs, `Room ${arrangement.room_no} Grid`);
+      
       // Create data for detailed student list
       const detailedData = arrangement.seating_assignments
         .sort((a, b) => {
@@ -127,7 +131,7 @@ export const generateExcelReport = (
       ], { origin: "A1" });
 
       // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, `Room ${arrangement.room_no}`);
+      XLSX.utils.book_append_sheet(wb, ws, `Room ${arrangement.room_no} List`);
     });
 
     // Save the file with a timestamp to avoid caching issues
@@ -148,3 +152,64 @@ export const generateExcelReport = (
     });
   }
 };
+
+// Function to create a visual seating grid worksheet
+function createVisualSeatingGrid(arrangement: SeatingArrangement): XLSX.WorkSheet {
+  const rows = arrangement.rows;
+  const columns = arrangement.columns;
+  
+  // Create empty worksheet
+  const ws = XLSX.utils.aoa_to_sheet([]);
+  
+  // Add title
+  XLSX.utils.sheet_add_aoa(ws, [
+    ["EXAMINATION SEATING PLAN"],
+    [`Room ${arrangement.room_no} (Floor ${arrangement.floor_no}) - Visual Seating Grid`],
+    []
+  ], { origin: "A1" });
+  
+  // Find all assignments for quick lookup
+  const assignmentMap = new Map();
+  arrangement.seating_assignments.forEach(assignment => {
+    if (assignment.seat_no && assignment.seat_no.trim() !== '') {
+      assignmentMap.set(assignment.seat_no, assignment);
+    }
+  });
+  
+  // Create the seating grid
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < columns; col++) {
+      // Calculate seat number
+      const rowLabel = String.fromCharCode(65 + row); // A, B, C, ...
+      const colLabel = col + 1;
+      const seatNo = `${rowLabel}${colLabel}`;
+      
+      // Calculate cell position (add offset for title rows and to alternate cells)
+      const cellRow = 4 + (row * 3); // 3 rows per grid cell
+      const cellCol = col * 2; // 2 columns per grid cell
+      
+      // Get assignment for this seat
+      const assignment = assignmentMap.get(seatNo);
+      
+      // Add cell content
+      const cellData = [
+        [seatNo],
+        [assignment ? (assignment.department || 'N/A') : 'Empty'],
+        [assignment ? (assignment.reg_no || 'N/A') : '']
+      ];
+      
+      XLSX.utils.sheet_add_aoa(ws, cellData, {
+        origin: { r: cellRow, c: cellCol }
+      });
+    }
+  }
+  
+  // Set column widths
+  const colWidths = [];
+  for (let i = 0; i < columns * 2; i++) {
+    colWidths.push({ wch: 15 });
+  }
+  ws['!cols'] = colWidths;
+  
+  return ws;
+}

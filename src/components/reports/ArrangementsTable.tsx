@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2, PlusCircle } from "lucide-react";
 import { SeatingArrangement } from "@/utils/reportUtils";
 import { DetailedReportView } from "./DetailedReportView";
+import { SeatingGridPreview } from "./SeatingGridPreview";
 import { useNavigate } from "react-router-dom";
 
 interface ArrangementsTableProps {
@@ -74,7 +75,10 @@ export function ArrangementsTable({ arrangements, isLoading, selectedHall }: Arr
             <TableCell>{arrangement.rows} × {arrangement.columns}</TableCell>
             <TableCell>{arrangement.seating_assignments.length}</TableCell>
             <TableCell>
-              <DetailedReportView arrangement={arrangement} />
+              <div className="flex space-x-2">
+                <SeatingGridPreview arrangement={arrangement} />
+                <DetailedReportView arrangement={arrangement} />
+              </div>
             </TableCell>
           </TableRow>
         ))}
