@@ -1,3 +1,4 @@
+
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { SeatingArrangement, getHallNameById } from '@/utils/reportUtils';
@@ -205,7 +206,8 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
         // Remove the border for empty rows
         const x = data.cell.x;
         const y = data.cell.y;
-        const w = data.table.width;
+        // Fix: Use pageWidth from the document instead of data.table.width
+        const w = doc.internal.pageSize.width - 2 * data.cell.padding('left');
         doc.setDrawColor(255, 255, 255);
         doc.line(x, y, x + w, y);
       }
@@ -273,7 +275,8 @@ function addRoomDetailClassWise(doc: jsPDF, arrangement: SeatingArrangement, sta
         // Remove the border for empty rows
         const x = data.cell.x;
         const y = data.cell.y;
-        const w = data.table.width;
+        // Fix: Use pageWidth from the document instead of data.table.width
+        const w = doc.internal.pageSize.width - 2 * data.cell.padding('left');
         doc.setDrawColor(255, 255, 255);
         doc.line(x, y, x + w, y);
       }
