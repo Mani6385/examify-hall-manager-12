@@ -33,7 +33,6 @@ const Teachers = () => {
   const [formData, setFormData] = useState({
     name: "",
     subject: "",
-    employee_id: "",
     signature: "",
     department: "",
   });
@@ -71,7 +70,7 @@ const Teachers = () => {
         description: "New teacher has been added successfully.",
       });
       setIsAddDialogOpen(false);
-      setFormData({ name: "", subject: "", employee_id: "", signature: "", department: "" });
+      setFormData({ name: "", subject: "", signature: "", department: "" });
     },
     onError: (error) => {
       toast({
@@ -102,7 +101,7 @@ const Teachers = () => {
       });
       setIsEditDialogOpen(false);
       setSelectedTeacher(null);
-      setFormData({ name: "", subject: "", employee_id: "", signature: "", department: "" });
+      setFormData({ name: "", subject: "", signature: "", department: "" });
     },
     onError: (error) => {
       toast({
@@ -156,7 +155,6 @@ const Teachers = () => {
     setFormData({
       name: teacher.name,
       subject: teacher.subject,
-      employee_id: teacher.employee_id,
       signature: teacher.signature || "",
       department: teacher.department,
     });
@@ -196,17 +194,6 @@ const Teachers = () => {
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="employee_id">Employee ID</Label>
-                  <Input
-                    id="employee_id"
-                    value={formData.employee_id}
-                    onChange={(e) =>
-                      setFormData({ ...formData, employee_id: e.target.value })
                     }
                     required
                   />
@@ -269,17 +256,6 @@ const Teachers = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-employee-id">Employee ID</Label>
-                <Input
-                  id="edit-employee-id"
-                  value={formData.employee_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, employee_id: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="edit-department">Department</Label>
                 <Input
                   id="edit-department"
@@ -322,7 +298,6 @@ const Teachers = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Employee ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead>Subject</TableHead>
@@ -332,20 +307,19 @@ const Teachers = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
+                  <TableCell colSpan={4} className="text-center">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : teachers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                     No teachers found. Add your first teacher to get started.
                   </TableCell>
                 </TableRow>
               ) : (
                 teachers.map((teacher) => (
                   <TableRow key={teacher.id}>
-                    <TableCell>{teacher.employee_id}</TableCell>
                     <TableCell>{teacher.name}</TableCell>
                     <TableCell>{teacher.department}</TableCell>
                     <TableCell>{teacher.subject}</TableCell>
