@@ -931,8 +931,8 @@ const ExamAttendance = () => {
     .filter(dept => dept.total > 0)
     .sort((a, b) => b.total - a.total);
 
-  // Modify the "all" tab content to use the new renderStudentTable function
+  // Render the UI
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
+        <div className="flex flex-col sm:flex-row items-
