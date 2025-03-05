@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -935,4 +936,166 @@ const ExamAttendance = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row items-
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <Select 
+              value={selectedCenter} 
+              onValueChange={setSelectedCenter}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select Center" />
+              </SelectTrigger>
+              <SelectContent>
+                {examCenters.map((center) => (
+                  center && (
+                    <SelectItem key={center.id} value={center.id}>
+                      {center.name}
+                    </SelectItem>
+                  )
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select 
+              value={selectedExam} 
+              onValueChange={setSelectedExam}
+              disabled={!selectedCenter}
+            >
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Select Exam Session" />
+              </SelectTrigger>
+              <SelectContent>
+                {examSessions
+                  .filter(exam => !selectedCenter || exam.exam_centers?.id === selectedCenter)
+                  .map((exam) => (
+                    <SelectItem key={exam.id} value={exam.id}>
+                      {exam.subject} - {exam.date}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            
+            <Select
+              value={selectedDepartment}
+              onValueChange={setSelectedDepartment}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((dept) => (
+                  <SelectItem key={dept} value={dept}>
+                    {dept === "all" ? "All Departments" : dept}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={markAllAttendance}>
+              <UserCheck className="mr-1 h-4 w-4" />
+              Mark All Present
+            </Button>
+            
+            {selectedDepartment !== "all" && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => markDepartmentAttendance(selectedDepartment)}
+              >
+                <Building className="mr-1 h-4 w-4" />
+                Mark Department
+              </Button>
+            )}
+            
+            <Button variant="default" size="sm" onClick={handleSaveAttendance}>
+              <Save className="mr-1 h-4 w-4" />
+              Save
+            </Button>
+          </div>
+        </div>
+        
+        {selectedExam && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl">
+                {selectedExamSession?.subject} - {selectedExamSession?.date}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <div className="text-sm font-medium mb-1">Total Students</div>
+                  <div className="text-2xl font-bold">{totalStudents}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium mb-1">Present</div>
+                  <div className="text-2xl font-bold text-green-600">{presentStudents}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium mb-1">Absent</div>
+                  <div className="text-2xl font-bold text-red-600">{absentStudents}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium mb-1">Attendance Rate</div>
+                  <div className="text-2xl font-bold">{attendanceRate.toFixed(1)}%</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="relative w-full">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"/>
+                  <Input
+                    type="search"
+                    placeholder="Search by name, reg no, or department..."
+                    className="pl-8"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={downloadAttendanceSheet}>
+                    <FileText className="mr-1 h-4 w-4" />
+                    Excel
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={generatePDF}>
+                    <FileText className="mr-1 h-4 w-4" />
+                    PDF
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={generateWord}>
+                    <FileText className="mr-1 h-4 w-4" />
+                    Word
+                  </Button>
+                </div>
+              </div>
+              
+              <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="mb-4">
+                  <TabsTrigger value="all">All Students</TabsTrigger>
+                  <TabsTrigger value="present">Present</TabsTrigger>
+                  <TabsTrigger value="absent">Absent</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="all" className="mt-0">
+                  {renderStudentTable()}
+                </TabsContent>
+                
+                <TabsContent value="present" className="mt-0">
+                  {renderStudentTable()}
+                </TabsContent>
+                
+                <TabsContent value="absent" className="mt-0">
+                  {renderStudentTable()}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </Layout>
+  );
+};
+
+export default ExamAttendance;
