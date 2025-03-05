@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,12 +26,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { UserPlus, Pencil, Trash2, Search, FileSpreadsheet, FileUp, AlertCircle } from "lucide-react";
+import { UserPlus, Pencil, Trash2, Search, FileSpreadsheet, FileUp, AlertCircle, FolderOpen } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
 import * as XLSX from 'xlsx';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Student = Database['public']['Tables']['students']['Row'];
 type Teacher = Database['public']['Tables']['teachers']['Row'];
@@ -49,6 +50,7 @@ const Students = () => {
     signature: "",
     department: "",
   });
+  const [viewMode, setViewMode] = useState<"list" | "departments">("list");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -376,6 +378,94 @@ const Students = () => {
     setIsImportDialogOpen(false);
   };
 
+  // Group students by department
+  const getStudentsByDepartment = () => {
+    const departmentGroups: Record<string, Student[]> = {};
+    
+    students.forEach(student => {
+      const dept = student.department || "Unassigned";
+      if (!departmentGroups[dept]) {
+        departmentGroups[dept] = [];
+      }
+      departmentGroups[dept].push(student);
+    });
+    
+    return departmentGroups;
+  };
+
+  const studentsByDepartment = getStudentsByDepartment();
+  const departmentNames = Object.keys(studentsByDepartment).sort();
+
+  // Render table for a specific department
+  const renderDepartmentTable = (department: string, departmentStudents: Student[]) => {
+    return (
+      <Card key={department} className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex justify-between items-center">
+            <span>{department} ({departmentStudents.length} students)</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Roll Number</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Department Teachers</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {departmentStudents.map((student) => {
+                const departmentTeachers = getDepartmentTeachers(student.department || '');
+                
+                return (
+                  <TableRow key={student.id}>
+                    <TableCell>{student.roll_number}</TableCell>
+                    <TableCell>{student.name}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {departmentTeachers.length > 0 ? (
+                          <ul className="list-disc list-inside">
+                            {departmentTeachers.map(teacher => (
+                              <li key={teacher.id}>
+                                {teacher.name} ({teacher.subject})
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-muted-foreground">No teachers assigned</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(student)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(student.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -387,6 +477,13 @@ const Students = () => {
             </p>
           </div>
           <div className="flex gap-4">
+            <Tabs defaultValue="list" onValueChange={(value) => setViewMode(value as "list" | "departments")}>
+              <TabsList>
+                <TabsTrigger value="list">List View</TabsTrigger>
+                <TabsTrigger value="departments">Department View</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
             <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline">
@@ -536,79 +633,114 @@ const Students = () => {
           </div>
         </div>
 
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Roll Number</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Department Teachers</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : students.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    No students found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                students.map((student) => {
-                  const departmentTeachers = getDepartmentTeachers(student.department || '');
-                  
-                  return (
-                    <TableRow key={student.id}>
-                      <TableCell>{student.roll_number}</TableCell>
-                      <TableCell>{student.name}</TableCell>
-                      <TableCell>{student.department}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {departmentTeachers.length > 0 ? (
-                            <ul className="list-disc list-inside">
-                              {departmentTeachers.map(teacher => (
-                                <li key={teacher.id}>
-                                  {teacher.name} ({teacher.subject})
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <span className="text-muted-foreground">No teachers assigned</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(student)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(student.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, roll number or department..."
+            className="pl-8"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
+
+        {viewMode === "list" ? (
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Roll Number</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Department Teachers</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center">
+                      Loading...
+                    </TableCell>
+                  </TableRow>
+                ) : students.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      No students found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredStudents.map((student) => {
+                    const departmentTeachers = getDepartmentTeachers(student.department || '');
+                    
+                    return (
+                      <TableRow key={student.id}>
+                        <TableCell>{student.roll_number}</TableCell>
+                        <TableCell>{student.name}</TableCell>
+                        <TableCell>{student.department}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {departmentTeachers.length > 0 ? (
+                              <ul className="list-disc list-inside">
+                                {departmentTeachers.map(teacher => (
+                                  <li key={teacher.id}>
+                                    {teacher.name} ({teacher.subject})
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <span className="text-muted-foreground">No teachers assigned</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(student)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(student.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {departmentNames.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No departments found
+              </div>
+            ) : (
+              departmentNames.map(department => {
+                const departmentStudents = studentsByDepartment[department].filter(
+                  student => searchQuery === "" ||
+                    student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    student.roll_number.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+                
+                if (departmentStudents.length === 0) {
+                  return null;
+                }
+                
+                return renderDepartmentTable(department, departmentStudents);
+              })
+            )}
+          </div>
+        )}
       </div>
     </Layout>
   );
