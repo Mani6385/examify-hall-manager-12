@@ -411,33 +411,15 @@ const Students = () => {
               <TableRow>
                 <TableHead>Roll Number</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Department Teachers</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {departmentStudents.map((student) => {
-                const departmentTeachers = getDepartmentTeachers(student.department || '');
-                
                 return (
                   <TableRow key={student.id}>
                     <TableCell>{student.roll_number}</TableCell>
                     <TableCell>{student.name}</TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {departmentTeachers.length > 0 ? (
-                          <ul className="list-disc list-inside">
-                            {departmentTeachers.map(teacher => (
-                              <li key={teacher.id}>
-                                {teacher.name} ({teacher.subject})
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <span className="text-muted-foreground">No teachers assigned</span>
-                        )}
-                      </div>
-                    </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button
@@ -652,47 +634,29 @@ const Students = () => {
                   <TableHead>Roll Number</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Department</TableHead>
-                  <TableHead>Department Teachers</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center">
+                    <TableCell colSpan={4} className="text-center">
                       Loading...
                     </TableCell>
                   </TableRow>
                 ) : students.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
                       No students found.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredStudents.map((student) => {
-                    const departmentTeachers = getDepartmentTeachers(student.department || '');
-                    
                     return (
                       <TableRow key={student.id}>
                         <TableCell>{student.roll_number}</TableCell>
                         <TableCell>{student.name}</TableCell>
                         <TableCell>{student.department}</TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {departmentTeachers.length > 0 ? (
-                              <ul className="list-disc list-inside">
-                                {departmentTeachers.map(teacher => (
-                                  <li key={teacher.id}>
-                                    {teacher.name} ({teacher.subject})
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <span className="text-muted-foreground">No teachers assigned</span>
-                            )}
-                          </div>
-                        </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Button
