@@ -216,12 +216,29 @@ export function ConsolidatedReportsCard({
                           ))}
                         </td>
                         <td className="p-2">
-                          {Array.from(deptGroups.entries()).map(([dept, students]) => (
-                            <div key={dept} className="mb-1 truncate max-w-[250px]">
-                              {students.slice(0, 3).map(s => s.reg_no).join(', ')}
-                              {students.length > 3 ? '...' : ''}
-                            </div>
-                          ))}
+                          {Array.from(deptGroups.entries()).map(([dept, students]) => {
+                            // Sort students by reg_no
+                            students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
+                            
+                            // Get start and end reg numbers for this group
+                            let regDisplay = "";
+                            if (students.length > 0) {
+                              const start = students[0].reg_no || '';
+                              const end = students[students.length - 1].reg_no || '';
+                              
+                              if (start === end || students.length === 1) {
+                                regDisplay = start;
+                              } else {
+                                regDisplay = `${start}-${end}`;
+                              }
+                            }
+                            
+                            return (
+                              <div key={dept} className="mb-1 truncate max-w-[250px]">
+                                {regDisplay}
+                              </div>
+                            );
+                          })}
                         </td>
                         <td className="p-2 text-right font-medium">{arr.seating_assignments.length}</td>
                       </tr>

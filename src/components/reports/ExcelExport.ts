@@ -106,7 +106,7 @@ export const generateExcelReport = (
   }
 };
 
-// New function to create consolidated worksheet in the format from the image
+// Updated function to create consolidated worksheet with start-to-end reg numbers format
 function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallName: string): XLSX.WorkSheet {
   // Create empty worksheet
   const ws = XLSX.utils.aoa_to_sheet([]);
@@ -164,15 +164,58 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
       // Sort students by registration number
       students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
       
-      // Format registration numbers
-      const regNos = students.map(s => s.reg_no).join(', ');
+      // Format registration numbers in start-to-end format
+      let regNosFormatted = "";
+      if (students.length > 0) {
+        // Group consecutive registration numbers
+        const groups: {start: string; end: string}[] = [];
+        let currentGroup: {start: string; end: string} | null = null;
+        
+        students.forEach((student, idx) => {
+          const currentRegNo = student.reg_no || '';
+          
+          // For the first student or when starting a new group
+          if (currentGroup === null) {
+            currentGroup = { start: currentRegNo, end: currentRegNo };
+            return;
+          }
+          
+          // Check if this reg_no is consecutive with the previous one
+          // Simple check: see if the numbers are sequential
+          const prevNumeric = parseInt(currentGroup.end.replace(/\D/g, ''));
+          const currNumeric = parseInt(currentRegNo.replace(/\D/g, ''));
+          
+          if (currNumeric === prevNumeric + 1 && currentRegNo.replace(/\d/g, '') === currentGroup.end.replace(/\d/g, '')) {
+            // Update the end of the current group
+            currentGroup.end = currentRegNo;
+          } else {
+            // Finish the current group and start a new one
+            groups.push(currentGroup);
+            currentGroup = { start: currentRegNo, end: currentRegNo };
+          }
+          
+          // For the last student, add the current group
+          if (idx === students.length - 1 && currentGroup) {
+            groups.push(currentGroup);
+          }
+        });
+        
+        // Format the groups
+        regNosFormatted = groups.map(group => {
+          if (group.start === group.end) {
+            return group.start;
+          } else {
+            return `${group.start}-${group.end}`;
+          }
+        }).join(', ');
+      }
       
       // Create a row for this department
       const row = [
         firstDeptInRoom ? (index + 1).toString() : '',  // S.No
         firstDeptInRoom ? arrangement.room_no : '',     // Room No
         deptKey,                                        // Class (Dept + Year)
-        regNos,                                         // Registration Numbers
+        regNosFormatted,                                // Registration Numbers (start-end format)
         firstDeptInRoom ? students.length.toString() : '' // Total for the room
       ];
       
