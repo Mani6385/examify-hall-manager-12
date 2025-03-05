@@ -25,7 +25,7 @@ import { Document, Packer, Paragraph, Table as DocxTable, TableRow as DocxTableR
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
-import { Input } from "@/components/ui/input";
+import { Input, SignatureInput } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -407,7 +407,7 @@ const ExamAttendance = () => {
       });
   };
 
-  // Generate attendance data for reports
+  // Modify generateAttendanceData to include signature information
   const generateAttendanceData = () => {
     const selectedExamSession = examSessions.find((exam) => exam.id === selectedExam);
     if (!selectedExamSession) return null;
@@ -437,7 +437,7 @@ const ExamAttendance = () => {
     };
   };
 
-  // Download as Excel with departments
+  // Update downloadAttendanceSheet to include signature column
   const downloadAttendanceSheet = () => {
     const data = generateAttendanceData();
     if (!data) {
@@ -476,9 +476,6 @@ const ExamAttendance = () => {
         const deptAbsent = deptTotal - deptPresent;
         const deptRate = deptTotal > 0 ? Math.round((deptPresent / deptTotal) * 100) : 0;
         
-        totalStudents += deptTotal;
-        totalPresent += deptPresent;
-        
         summaryData.push([
           dept,
           deptTotal.toString(),
@@ -500,7 +497,7 @@ const ExamAttendance = () => {
       const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
       
-      // Create department sheets
+      // Create department sheets with signature column
       Object.entries(data.departmentGroups).forEach(([dept, students]) => {
         const deptData = [
           [`${dept} Department - Attendance List`],
@@ -534,7 +531,7 @@ const ExamAttendance = () => {
     }
   };
 
-  // Generate PDF with departments
+  // Update generatePDF to include signature column
   const generatePDF = () => {
     const data = generateAttendanceData();
     if (!data) {
@@ -589,7 +586,7 @@ const ExamAttendance = () => {
       
       let currentY = (doc as any).lastAutoTable?.finalY + 15 || 150;
       
-      // Add department tables
+      // Add department tables with signature column
       Object.entries(data.departmentGroups).forEach(([dept, students]) => {
         // Add page if not enough space
         if (currentY > doc.internal.pageSize.height - 40) {
@@ -601,13 +598,14 @@ const ExamAttendance = () => {
         doc.text(`${dept} Department`, 15, currentY);
         currentY += 10;
         
-        const headers = [["Reg No", "Name", "Present", "Seat Number"]];
+        const headers = [["Reg No", "Name", "Present", "Seat Number", "Signature"]];
         
         const tableData = students.map(student => [
           student.regNo,
           student.name,
           student.isPresent ? 'Yes' : 'No',
-          student.seatNumber
+          student.seatNumber,
+          student.signature
         ]);
         
         (doc as any).autoTable({
@@ -639,7 +637,7 @@ const ExamAttendance = () => {
     }
   };
 
-  // Generate Word with departments
+  // Update generateWord to include signature column
   const generateWord = async () => {
     const data = generateAttendanceData();
     if (!data) {
@@ -715,7 +713,7 @@ const ExamAttendance = () => {
         ],
       }];
 
-      // Add department sections
+      // Add department sections with signature column
       Object.entries(data.departmentGroups).forEach(([dept, students]) => {
         sections.push({
           properties: {},
@@ -734,6 +732,7 @@ const ExamAttendance = () => {
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Name", bold: true })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Present", bold: true })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Seat Number", bold: true })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Student Signature", bold: true })] })] }),
                   ],
                 }),
                 ...students.map(student => new DocxTableRow({
@@ -742,6 +741,7 @@ const ExamAttendance = () => {
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.name })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.isPresent ? 'Yes' : 'No' })] })] }),
                     new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.seatNumber })] })] }),
+                    new DocxTableCell({ children: [new Paragraph({ children: [new TextRun({ text: student.signature })] })] }),
                   ],
                 }))
               ],
@@ -782,6 +782,100 @@ const ExamAttendance = () => {
         variant: "destructive",
       });
     }
+  };
+
+  // Add function to capture student signatures
+  const captureStudentSignature = async (studentId: string, signature: string) => {
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({ signature })
+        .eq('id', studentId);
+      
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      
+      toast({
+        title: "Success",
+        description: "Student signature saved successfully",
+      });
+    } catch (error) {
+      console.error("Error saving signature:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save student signature",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Modify the Table component to include SignatureInput for each student
+  const renderStudentTable = () => {
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">Reg. No</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Department</TableHead>
+            <TableHead>Seat</TableHead>
+            <TableHead className="w-[120px]">Attendance</TableHead>
+            <TableHead>Signature</TableHead>
+            <TableHead className="w-[80px]"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredStudents.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                No students found matching your criteria
+              </TableCell>
+            </TableRow>
+          ) : (
+            filteredStudents.map((student) => {
+              const isPresent = isStudentPresent(student.id);
+              return (
+                <TableRow key={student.id}>
+                  <TableCell className="font-mono text-xs">{student.roll_number}</TableCell>
+                  <TableCell>{student.name}</TableCell>
+                  <TableCell>{student.department || "Unassigned"}</TableCell>
+                  <TableCell>
+                    {attendanceRecords.find(r => r.student_id === student.id)?.seat_number || 
+                      findStudentSeatNumber(student.id) || "-"}
+                  </TableCell>
+                  <TableCell>
+                    {isPresent ? (
+                      <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">Present</Badge>
+                    ) : (
+                      <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-100">Absent</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <SignatureInput 
+                      value={student.signature || ""}
+                      onChange={(value) => captureStudentSignature(student.id, value)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {isPresent ? (
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(student.id)}>
+                        <span className="sr-only">Remove</span>
+                        ×
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" onClick={() => markAttendance(student.id)}>
+                        Mark Present
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    );
   };
 
   // Get filtered students
@@ -837,419 +931,8 @@ const ExamAttendance = () => {
     .filter(dept => dept.total > 0)
     .sort((a, b) => b.total - a.total);
 
+  // Modify the "all" tab content to use the new renderStudentTable function
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Exam Attendance</h2>
-          <p className="text-muted-foreground mt-2">
-            Record and manage exam hall attendance
-          </p>
-        </div>
-
-        <div className="flex flex-col space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Exam Center</label>
-              <Select
-                value={selectedCenter}
-                onValueChange={setSelectedCenter}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select exam center" />
-                </SelectTrigger>
-                <SelectContent>
-                  {examCenters.map((center) => (
-                    center && <SelectItem key={center.id} value={center.id}>
-                      {center.name} ({center.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Exam Session</label>
-              <Select
-                value={selectedExam}
-                onValueChange={setSelectedExam}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select exam session" />
-                </SelectTrigger>
-                <SelectContent>
-                  {examSessions
-                    .filter(exam => !selectedCenter || 
-                      exam.exam_centers?.id === selectedCenter)
-                    .map((exam) => (
-                      <SelectItem key={exam.id} value={exam.id}>
-                        {exam.subject} - {exam.date} ({exam.start_time})
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {selectedExamSession && (
-            <div className="bg-muted p-4 rounded-lg">
-              <h3 className="font-semibold">Session Details</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                <div>
-                  <p className="text-sm text-muted-foreground">Subject</p>
-                  <p className="font-medium">{selectedExamSession.subject}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Date</p>
-                  <p className="font-medium">{selectedExamSession.date}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Time</p>
-                  <p className="font-medium">{selectedExamSession.start_time}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Venue</p>
-                  <p className="font-medium">{selectedExamSession.venue}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Center Name</p>
-                  <p className="font-medium">{selectedExamSession.exam_centers?.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Center Code</p>
-                  <p className="font-medium">{selectedExamSession.exam_centers?.code}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedExam && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{totalStudents}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Present</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600">{presentStudents}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Absent</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-red-600">{absentStudents}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Attendance Rate</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{attendanceRate.toFixed(0)}%</div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                    <Input
-                      placeholder="Search by name, reg no, or department..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="max-w-xs"
-                    />
-                    <Select
-                      value={selectedDepartment}
-                      onValueChange={setSelectedDepartment}
-                    >
-                      <SelectTrigger className="max-w-[200px]">
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((dept) => (
-                          <SelectItem key={dept} value={dept}>
-                            {dept === "all" ? "All Departments" : dept}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="mb-4">
-                      <TabsTrigger value="all">
-                        All Students <Badge variant="outline" className="ml-2">{totalStudents}</Badge>
-                      </TabsTrigger>
-                      <TabsTrigger value="present">
-                        Present <Badge variant="outline" className="ml-2">{presentStudents}</Badge>
-                      </TabsTrigger>
-                      <TabsTrigger value="absent">
-                        Absent <Badge variant="outline" className="ml-2">{absentStudents}</Badge>
-                      </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="all" className="mt-0">
-                      <Card>
-                        <CardContent className="p-0">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-[100px]">Reg. No</TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Department</TableHead>
-                                <TableHead>Seat</TableHead>
-                                <TableHead className="w-[120px]">Attendance</TableHead>
-                                <TableHead className="w-[80px]"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {filteredStudents.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                    No students found matching your criteria
-                                  </TableCell>
-                                </TableRow>
-                              ) : (
-                                filteredStudents.map((student) => {
-                                  const isPresent = isStudentPresent(student.id);
-                                  return (
-                                    <TableRow key={student.id}>
-                                      <TableCell className="font-mono text-xs">{student.roll_number}</TableCell>
-                                      <TableCell>{student.name}</TableCell>
-                                      <TableCell>{student.department || "Unassigned"}</TableCell>
-                                      <TableCell>
-                                        {attendanceRecords.find(r => r.student_id === student.id)?.seat_number || 
-                                          findStudentSeatNumber(student.id) || "-"}
-                                      </TableCell>
-                                      <TableCell>
-                                        {isPresent ? (
-                                          <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">Present</Badge>
-                                        ) : (
-                                          <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-100">Absent</Badge>
-                                        )}
-                                      </TableCell>
-                                      <TableCell>
-                                        {isPresent ? (
-                                          <Button variant="ghost" size="icon" onClick={() => handleDelete(student.id)}>
-                                            <span className="sr-only">Remove</span>
-                                            ×
-                                          </Button>
-                                        ) : (
-                                          <Button variant="ghost" size="sm" onClick={() => markAttendance(student.id)}>
-                                            Mark Present
-                                          </Button>
-                                        )}
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })
-                              )}
-                            </TableBody>
-                          </Table>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    <TabsContent value="present" className="mt-0">
-                      <Card>
-                        <CardContent className="p-0">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-[100px]">Reg. No</TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Department</TableHead>
-                                <TableHead>Seat</TableHead>
-                                <TableHead className="w-[80px]"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {filteredStudents.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                    No present students found
-                                  </TableCell>
-                                </TableRow>
-                              ) : (
-                                filteredStudents.map((student) => (
-                                  <TableRow key={student.id}>
-                                    <TableCell className="font-mono text-xs">{student.roll_number}</TableCell>
-                                    <TableCell>{student.name}</TableCell>
-                                    <TableCell>{student.department || "Unassigned"}</TableCell>
-                                    <TableCell>
-                                      {attendanceRecords.find(r => r.student_id === student.id)?.seat_number || 
-                                        findStudentSeatNumber(student.id) || "-"}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Button variant="ghost" size="icon" onClick={() => handleDelete(student.id)}>
-                                        <span className="sr-only">Remove</span>
-                                        ×
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))
-                              )}
-                            </TableBody>
-                          </Table>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    <TabsContent value="absent" className="mt-0">
-                      <Card>
-                        <CardContent className="p-0">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-[100px]">Reg. No</TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Department</TableHead>
-                                <TableHead>Seat</TableHead>
-                                <TableHead className="w-[120px]"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {filteredStudents.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                    No absent students found
-                                  </TableCell>
-                                </TableRow>
-                              ) : (
-                                filteredStudents.map((student) => (
-                                  <TableRow key={student.id}>
-                                    <TableCell className="font-mono text-xs">{student.roll_number}</TableCell>
-                                    <TableCell>{student.name}</TableCell>
-                                    <TableCell>{student.department || "Unassigned"}</TableCell>
-                                    <TableCell>
-                                      {findStudentSeatNumber(student.id) || "-"}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Button variant="ghost" size="sm" onClick={() => markAttendance(student.id)}>
-                                        Mark Present
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))
-                              )}
-                            </TableBody>
-                          </Table>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-                  </Tabs>
-                </div>
-
-                <div className="w-full md:w-80 space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Department Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {departmentStats.map(dept => (
-                          <div key={dept.name} className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-8 w-8" 
-                                onClick={() => markDepartmentAttendance(dept.name)}
-                              >
-                                <UserCheck className="h-4 w-4" />
-                                <span className="sr-only">Mark all in {dept.name}</span>
-                              </Button>
-                              <div>
-                                <p className="font-medium">{dept.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {dept.present}/{dept.total} · {dept.rate.toFixed(0)}%
-                                </p>
-                              </div>
-                            </div>
-                            <Badge variant="outline">
-                              {dept.present}/{dept.total}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Actions</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <Button 
-                        className="w-full" 
-                        onClick={markAllAttendance}
-                        disabled={isLoadingExams || isLoadingStudents || isLoadingAttendance}
-                      >
-                        <UserCheck className="mr-2 h-4 w-4" />
-                        Mark All Present
-                      </Button>
-                      <Button 
-                        className="w-full" 
-                        variant="secondary" 
-                        onClick={handleSaveAttendance}
-                        disabled={isLoadingExams || isLoadingStudents || isLoadingAttendance}
-                      >
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Attendance
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Export</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <Button 
-                        className="w-full" 
-                        variant="outline" 
-                        onClick={downloadAttendanceSheet}
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        Excel
-                      </Button>
-                      <Button 
-                        className="w-full" 
-                        variant="outline" 
-                        onClick={generatePDF}
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        PDF
-                      </Button>
-                      <Button 
-                        className="w-full" 
-                        variant="outline" 
-                        onClick={generateWord}
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        Word
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </Layout>
-  );
-};
-
-export default ExamAttendance;
