@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +11,7 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import { useState } from "react";
-import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw, Plus, Trash2 } from "lucide-react";
+import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw, Plus, Trash2, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +24,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface DepartmentConfig {
   id: string;
@@ -30,6 +37,7 @@ interface DepartmentConfig {
   startRegNo: string;
   endRegNo: string;
   prefix: string;
+  startSeatNo?: number; // Optional start seat number for continuous numbering
 }
 
 interface Seat {
@@ -68,8 +76,8 @@ const Seating = () => {
   const { toast } = useToast();
 
   const [departments, setDepartments] = useState<DepartmentConfig[]>([
-    { id: '1', department: '', startRegNo: '', endRegNo: '', prefix: 'A' },
-    { id: '2', department: '', startRegNo: '', endRegNo: '', prefix: 'B' }
+    { id: '1', department: '', startRegNo: '', endRegNo: '', prefix: 'A', startSeatNo: 1 },
+    { id: '2', department: '', startRegNo: '', endRegNo: '', prefix: 'B', startSeatNo: 1 }
   ]);
   const [centerName, setCenterName] = useState("");
   const [centerCode, setCenterCode] = useState("");
@@ -201,35 +209,69 @@ const Seating = () => {
     }
   };
 
+  // Function to calculate the next seat number for a new A-series department
+  const calculateNextSeatNumber = (prefix: 'A' | 'B'): number => {
+    const seriesDepts = departments.filter(dept => dept.prefix === prefix);
+    
+    if (seriesDepts.length === 0) return 1;
+    
+    let maxSeatNum = 0;
+    
+    seriesDepts.forEach(dept => {
+      if (!dept.startRegNo || !dept.endRegNo) return;
+      
+      const start = parseInt(dept.startRegNo);
+      const end = parseInt(dept.endRegNo);
+      
+      if (isNaN(start) || isNaN(end) || end < start) return;
+      
+      const startSeat = dept.startSeatNo || 1;
+      const seatCount = end - start + 1;
+      const lastSeatInDept = startSeat + seatCount - 1;
+      
+      if (lastSeatInDept > maxSeatNum) {
+        maxSeatNum = lastSeatInDept;
+      }
+    });
+    
+    return maxSeatNum + 1;
+  };
+
   const addASeries = () => {
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    const nextSeatNum = calculateNextSeatNumber('A');
+    
     setDepartments([...departments, {
       id: newId,
       department: '',
       startRegNo: '',
       endRegNo: '',
-      prefix: 'A'  // Always 'A' for the A series
+      prefix: 'A',
+      startSeatNo: nextSeatNum
     }]);
 
     toast({
       title: "Success",
-      description: "Added new department to A series",
+      description: `Added new A series department starting from seat A${nextSeatNum}`,
     });
   };
 
   const addBSeries = () => {
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    const nextSeatNum = calculateNextSeatNumber('B');
+    
     setDepartments([...departments, {
       id: newId,
       department: '',
       startRegNo: '',
       endRegNo: '',
-      prefix: 'B'  // Always 'B' for the B series
+      prefix: 'B',
+      startSeatNo: nextSeatNum
     }]);
 
     toast({
       title: "Success",
-      description: "Added new department to B series",
+      description: `Added new B series department starting from seat B${nextSeatNum}`,
     });
   };
 
@@ -272,6 +314,12 @@ const Seating = () => {
     ));
   };
 
+  const updateDepartmentStartSeat = (id: string, value: number) => {
+    setDepartments(departments.map(dept => 
+      dept.id === id ? { ...dept, startSeatNo: value } : dept
+    ));
+  };
+
   const generateStudentList = (deptConfig: DepartmentConfig): Student[] => {
     const students: Student[] = [];
     
@@ -291,7 +339,10 @@ const Seating = () => {
     const subjectName = subject?.name || deptConfig.department;
     const subjectCode = subject?.code;
     
-    for (let i = start, seatNum = 1; i <= end; i++, seatNum++) {
+    // Use the specified startSeatNo (default to 1 if not set)
+    const startSeatNum = deptConfig.startSeatNo || 1;
+    
+    for (let i = start, seatNum = startSeatNum; i <= end; i++, seatNum++) {
       students.push({
         name: `${departmentName} Student`,
         regNo: i.toString().padStart(3, '0'),
@@ -341,6 +392,19 @@ const Seating = () => {
     const bSeriesStudents: Student[] = [];
     bSeriesDepts.forEach(dept => {
       bSeriesStudents.push(...generateStudentList(dept));
+    });
+    
+    // Sort students by seat number to ensure A1, A2, A3... order
+    aSeriesStudents.sort((a, b) => {
+      const aNum = parseInt(a.seatNo.substring(1));
+      const bNum = parseInt(b.seatNo.substring(1));
+      return aNum - bNum;
+    });
+    
+    bSeriesStudents.sort((a, b) => {
+      const aNum = parseInt(a.seatNo.substring(1));
+      const bNum = parseInt(b.seatNo.substring(1));
+      return aNum - bNum;
     });
     
     // Initialize seats array
@@ -632,6 +696,7 @@ const Seating = () => {
                         <TableHead>Dept/Module</TableHead>
                         <TableHead>Start Reg</TableHead>
                         <TableHead>End Reg</TableHead>
+                        <TableHead>Start #</TableHead>
                         <TableHead>Action</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -677,6 +742,30 @@ const Seating = () => {
                             />
                           </TableCell>
                           <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min={1}
+                                placeholder="Start #"
+                                value={dept.startSeatNo || 1}
+                                onChange={(e) => updateDepartmentStartSeat(dept.id, parseInt(e.target.value) || 1)}
+                                className="border-blue-200 focus:border-blue-400 w-16"
+                              />
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <Info className="h-4 w-4 text-blue-500" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-xs">Start seat number for this department (e.g., A10)</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </TableCell>
+                          <TableCell>
                             <Button
                               variant="outline"
                               size="icon"
@@ -702,6 +791,7 @@ const Seating = () => {
                         <TableHead>Dept/Module</TableHead>
                         <TableHead>Start Reg</TableHead>
                         <TableHead>End Reg</TableHead>
+                        <TableHead>Start #</TableHead>
                         <TableHead>Action</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -745,6 +835,30 @@ const Seating = () => {
                               onChange={(e) => updateDepartment(dept.id, 'endRegNo', e.target.value)}
                               className="border-purple-200 focus:border-purple-400"
                             />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min={1}
+                                placeholder="Start #"
+                                value={dept.startSeatNo || 1}
+                                onChange={(e) => updateDepartmentStartSeat(dept.id, parseInt(e.target.value) || 1)}
+                                className="border-purple-200 focus:border-purple-400 w-16"
+                              />
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <Info className="h-4 w-4 text-purple-500" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-xs">Start seat number for this department (e.g., B10)</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Button
