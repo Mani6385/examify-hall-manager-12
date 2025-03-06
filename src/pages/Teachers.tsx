@@ -23,6 +23,13 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Teacher = Database['public']['Tables']['teachers']['Row'];
 
@@ -35,6 +42,7 @@ const Teachers = () => {
     subject: "",
     signature: "",
     department: "",
+    employee_id: "", // Added this field to fix TypeScript error
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -49,6 +57,23 @@ const Teachers = () => {
       
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Fetch departments for the dropdown
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('department')
+        .order('department');
+      
+      if (error) throw error;
+      
+      // Create unique list of departments
+      const uniqueDepartments = [...new Set(data.map(item => item.department))];
+      return uniqueDepartments;
     },
   });
 
@@ -70,7 +95,7 @@ const Teachers = () => {
         description: "New teacher has been added successfully.",
       });
       setIsAddDialogOpen(false);
-      setFormData({ name: "", subject: "", signature: "", department: "" });
+      setFormData({ name: "", subject: "", signature: "", department: "", employee_id: "" });
     },
     onError: (error) => {
       toast({
@@ -101,7 +126,7 @@ const Teachers = () => {
       });
       setIsEditDialogOpen(false);
       setSelectedTeacher(null);
-      setFormData({ name: "", subject: "", signature: "", department: "" });
+      setFormData({ name: "", subject: "", signature: "", department: "", employee_id: "" });
     },
     onError: (error) => {
       toast({
@@ -157,6 +182,7 @@ const Teachers = () => {
       subject: teacher.subject,
       signature: teacher.signature || "",
       department: teacher.department,
+      employee_id: teacher.employee_id,
     });
     setIsEditDialogOpen(true);
   };
@@ -199,15 +225,35 @@ const Teachers = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
+                  <Label htmlFor="employee_id">Employee ID</Label>
                   <Input
-                    id="department"
-                    value={formData.department}
+                    id="employee_id"
+                    value={formData.employee_id}
                     onChange={(e) =>
-                      setFormData({ ...formData, department: e.target.value })
+                      setFormData({ ...formData, employee_id: e.target.value })
                     }
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <Select
+                    value={formData.department}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, department: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((department) => (
+                        <SelectItem key={department} value={department}>
+                          {department}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="subject">Subject</Label>
@@ -256,15 +302,35 @@ const Teachers = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-department">Department</Label>
+                <Label htmlFor="edit-employee-id">Employee ID</Label>
                 <Input
-                  id="edit-department"
-                  value={formData.department}
+                  id="edit-employee-id"
+                  value={formData.employee_id}
                   onChange={(e) =>
-                    setFormData({ ...formData, department: e.target.value })
+                    setFormData({ ...formData, employee_id: e.target.value })
                   }
                   required
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-department">Department</Label>
+                <Select
+                  value={formData.department}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, department: value })
+                  }
+                >
+                  <SelectTrigger id="edit-department">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((department) => (
+                      <SelectItem key={department} value={department}>
+                        {department}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-subject">Subject</Label>
@@ -298,6 +364,7 @@ const Teachers = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Employee ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead>Subject</TableHead>
@@ -307,19 +374,20 @@ const Teachers = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
+                  <TableCell colSpan={5} className="text-center">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : teachers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No teachers found. Add your first teacher to get started.
                   </TableCell>
                 </TableRow>
               ) : (
                 teachers.map((teacher) => (
                   <TableRow key={teacher.id}>
+                    <TableCell>{teacher.employee_id}</TableCell>
                     <TableCell>{teacher.name}</TableCell>
                     <TableCell>{teacher.department}</TableCell>
                     <TableCell>{teacher.subject}</TableCell>
