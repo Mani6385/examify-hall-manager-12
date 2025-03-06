@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,11 +59,12 @@ const DEFAULT_HALLS: Hall[] = [
 const Seating = () => {
   const { toast } = useToast();
 
+  // Updated initial departments state to only include A, B, E, F series
   const [departments, setDepartments] = useState<DepartmentConfig[]>([
     { id: '1', department: '', startRegNo: '', endRegNo: '', prefix: 'A' },
     { id: '2', department: '', startRegNo: '', endRegNo: '', prefix: 'B' },
-    { id: '3', department: '', startRegNo: '', endRegNo: '', prefix: 'C' },
-    { id: '4', department: '', startRegNo: '', endRegNo: '', prefix: 'D' }
+    { id: '3', department: '', startRegNo: '', endRegNo: '', prefix: 'E' },
+    { id: '4', department: '', startRegNo: '', endRegNo: '', prefix: 'F' }
   ]);
   const [centerName, setCenterName] = useState("");
   const [centerCode, setCenterCode] = useState("");
@@ -227,38 +227,6 @@ const Seating = () => {
     });
   };
 
-  const addCSeries = () => {
-    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
-    setDepartments([...departments, {
-      id: newId,
-      department: '',
-      startRegNo: '',
-      endRegNo: '',
-      prefix: 'C'
-    }]);
-
-    toast({
-      title: "Success",
-      description: "Added new department to C series",
-    });
-  };
-
-  const addDSeries = () => {
-    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
-    setDepartments([...departments, {
-      id: newId,
-      department: '',
-      startRegNo: '',
-      endRegNo: '',
-      prefix: 'D'
-    }]);
-
-    toast({
-      title: "Success",
-      description: "Added new department to D series",
-    });
-  };
-
   const addESeries = () => {
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
     setDepartments([...departments, {
@@ -294,8 +262,6 @@ const Seating = () => {
   const removeDepartment = (id: string) => {
     const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
     const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
-    const cSeriesDepts = departments.filter(dept => dept.prefix === 'C');
-    const dSeriesDepts = departments.filter(dept => dept.prefix === 'D');
     const eSeriesDepts = departments.filter(dept => dept.prefix === 'E');
     const fSeriesDepts = departments.filter(dept => dept.prefix === 'F');
     
@@ -315,24 +281,6 @@ const Seating = () => {
       toast({
         title: "Error",
         description: "Cannot remove the only B series department",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (targetDept.prefix === 'C' && cSeriesDepts.length <= 1) {
-      toast({
-        title: "Error",
-        description: "Cannot remove the only C series department",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (targetDept.prefix === 'D' && dSeriesDepts.length <= 1) {
-      toast({
-        title: "Error",
-        description: "Cannot remove the only D series department",
         variant: "destructive",
       });
       return;
@@ -428,14 +376,12 @@ const Seating = () => {
       return;
     }
 
-    // Updated seating arrangement algorithm for A1, B1, C1, D1, E1, F1, A2, B2, ... format
+    // Updated seating arrangement algorithm for A1, B1, E1, F1, A2, B2, ... format (removed C and D)
     const totalSeats = rows * cols;
     
-    // Group departments by series (A, B, C, D, E, F)
+    // Group departments by series (A, B, E, F)
     const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
     const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
-    const cSeriesDepts = departments.filter(dept => dept.prefix === 'C');
-    const dSeriesDepts = departments.filter(dept => dept.prefix === 'D');
     const eSeriesDepts = departments.filter(dept => dept.prefix === 'E');
     const fSeriesDepts = departments.filter(dept => dept.prefix === 'F');
     
@@ -448,16 +394,6 @@ const Seating = () => {
     const bSeriesStudents: Student[] = [];
     bSeriesDepts.forEach(dept => {
       bSeriesStudents.push(...generateStudentList(dept));
-    });
-
-    const cSeriesStudents: Student[] = [];
-    cSeriesDepts.forEach(dept => {
-      cSeriesStudents.push(...generateStudentList(dept));
-    });
-    
-    const dSeriesStudents: Student[] = [];
-    dSeriesDepts.forEach(dept => {
-      dSeriesStudents.push(...generateStudentList(dept));
     });
 
     const eSeriesStudents: Student[] = [];
@@ -483,15 +419,13 @@ const Seating = () => {
     const maxStudentsPerSeries = Math.max(
       aSeriesStudents.length, 
       bSeriesStudents.length,
-      cSeriesStudents.length,
-      dSeriesStudents.length,
       eSeriesStudents.length,
       fSeriesStudents.length
     );
     
     const assignedStudents: (Student | null)[] = Array(totalSeats).fill(null);
     
-    // Assign students in A1, B1, C1, D1, E1, F1, A2, B2, ... pattern
+    // Assign students in A1, B1, E1, F1, A2, B2, ... pattern (removed C and D)
     let seatIndex = 0;
     for (let i = 0; i < maxStudentsPerSeries; i++) {
       // Add A series student
@@ -502,16 +436,6 @@ const Seating = () => {
       // Add B series student
       if (i < bSeriesStudents.length && seatIndex < totalSeats) {
         assignedStudents[seatIndex++] = bSeriesStudents[i];
-      }
-
-      // Add C series student
-      if (i < cSeriesStudents.length && seatIndex < totalSeats) {
-        assignedStudents[seatIndex++] = cSeriesStudents[i];
-      }
-      
-      // Add D series student
-      if (i < dSeriesStudents.length && seatIndex < totalSeats) {
-        assignedStudents[seatIndex++] = dSeriesStudents[i];
       }
 
       // Add E series student
@@ -702,22 +626,6 @@ const Seating = () => {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={addCSeries}
-                className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 hover:border-green-400 transition-all"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add C Series
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={addDSeries}
-                className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-200 hover:border-yellow-400 transition-all"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add D Series
-              </Button>
-              <Button 
-                variant="outline" 
                 onClick={addESeries}
                 className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 hover:border-red-400 transition-all"
               >
@@ -741,13 +649,9 @@ const Seating = () => {
                 ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200' 
                 : dept.prefix === 'B'
                   ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200'
-                  : dept.prefix === 'C'
-                    ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200'
-                    : dept.prefix === 'D'
-                      ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200'
-                      : dept.prefix === 'E'
-                        ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
-                        : 'bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200'
+                  : dept.prefix === 'E'
+                    ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
+                    : 'bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200'
             }`}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold text-blue-800">
@@ -757,13 +661,9 @@ const Seating = () => {
                       ? 'bg-blue-100 text-blue-700' 
                       : dept.prefix === 'B'
                         ? 'bg-purple-100 text-purple-700'
-                        : dept.prefix === 'C'
-                          ? 'bg-green-100 text-green-700'
-                          : dept.prefix === 'D'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : dept.prefix === 'E'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-indigo-100 text-indigo-700'
+                        : dept.prefix === 'E'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-indigo-100 text-indigo-700'
                   }`}>
                     {dept.prefix} Series
                   </span>
