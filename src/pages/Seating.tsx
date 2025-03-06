@@ -1,3 +1,4 @@
+<lov-code>
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,7 +62,9 @@ const Seating = () => {
 
   const [departments, setDepartments] = useState<DepartmentConfig[]>([
     { id: '1', department: '', startRegNo: '', endRegNo: '', prefix: 'A' },
-    { id: '2', department: '', startRegNo: '', endRegNo: '', prefix: 'B' }
+    { id: '2', department: '', startRegNo: '', endRegNo: '', prefix: 'B' },
+    { id: '3', department: '', startRegNo: '', endRegNo: '', prefix: 'C' },
+    { id: '4', department: '', startRegNo: '', endRegNo: '', prefix: 'D' }
   ]);
   const [centerName, setCenterName] = useState("");
   const [centerCode, setCenterCode] = useState("");
@@ -199,7 +202,7 @@ const Seating = () => {
       department: '',
       startRegNo: '',
       endRegNo: '',
-      prefix: 'A'  // Always 'A' for the A series
+      prefix: 'A'
     }]);
 
     toast({
@@ -215,7 +218,7 @@ const Seating = () => {
       department: '',
       startRegNo: '',
       endRegNo: '',
-      prefix: 'B'  // Always 'B' for the B series
+      prefix: 'B'
     }]);
 
     toast({
@@ -224,9 +227,77 @@ const Seating = () => {
     });
   };
 
+  const addCSeries = () => {
+    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    setDepartments([...departments, {
+      id: newId,
+      department: '',
+      startRegNo: '',
+      endRegNo: '',
+      prefix: 'C'
+    }]);
+
+    toast({
+      title: "Success",
+      description: "Added new department to C series",
+    });
+  };
+
+  const addDSeries = () => {
+    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    setDepartments([...departments, {
+      id: newId,
+      department: '',
+      startRegNo: '',
+      endRegNo: '',
+      prefix: 'D'
+    }]);
+
+    toast({
+      title: "Success",
+      description: "Added new department to D series",
+    });
+  };
+
+  const addESeries = () => {
+    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    setDepartments([...departments, {
+      id: newId,
+      department: '',
+      startRegNo: '',
+      endRegNo: '',
+      prefix: 'E'
+    }]);
+
+    toast({
+      title: "Success",
+      description: "Added new department to E series",
+    });
+  };
+
+  const addFSeries = () => {
+    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    setDepartments([...departments, {
+      id: newId,
+      department: '',
+      startRegNo: '',
+      endRegNo: '',
+      prefix: 'F'
+    }]);
+
+    toast({
+      title: "Success",
+      description: "Added new department to F series",
+    });
+  };
+
   const removeDepartment = (id: string) => {
     const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
     const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
+    const cSeriesDepts = departments.filter(dept => dept.prefix === 'C');
+    const dSeriesDepts = departments.filter(dept => dept.prefix === 'D');
+    const eSeriesDepts = departments.filter(dept => dept.prefix === 'E');
+    const fSeriesDepts = departments.filter(dept => dept.prefix === 'F');
     
     const targetDept = departments.find(d => d.id === id);
     if (!targetDept) return;
@@ -244,6 +315,42 @@ const Seating = () => {
       toast({
         title: "Error",
         description: "Cannot remove the only B series department",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (targetDept.prefix === 'C' && cSeriesDepts.length <= 1) {
+      toast({
+        title: "Error",
+        description: "Cannot remove the only C series department",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (targetDept.prefix === 'D' && dSeriesDepts.length <= 1) {
+      toast({
+        title: "Error",
+        description: "Cannot remove the only D series department",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (targetDept.prefix === 'E' && eSeriesDepts.length <= 1) {
+      toast({
+        title: "Error",
+        description: "Cannot remove the only E series department",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (targetDept.prefix === 'F' && fSeriesDepts.length <= 1) {
+      toast({
+        title: "Error",
+        description: "Cannot remove the only F series department",
         variant: "destructive",
       });
       return;
@@ -321,10 +428,16 @@ const Seating = () => {
       return;
     }
 
-    // Updated seating arrangement algorithm for A1, B1, A2, B2 format
+    // Updated seating arrangement algorithm for A1, B1, C1, D1, E1, F1, A2, B2, ... format
     const totalSeats = rows * cols;
+    
+    // Group departments by series (A, B, C, D, E, F)
     const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
     const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
+    const cSeriesDepts = departments.filter(dept => dept.prefix === 'C');
+    const dSeriesDepts = departments.filter(dept => dept.prefix === 'D');
+    const eSeriesDepts = departments.filter(dept => dept.prefix === 'E');
+    const fSeriesDepts = departments.filter(dept => dept.prefix === 'F');
     
     // Generate all students from all departments
     const aSeriesStudents: Student[] = [];
@@ -336,6 +449,26 @@ const Seating = () => {
     bSeriesDepts.forEach(dept => {
       bSeriesStudents.push(...generateStudentList(dept));
     });
+
+    const cSeriesStudents: Student[] = [];
+    cSeriesDepts.forEach(dept => {
+      cSeriesStudents.push(...generateStudentList(dept));
+    });
+    
+    const dSeriesStudents: Student[] = [];
+    dSeriesDepts.forEach(dept => {
+      dSeriesStudents.push(...generateStudentList(dept));
+    });
+
+    const eSeriesStudents: Student[] = [];
+    eSeriesDepts.forEach(dept => {
+      eSeriesStudents.push(...generateStudentList(dept));
+    });
+    
+    const fSeriesStudents: Student[] = [];
+    fSeriesDepts.forEach(dept => {
+      fSeriesStudents.push(...generateStudentList(dept));
+    });
     
     // Initialize seats with empty values
     const emptySeats: Seat[] = Array.from({ length: totalSeats }, (_, index) => ({
@@ -346,21 +479,49 @@ const Seating = () => {
       department: null,
     }));
     
-    // Arrange students in A1, B1, A2, B2 pattern
-    const maxStudentsPerSeries = Math.max(aSeriesStudents.length, bSeriesStudents.length);
+    // Find maximum number of students across all series to determine iteration count
+    const maxStudentsPerSeries = Math.max(
+      aSeriesStudents.length, 
+      bSeriesStudents.length,
+      cSeriesStudents.length,
+      dSeriesStudents.length,
+      eSeriesStudents.length,
+      fSeriesStudents.length
+    );
+    
     const assignedStudents: (Student | null)[] = Array(totalSeats).fill(null);
     
-    // Assign students in A1, B1, A2, B2 pattern
+    // Assign students in A1, B1, C1, D1, E1, F1, A2, B2, ... pattern
     let seatIndex = 0;
     for (let i = 0; i < maxStudentsPerSeries; i++) {
-      // Add A series student (A1, A2, etc.)
+      // Add A series student
       if (i < aSeriesStudents.length && seatIndex < totalSeats) {
         assignedStudents[seatIndex++] = aSeriesStudents[i];
       }
       
-      // Add B series student (B1, B2, etc.)
+      // Add B series student
       if (i < bSeriesStudents.length && seatIndex < totalSeats) {
         assignedStudents[seatIndex++] = bSeriesStudents[i];
+      }
+
+      // Add C series student
+      if (i < cSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = cSeriesStudents[i];
+      }
+      
+      // Add D series student
+      if (i < dSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = dSeriesStudents[i];
+      }
+
+      // Add E series student
+      if (i < eSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = eSeriesStudents[i];
+      }
+      
+      // Add F series student
+      if (i < fSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = fSeriesStudents[i];
       }
     }
     
@@ -522,14 +683,14 @@ const Seating = () => {
         <div className="space-y-4">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-semibold text-blue-800">Department Configuration</h3>
-            <div className="space-x-2">
+            <div className="flex flex-wrap gap-2">
               <Button 
                 variant="outline" 
                 onClick={addASeries}
                 className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:border-blue-400 transition-all"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add A Series Department
+                Add A Series
               </Button>
               <Button 
                 variant="outline" 
@@ -537,7 +698,39 @@ const Seating = () => {
                 className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200 hover:border-purple-400 transition-all"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add B Series Department
+                Add B Series
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={addCSeries}
+                className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 hover:border-green-400 transition-all"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add C Series
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={addDSeries}
+                className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-200 hover:border-yellow-400 transition-all"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add D Series
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={addESeries}
+                className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 hover:border-red-400 transition-all"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add E Series
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={addFSeries}
+                className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-indigo-200 hover:border-indigo-400 transition-all"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add F Series
               </Button>
             </div>
           </div>
@@ -546,7 +739,15 @@ const Seating = () => {
             <div key={dept.id} className={`p-6 rounded-lg border shadow-sm transition-all hover:shadow-md ${
               dept.prefix === 'A' 
                 ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200' 
-                : 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200'
+                : dept.prefix === 'B'
+                  ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200'
+                  : dept.prefix === 'C'
+                    ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200'
+                    : dept.prefix === 'D'
+                      ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200'
+                      : dept.prefix === 'E'
+                        ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
+                        : 'bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200'
             }`}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold text-blue-800">
@@ -554,7 +755,15 @@ const Seating = () => {
                   <span className={`ml-2 px-2 py-1 rounded-md text-sm ${
                     dept.prefix === 'A' 
                       ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-purple-100 text-purple-700'
+                      : dept.prefix === 'B'
+                        ? 'bg-purple-100 text-purple-700'
+                        : dept.prefix === 'C'
+                          ? 'bg-green-100 text-green-700'
+                          : dept.prefix === 'D'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : dept.prefix === 'E'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-indigo-100 text-indigo-700'
                   }`}>
                     {dept.prefix} Series
                   </span>
@@ -661,29 +870,4 @@ const Seating = () => {
                           'from-pink-50 to-pink-100 border-pink-200'
                         }`
                       : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
-                    : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 opacity-50"
-                } flex flex-col items-center justify-center text-center min-h-[120px] text-sm border animate-fadeIn`}
-              >
-                {seat.studentName ? (
-                  <>
-                    <span className="font-bold text-lg mb-1">{seat.seatNo}</span>
-                    <span className="font-medium">{seat.studentName}</span>
-                    <span className="text-xs text-gray-600">Reg: {seat.regNo}</span>
-                    <span className="text-xs text-gray-500">{seat.department}</span>
-                    <span className="text-xs text-gray-500">
-                      {seat.subjectCode} - {seat.subjectName}
-                    </span>
-                  </>
-                ) : (
-                  "Empty"
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </Layout>
-  );
-};
-
-export default Seating;
+                    : "bg-gradient-to-br from
