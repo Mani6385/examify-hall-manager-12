@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -292,70 +291,10 @@ const Seating = () => {
   };
 
   const removeDepartment = (id: string) => {
-    const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
-    const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
-    const cSeriesDepts = departments.filter(dept => dept.prefix === 'C');
-    const dSeriesDepts = departments.filter(dept => dept.prefix === 'D');
-    const eSeriesDepts = departments.filter(dept => dept.prefix === 'E');
-    const fSeriesDepts = departments.filter(dept => dept.prefix === 'F');
-    
     const targetDept = departments.find(d => d.id === id);
     if (!targetDept) return;
-
-    if (targetDept.prefix === 'A' && aSeriesDepts.length <= 1) {
-      toast({
-        title: "Error",
-        description: "Cannot remove the only A series department",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (targetDept.prefix === 'B' && bSeriesDepts.length <= 1) {
-      toast({
-        title: "Error",
-        description: "Cannot remove the only B series department",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (targetDept.prefix === 'C' && cSeriesDepts.length <= 1) {
-      toast({
-        title: "Error",
-        description: "Cannot remove the only C series department",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (targetDept.prefix === 'D' && dSeriesDepts.length <= 1) {
-      toast({
-        title: "Error",
-        description: "Cannot remove the only D series department",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (targetDept.prefix === 'E' && eSeriesDepts.length <= 1) {
-      toast({
-        title: "Error",
-        description: "Cannot remove the only E series department",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (targetDept.prefix === 'F' && fSeriesDepts.length <= 1) {
-      toast({
-        title: "Error",
-        description: "Cannot remove the only F series department",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    
+    // Remove the department without series-specific checks
     setDepartments(departments.filter(d => d.id !== id));
     
     toast({
