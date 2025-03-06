@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +15,14 @@ import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface DepartmentConfig {
   id: string;
@@ -72,6 +79,7 @@ const Seating = () => {
   const [rows, setRows] = useState(5);
   const [cols, setColumns] = useState(6);
   const [seats, setSeats] = useState<Seat[]>([]);
+  const [activeTab, setActiveTab] = useState<"config" | "preview">("config");
   const queryClient = useQueryClient();
   
   // Instead of fetching halls from the database (which doesn't exist), we'll use our default halls
@@ -427,6 +435,31 @@ const Seating = () => {
     });
   };
 
+  const getASeriesDepartments = () => {
+    return departments.filter(dept => dept.prefix === 'A');
+  };
+  
+  const getBSeriesDepartments = () => {
+    return departments.filter(dept => dept.prefix === 'B');
+  };
+  
+  const getStudentCountByDepartment = (prefix: 'A' | 'B') => {
+    const depts = departments.filter(dept => dept.prefix === prefix);
+    let total = 0;
+    
+    depts.forEach(dept => {
+      if (dept.startRegNo && dept.endRegNo) {
+        const start = parseInt(dept.startRegNo);
+        const end = parseInt(dept.endRegNo);
+        if (!isNaN(start) && !isNaN(end) && end >= start) {
+          total += (end - start + 1);
+        }
+      }
+    });
+    
+    return total;
+  };
+
   return (
     <Layout>
       <div className="space-y-6 animate-fadeIn">
@@ -437,259 +470,379 @@ const Seating = () => {
           <p className="text-muted-foreground mt-2">
             Generate and manage exam hall seating arrangements for multiple departments
           </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100 shadow-sm">
-            <h3 className="font-semibold text-blue-800">Examination Center Details</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <Select value={centerName} onValueChange={(value) => {
-                setCenterName(value);
-                const center = examCenters.find(c => c.name === value);
-                if (center) {
-                  setCenterCode(center.code);
-                }
-              }}>
-                <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                  <SelectValue placeholder="Select Center" />
-                </SelectTrigger>
-                <SelectContent>
-                  {examCenters.map((center) => (
-                    <SelectItem key={center.id} value={center.name}>
-                      {center.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Input
-                placeholder="Center Code"
-                value={centerCode}
-                readOnly
-                className="bg-white/50 border-blue-200"
-              />
-
-              <Select 
-                value={selectedHall} 
-                onValueChange={handleHallSelect}
-              >
-                <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                  <SelectValue placeholder="Select Hall" />
-                </SelectTrigger>
-                <SelectContent>
-                  {halls.map((hall) => (
-                    <SelectItem key={hall.id} value={hall.id}>
-                      {hall.name} (Capacity: {hall.capacity})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  placeholder="Room Number"
-                  value={roomNo}
-                  onChange={(e) => setRoomNo(e.target.value)}
-                  className="border-blue-200 focus:border-blue-400"
-                />
-
-                <Input
-                  placeholder="Floor Number"
-                  value={floorNo}
-                  onChange={(e) => setFloorNo(e.target.value)}
-                  className="border-blue-200 focus:border-blue-400"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2">
-                  <p className="text-xs text-gray-500">Rows</p>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={rows}
-                    onChange={(e) => setRows(parseInt(e.target.value) || 5)}
-                    className="border-blue-200 focus:border-blue-400"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <p className="text-xs text-gray-500">Columns</p>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={cols}
-                    onChange={(e) => setColumns(parseInt(e.target.value) || 6)}
-                    className="border-blue-200 focus:border-blue-400"
-                  />
-                </div>
-              </div>
-            </div>
+          
+          <div className="mt-4 flex space-x-2">
+            <Button 
+              variant={activeTab === "config" ? "default" : "outline"}
+              onClick={() => setActiveTab("config")}
+              className={activeTab === "config" ? "bg-blue-600" : ""}
+            >
+              Configuration
+            </Button>
+            <Button 
+              variant={activeTab === "preview" ? "default" : "outline"}
+              onClick={() => setActiveTab("preview")}
+              className={activeTab === "preview" ? "bg-blue-600" : ""}
+              disabled={seats.length === 0}
+            >
+              Seating Preview
+            </Button>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="font-semibold text-blue-800">Department Configuration</h3>
-            <div className="space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={addASeries}
-                className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:border-blue-400 transition-all"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add A Series Department
+        {activeTab === "config" && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100 shadow-sm">
+                <h3 className="font-semibold text-blue-800">Examination Center Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Select value={centerName} onValueChange={(value) => {
+                    setCenterName(value);
+                    const center = examCenters.find(c => c.name === value);
+                    if (center) {
+                      setCenterCode(center.code);
+                    }
+                  }}>
+                    <SelectTrigger className="border-blue-200 focus:border-blue-400">
+                      <SelectValue placeholder="Select Center" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {examCenters.map((center) => (
+                        <SelectItem key={center.id} value={center.name}>
+                          {center.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Input
+                    placeholder="Center Code"
+                    value={centerCode}
+                    readOnly
+                    className="bg-white/50 border-blue-200"
+                  />
+
+                  <Select 
+                    value={selectedHall} 
+                    onValueChange={handleHallSelect}
+                  >
+                    <SelectTrigger className="border-blue-200 focus:border-blue-400">
+                      <SelectValue placeholder="Select Hall" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {halls.map((hall) => (
+                        <SelectItem key={hall.id} value={hall.id}>
+                          {hall.name} (Capacity: {hall.capacity})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Room Number"
+                      value={roomNo}
+                      onChange={(e) => setRoomNo(e.target.value)}
+                      className="border-blue-200 focus:border-blue-400"
+                    />
+
+                    <Input
+                      placeholder="Floor Number"
+                      value={floorNo}
+                      onChange={(e) => setFloorNo(e.target.value)}
+                      className="border-blue-200 focus:border-blue-400"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-500">Rows</p>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={rows}
+                        onChange={(e) => setRows(parseInt(e.target.value) || 5)}
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-500">Columns</p>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={cols}
+                        onChange={(e) => setColumns(parseInt(e.target.value) || 6)}
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100 shadow-sm">
+                <h3 className="font-semibold text-blue-800">Series Overview</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-blue-100 rounded-lg">
+                    <h4 className="font-medium text-blue-700">A Series</h4>
+                    <p className="text-sm mt-1">Departments: {getASeriesDepartments().length}</p>
+                    <p className="text-sm">Students: {getStudentCountByDepartment('A')}</p>
+                  </div>
+                  <div className="p-4 bg-purple-100 rounded-lg">
+                    <h4 className="font-medium text-purple-700">B Series</h4>
+                    <p className="text-sm mt-1">Departments: {getBSeriesDepartments().length}</p>
+                    <p className="text-sm">Students: {getStudentCountByDepartment('B')}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-semibold text-blue-800">Department Configuration</h3>
+                <div className="space-x-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={addASeries}
+                    className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:border-blue-400 transition-all"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add A Series Department
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={addBSeries}
+                    className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200 hover:border-purple-400 transition-all"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add B Series Department
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* A Series Departments */}
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h3 className="font-semibold text-blue-800 mb-4">A Series Departments</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Dept/Module</TableHead>
+                        <TableHead>Start Reg</TableHead>
+                        <TableHead>End Reg</TableHead>
+                        <TableHead>Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getASeriesDepartments().map((dept, index) => (
+                        <TableRow key={dept.id}>
+                          <TableCell>
+                            <Select 
+                              value={dept.department} 
+                              onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
+                            >
+                              <SelectTrigger className="border-blue-200 focus:border-blue-400">
+                                <SelectValue placeholder="Select department" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(groupedSubjects).map(([department, subjects]) => (
+                                  <SelectGroup key={department}>
+                                    <SelectLabel className="font-bold">{department}</SelectLabel>
+                                    {subjects.map((subject) => (
+                                      <SelectItem key={subject.id} value={subject.name}>
+                                        {subject.name} ({subject.code})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              placeholder="Start"
+                              value={dept.startRegNo}
+                              onChange={(e) => updateDepartment(dept.id, 'startRegNo', e.target.value)}
+                              className="border-blue-200 focus:border-blue-400"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              placeholder="End"
+                              value={dept.endRegNo}
+                              onChange={(e) => updateDepartment(dept.id, 'endRegNo', e.target.value)}
+                              className="border-blue-200 focus:border-blue-400"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => removeDepartment(dept.id)}
+                              className="hover:bg-red-50 hover:text-red-600 transition-colors"
+                              disabled={getASeriesDepartments().length <= 1}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* B Series Departments */}
+                <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <h3 className="font-semibold text-purple-800 mb-4">B Series Departments</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Dept/Module</TableHead>
+                        <TableHead>Start Reg</TableHead>
+                        <TableHead>End Reg</TableHead>
+                        <TableHead>Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getBSeriesDepartments().map((dept, index) => (
+                        <TableRow key={dept.id}>
+                          <TableCell>
+                            <Select 
+                              value={dept.department} 
+                              onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
+                            >
+                              <SelectTrigger className="border-purple-200 focus:border-purple-400">
+                                <SelectValue placeholder="Select department" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(groupedSubjects).map(([department, subjects]) => (
+                                  <SelectGroup key={department}>
+                                    <SelectLabel className="font-bold">{department}</SelectLabel>
+                                    {subjects.map((subject) => (
+                                      <SelectItem key={subject.id} value={subject.name}>
+                                        {subject.name} ({subject.code})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              placeholder="Start"
+                              value={dept.startRegNo}
+                              onChange={(e) => updateDepartment(dept.id, 'startRegNo', e.target.value)}
+                              className="border-purple-200 focus:border-purple-400"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              placeholder="End"
+                              value={dept.endRegNo}
+                              onChange={(e) => updateDepartment(dept.id, 'endRegNo', e.target.value)}
+                              className="border-purple-200 focus:border-purple-400"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => removeDepartment(dept.id)}
+                              className="hover:bg-red-50 hover:text-red-600 transition-colors"
+                              disabled={getBSeriesDepartments().length <= 1}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4 items-center">
+              <Button onClick={generateSeating} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300">
+                <Grid3X3 className="mr-2 h-4 w-4" />
+                Generate Seating
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={addBSeries}
-                className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200 hover:border-purple-400 transition-all"
+
+              <Button
+                variant="outline"
+                onClick={() => rotateStudents('left')}
+                disabled={seats.length === 0}
+                className="hover:bg-blue-50 transition-colors"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add B Series Department
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Rotate Left
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => rotateStudents('right')}
+                disabled={seats.length === 0}
+                className="hover:bg-blue-50 transition-colors"
+              >
+                <ArrowRight className="mr-2 h-4 w-4" />
+                Rotate Right
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => setSeats([])}
+                disabled={seats.length === 0}
+                className="hover:bg-red-50 hover:text-red-600 transition-colors"
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reset
               </Button>
             </div>
-          </div>
+          </>
+        )}
 
-          {departments.map((dept, index) => (
-            <div key={dept.id} className={`p-6 rounded-lg border shadow-sm transition-all hover:shadow-md ${
-              dept.prefix === 'A' 
-                ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200' 
-                : 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200'
-            }`}>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold text-blue-800">
-                  Department {index + 1} 
-                  <span className={`ml-2 px-2 py-1 rounded-md text-sm ${
-                    dept.prefix === 'A' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-purple-100 text-purple-700'
-                  }`}>
-                    {dept.prefix} Series
-                  </span>
-                </h3>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => removeDepartment(dept.id)}
-                  className="hover:bg-red-50 hover:text-red-600 transition-colors"
+        {activeTab === "preview" && seats.length > 0 && (
+          <div className="mt-6">
+            <h3 className="font-semibold text-blue-800 mb-4">Seating Preview</h3>
+            <div className="grid gap-4" style={{
+              gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+            }}>
+              {seats.map((seat) => (
+                <div
+                  key={seat.id}
+                  className={`p-4 rounded-lg shadow-sm transition-all hover:shadow-md ${
+                    seat.studentName
+                      ? departments.find(d => d.department === seat.department)?.department === seat.department
+                        ? `bg-gradient-to-br ${
+                            departments.findIndex(d => d.department === seat.department) % 5 === 0 ? 'from-blue-50 to-blue-100 border-blue-200' : 
+                            departments.findIndex(d => d.department === seat.department) % 5 === 1 ? 'from-green-50 to-green-100 border-green-200' :
+                            departments.findIndex(d => d.department === seat.department) % 5 === 2 ? 'from-yellow-50 to-yellow-100 border-yellow-200' :
+                            departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'from-purple-50 to-purple-100 border-purple-200' :
+                            'from-pink-50 to-pink-100 border-pink-200'
+                          }`
+                        : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
+                      : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 opacity-50"
+                  } flex flex-col items-center justify-center text-center min-h-[120px] text-sm border animate-fadeIn`}
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Select 
-                  value={dept.department} 
-                  onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
-                >
-                  <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                    <SelectValue placeholder="Select department and module" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(groupedSubjects).map(([department, subjects]) => (
-                      <SelectGroup key={department}>
-                        <SelectLabel className="font-bold">{department}</SelectLabel>
-                        {subjects.map((subject) => (
-                          <SelectItem key={subject.id} value={subject.name}>
-                            {subject.name} ({subject.code})
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  placeholder="Start Reg No"
-                  value={dept.startRegNo}
-                  onChange={(e) => updateDepartment(dept.id, 'startRegNo', e.target.value)}
-                  className="border-blue-200 focus:border-blue-400"
-                />
-                <Input
-                  placeholder="End Reg No"
-                  value={dept.endRegNo}
-                  onChange={(e) => updateDepartment(dept.id, 'endRegNo', e.target.value)}
-                  className="border-blue-200 focus:border-blue-400"
-                />
-              </div>
+                  {seat.studentName ? (
+                    <>
+                      <span className="font-bold text-lg mb-1">{seat.seatNo}</span>
+                      <span className="font-medium">{seat.studentName}</span>
+                      <span className="text-xs text-gray-600">Reg: {seat.regNo}</span>
+                      <span className="text-xs text-gray-500">{seat.department}</span>
+                      <span className="text-xs text-gray-500">
+                        {seat.subjectCode} - {seat.subjectName}
+                      </span>
+                    </>
+                  ) : (
+                    "Empty"
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap gap-4 items-center">
-          <Button onClick={generateSeating} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300">
-            <Grid3X3 className="mr-2 h-4 w-4" />
-            Generate Seating
-          </Button>
-
-          <Button
-            variant="outline"
-            onClick={() => rotateStudents('left')}
-            disabled={seats.length === 0}
-            className="hover:bg-blue-50 transition-colors"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Rotate Left
-          </Button>
-
-          <Button
-            variant="outline"
-            onClick={() => rotateStudents('right')}
-            disabled={seats.length === 0}
-            className="hover:bg-blue-50 transition-colors"
-          >
-            <ArrowRight className="mr-2 h-4 w-4" />
-            Rotate Right
-          </Button>
-
-          <Button
-            variant="outline"
-            onClick={() => setSeats([])}
-            disabled={seats.length === 0}
-            className="hover:bg-red-50 hover:text-red-600 transition-colors"
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Reset
-          </Button>
-        </div>
-
-        {seats.length > 0 && (
-          <div className="grid gap-4" style={{
-            gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-          }}>
-            {seats.map((seat) => (
-              <div
-                key={seat.id}
-                className={`p-4 rounded-lg shadow-sm transition-all hover:shadow-md ${
-                  seat.studentName
-                    ? departments.find(d => d.department === seat.department)?.department === seat.department
-                      ? `bg-gradient-to-br ${
-                          departments.findIndex(d => d.department === seat.department) % 5 === 0 ? 'from-blue-50 to-blue-100 border-blue-200' : 
-                          departments.findIndex(d => d.department === seat.department) % 5 === 1 ? 'from-green-50 to-green-100 border-green-200' :
-                          departments.findIndex(d => d.department === seat.department) % 5 === 2 ? 'from-yellow-50 to-yellow-100 border-yellow-200' :
-                          departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'from-purple-50 to-purple-100 border-purple-200' :
-                          'from-pink-50 to-pink-100 border-pink-200'
-                        }`
-                      : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
-                    : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 opacity-50"
-                } flex flex-col items-center justify-center text-center min-h-[120px] text-sm border animate-fadeIn`}
-              >
-                {seat.studentName ? (
-                  <>
-                    <span className="font-bold text-lg mb-1">{seat.seatNo}</span>
-                    <span className="font-medium">{seat.studentName}</span>
-                    <span className="text-xs text-gray-600">Reg: {seat.regNo}</span>
-                    <span className="text-xs text-gray-500">{seat.department}</span>
-                    <span className="text-xs text-gray-500">
-                      {seat.subjectCode} - {seat.subjectName}
-                    </span>
-                  </>
-                ) : (
-                  "Empty"
-                )}
-              </div>
-            ))}
           </div>
         )}
       </div>
