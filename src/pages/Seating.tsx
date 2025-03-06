@@ -288,6 +288,8 @@ const Seating = () => {
           generateSeating={generateSeating}
           rotateStudents={rotateStudents}
           departments={departments}
+          rows={rows}
+          cols={cols}
         />
       </div>
     </Layout>
