@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -282,7 +283,6 @@ const Seating = () => {
     const subjectName = subject?.name || deptConfig.department;
     const subjectCode = subject?.code;
     
-    // Start from seat 1 for each department series
     for (let i = start, seatNum = 1; i <= end; i++, seatNum++) {
       students.push({
         name: `${departmentName} Student`,
@@ -290,7 +290,6 @@ const Seating = () => {
         department: departmentName,
         subjectCode: subjectCode,
         subjectName: subjectName,
-        // Format: A1, A2, etc. or B1, B2, etc. (no space between letter and number)
         seatNo: `${deptConfig.prefix}${seatNum}`
       });
     }
@@ -321,12 +320,11 @@ const Seating = () => {
       return;
     }
 
-    // Updated seating arrangement algorithm for A1, B1, A2, B2 format
-    const totalSeats = rows * cols;
+    // Get A and B series students
     const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
     const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
     
-    // Generate all students from all departments
+    // Generate students for both series
     const aSeriesStudents: Student[] = [];
     aSeriesDepts.forEach(dept => {
       aSeriesStudents.push(...generateStudentList(dept));
@@ -337,7 +335,8 @@ const Seating = () => {
       bSeriesStudents.push(...generateStudentList(dept));
     });
     
-    // Initialize seats with empty values
+    // Initialize seats array
+    const totalSeats = rows * cols;
     const emptySeats: Seat[] = Array.from({ length: totalSeats }, (_, index) => ({
       id: index,
       seatNo: '',
@@ -346,30 +345,25 @@ const Seating = () => {
       department: null,
     }));
     
-    // Arrange students in A1, B1, A2, B2 pattern
-    const maxStudentsPerSeries = Math.max(aSeriesStudents.length, bSeriesStudents.length);
-    const assignedStudents: (Student | null)[] = Array(totalSeats).fill(null);
+    // Create an array to hold the assigned students
+    const assignedSeats: Seat[] = [...emptySeats];
     
-    // Assign students in A1, B1, A2, B2 pattern
+    // Count the maximum number of iterations needed
+    const maxIterations = Math.max(aSeriesStudents.length, bSeriesStudents.length);
+    
+    // Initialize indices for A and B series
+    let aIndex = 0;
+    let bIndex = 0;
     let seatIndex = 0;
-    for (let i = 0; i < maxStudentsPerSeries; i++) {
-      // Add A series student (A1, A2, etc.)
-      if (i < aSeriesStudents.length && seatIndex < totalSeats) {
-        assignedStudents[seatIndex++] = aSeriesStudents[i];
-      }
-      
-      // Add B series student (B1, B2, etc.)
-      if (i < bSeriesStudents.length && seatIndex < totalSeats) {
-        assignedStudents[seatIndex++] = bSeriesStudents[i];
-      }
-    }
     
-    // Convert to the final seats format
-    const finalSeats = emptySeats.map((seat, index) => {
-      const student = assignedStudents[index];
-      if (student) {
-        return {
-          ...seat,
+    // Assign students in the A1, B1, A2, B2, A3, B3... pattern
+    // Continue alternating pattern until we've placed all students or filled all seats
+    while ((aIndex < aSeriesStudents.length || bIndex < bSeriesStudents.length) && seatIndex < totalSeats) {
+      // Place an A series student if available
+      if (aIndex < aSeriesStudents.length && seatIndex < totalSeats) {
+        const student = aSeriesStudents[aIndex];
+        assignedSeats[seatIndex] = {
+          ...assignedSeats[seatIndex],
           seatNo: student.seatNo,
           studentName: student.name,
           regNo: student.regNo,
@@ -377,11 +371,28 @@ const Seating = () => {
           subjectCode: student.subjectCode,
           subjectName: student.subjectName,
         };
+        aIndex++;
+        seatIndex++;
       }
-      return seat;
-    });
+      
+      // Place a B series student if available
+      if (bIndex < bSeriesStudents.length && seatIndex < totalSeats) {
+        const student = bSeriesStudents[bIndex];
+        assignedSeats[seatIndex] = {
+          ...assignedSeats[seatIndex],
+          seatNo: student.seatNo,
+          studentName: student.name,
+          regNo: student.regNo,
+          department: student.department,
+          subjectCode: student.subjectCode,
+          subjectName: student.subjectName,
+        };
+        bIndex++;
+        seatIndex++;
+      }
+    }
     
-    setSeats(finalSeats);
+    setSeats(assignedSeats);
     
     toast({
       title: "Success",
