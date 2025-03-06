@@ -11,25 +11,11 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import { useState } from "react";
-import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw, Plus, Trash2, Info } from "lucide-react";
+import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface DepartmentConfig {
   id: string;
@@ -37,7 +23,6 @@ interface DepartmentConfig {
   startRegNo: string;
   endRegNo: string;
   prefix: string;
-  startSeatNo?: number; // Optional start seat number for continuous numbering
 }
 
 interface Seat {
@@ -76,8 +61,10 @@ const Seating = () => {
   const { toast } = useToast();
 
   const [departments, setDepartments] = useState<DepartmentConfig[]>([
-    { id: '1', department: '', startRegNo: '', endRegNo: '', prefix: 'A', startSeatNo: 1 },
-    { id: '2', department: '', startRegNo: '', endRegNo: '', prefix: 'B', startSeatNo: 1 }
+    { id: '1', department: '', startRegNo: '', endRegNo: '', prefix: 'A' },
+    { id: '2', department: '', startRegNo: '', endRegNo: '', prefix: 'B' },
+    { id: '3', department: '', startRegNo: '', endRegNo: '', prefix: 'C' },
+    { id: '4', department: '', startRegNo: '', endRegNo: '', prefix: 'D' }
   ]);
   const [centerName, setCenterName] = useState("");
   const [centerCode, setCenterCode] = useState("");
@@ -87,7 +74,6 @@ const Seating = () => {
   const [rows, setRows] = useState(5);
   const [cols, setColumns] = useState(6);
   const [seats, setSeats] = useState<Seat[]>([]);
-  const [activeTab, setActiveTab] = useState<"config" | "preview">("config");
   const queryClient = useQueryClient();
   
   // Instead of fetching halls from the database (which doesn't exist), we'll use our default halls
@@ -209,75 +195,109 @@ const Seating = () => {
     }
   };
 
-  // Function to calculate the next seat number for a new A-series department
-  const calculateNextSeatNumber = (prefix: 'A' | 'B'): number => {
-    const seriesDepts = departments.filter(dept => dept.prefix === prefix);
-    
-    if (seriesDepts.length === 0) return 1;
-    
-    let maxSeatNum = 0;
-    
-    seriesDepts.forEach(dept => {
-      if (!dept.startRegNo || !dept.endRegNo) return;
-      
-      const start = parseInt(dept.startRegNo);
-      const end = parseInt(dept.endRegNo);
-      
-      if (isNaN(start) || isNaN(end) || end < start) return;
-      
-      const startSeat = dept.startSeatNo || 1;
-      const seatCount = end - start + 1;
-      const lastSeatInDept = startSeat + seatCount - 1;
-      
-      if (lastSeatInDept > maxSeatNum) {
-        maxSeatNum = lastSeatInDept;
-      }
-    });
-    
-    return maxSeatNum + 1;
-  };
-
   const addASeries = () => {
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
-    const nextSeatNum = calculateNextSeatNumber('A');
-    
     setDepartments([...departments, {
       id: newId,
       department: '',
       startRegNo: '',
       endRegNo: '',
-      prefix: 'A',
-      startSeatNo: nextSeatNum
+      prefix: 'A'
     }]);
 
     toast({
       title: "Success",
-      description: `Added new A series department starting from seat A${nextSeatNum}`,
+      description: "Added new department to A series",
     });
   };
 
   const addBSeries = () => {
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
-    const nextSeatNum = calculateNextSeatNumber('B');
-    
     setDepartments([...departments, {
       id: newId,
       department: '',
       startRegNo: '',
       endRegNo: '',
-      prefix: 'B',
-      startSeatNo: nextSeatNum
+      prefix: 'B'
     }]);
 
     toast({
       title: "Success",
-      description: `Added new B series department starting from seat B${nextSeatNum}`,
+      description: "Added new department to B series",
+    });
+  };
+
+  const addCSeries = () => {
+    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    setDepartments([...departments, {
+      id: newId,
+      department: '',
+      startRegNo: '',
+      endRegNo: '',
+      prefix: 'C'
+    }]);
+
+    toast({
+      title: "Success",
+      description: "Added new department to C series",
+    });
+  };
+
+  const addDSeries = () => {
+    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    setDepartments([...departments, {
+      id: newId,
+      department: '',
+      startRegNo: '',
+      endRegNo: '',
+      prefix: 'D'
+    }]);
+
+    toast({
+      title: "Success",
+      description: "Added new department to D series",
+    });
+  };
+
+  const addESeries = () => {
+    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    setDepartments([...departments, {
+      id: newId,
+      department: '',
+      startRegNo: '',
+      endRegNo: '',
+      prefix: 'E'
+    }]);
+
+    toast({
+      title: "Success",
+      description: "Added new department to E series",
+    });
+  };
+
+  const addFSeries = () => {
+    const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
+    setDepartments([...departments, {
+      id: newId,
+      department: '',
+      startRegNo: '',
+      endRegNo: '',
+      prefix: 'F'
+    }]);
+
+    toast({
+      title: "Success",
+      description: "Added new department to F series",
     });
   };
 
   const removeDepartment = (id: string) => {
     const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
     const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
+    const cSeriesDepts = departments.filter(dept => dept.prefix === 'C');
+    const dSeriesDepts = departments.filter(dept => dept.prefix === 'D');
+    const eSeriesDepts = departments.filter(dept => dept.prefix === 'E');
+    const fSeriesDepts = departments.filter(dept => dept.prefix === 'F');
     
     const targetDept = departments.find(d => d.id === id);
     if (!targetDept) return;
@@ -300,6 +320,42 @@ const Seating = () => {
       return;
     }
 
+    if (targetDept.prefix === 'C' && cSeriesDepts.length <= 1) {
+      toast({
+        title: "Error",
+        description: "Cannot remove the only C series department",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (targetDept.prefix === 'D' && dSeriesDepts.length <= 1) {
+      toast({
+        title: "Error",
+        description: "Cannot remove the only D series department",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (targetDept.prefix === 'E' && eSeriesDepts.length <= 1) {
+      toast({
+        title: "Error",
+        description: "Cannot remove the only E series department",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (targetDept.prefix === 'F' && fSeriesDepts.length <= 1) {
+      toast({
+        title: "Error",
+        description: "Cannot remove the only F series department",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setDepartments(departments.filter(d => d.id !== id));
     
     toast({
@@ -311,12 +367,6 @@ const Seating = () => {
   const updateDepartment = (id: string, field: keyof DepartmentConfig, value: string) => {
     setDepartments(departments.map(dept => 
       dept.id === id ? { ...dept, [field]: value } : dept
-    ));
-  };
-
-  const updateDepartmentStartSeat = (id: string, value: number) => {
-    setDepartments(departments.map(dept => 
-      dept.id === id ? { ...dept, startSeatNo: value } : dept
     ));
   };
 
@@ -339,16 +389,15 @@ const Seating = () => {
     const subjectName = subject?.name || deptConfig.department;
     const subjectCode = subject?.code;
     
-    // Use the specified startSeatNo (default to 1 if not set)
-    const startSeatNum = deptConfig.startSeatNo || 1;
-    
-    for (let i = start, seatNum = startSeatNum; i <= end; i++, seatNum++) {
+    // Start from seat 1 for each department series
+    for (let i = start, seatNum = 1; i <= end; i++, seatNum++) {
       students.push({
         name: `${departmentName} Student`,
         regNo: i.toString().padStart(3, '0'),
         department: departmentName,
         subjectCode: subjectCode,
         subjectName: subjectName,
+        // Format: A1, A2, etc. or B1, B2, etc. (no space between letter and number)
         seatNo: `${deptConfig.prefix}${seatNum}`
       });
     }
@@ -379,11 +428,18 @@ const Seating = () => {
       return;
     }
 
-    // Get A and B series students
+    // Updated seating arrangement algorithm for A1, B1, C1, D1, E1, F1, A2, B2, ... format
+    const totalSeats = rows * cols;
+    
+    // Group departments by series (A, B, C, D, E, F)
     const aSeriesDepts = departments.filter(dept => dept.prefix === 'A');
     const bSeriesDepts = departments.filter(dept => dept.prefix === 'B');
+    const cSeriesDepts = departments.filter(dept => dept.prefix === 'C');
+    const dSeriesDepts = departments.filter(dept => dept.prefix === 'D');
+    const eSeriesDepts = departments.filter(dept => dept.prefix === 'E');
+    const fSeriesDepts = departments.filter(dept => dept.prefix === 'F');
     
-    // Generate students for both series
+    // Generate all students from all departments
     const aSeriesStudents: Student[] = [];
     aSeriesDepts.forEach(dept => {
       aSeriesStudents.push(...generateStudentList(dept));
@@ -393,22 +449,28 @@ const Seating = () => {
     bSeriesDepts.forEach(dept => {
       bSeriesStudents.push(...generateStudentList(dept));
     });
-    
-    // Sort students by seat number to ensure A1, A2, A3... order
-    aSeriesStudents.sort((a, b) => {
-      const aNum = parseInt(a.seatNo.substring(1));
-      const bNum = parseInt(b.seatNo.substring(1));
-      return aNum - bNum;
+
+    const cSeriesStudents: Student[] = [];
+    cSeriesDepts.forEach(dept => {
+      cSeriesStudents.push(...generateStudentList(dept));
     });
     
-    bSeriesStudents.sort((a, b) => {
-      const aNum = parseInt(a.seatNo.substring(1));
-      const bNum = parseInt(b.seatNo.substring(1));
-      return aNum - bNum;
+    const dSeriesStudents: Student[] = [];
+    dSeriesDepts.forEach(dept => {
+      dSeriesStudents.push(...generateStudentList(dept));
+    });
+
+    const eSeriesStudents: Student[] = [];
+    eSeriesDepts.forEach(dept => {
+      eSeriesStudents.push(...generateStudentList(dept));
     });
     
-    // Initialize seats array
-    const totalSeats = rows * cols;
+    const fSeriesStudents: Student[] = [];
+    fSeriesDepts.forEach(dept => {
+      fSeriesStudents.push(...generateStudentList(dept));
+    });
+    
+    // Initialize seats with empty values
     const emptySeats: Seat[] = Array.from({ length: totalSeats }, (_, index) => ({
       id: index,
       seatNo: '',
@@ -417,54 +479,70 @@ const Seating = () => {
       department: null,
     }));
     
-    // Create an array to hold the assigned students
-    const assignedSeats: Seat[] = [...emptySeats];
+    // Find maximum number of students across all series to determine iteration count
+    const maxStudentsPerSeries = Math.max(
+      aSeriesStudents.length, 
+      bSeriesStudents.length,
+      cSeriesStudents.length,
+      dSeriesStudents.length,
+      eSeriesStudents.length,
+      fSeriesStudents.length
+    );
     
-    // Count the maximum number of iterations needed
-    const maxIterations = Math.max(aSeriesStudents.length, bSeriesStudents.length);
+    const assignedStudents: (Student | null)[] = Array(totalSeats).fill(null);
     
-    // Initialize indices for A and B series
-    let aIndex = 0;
-    let bIndex = 0;
+    // Assign students in A1, B1, C1, D1, E1, F1, A2, B2, ... pattern
     let seatIndex = 0;
-    
-    // Assign students in the A1, B1, A2, B2, A3, B3... pattern
-    // Continue alternating pattern until we've placed all students or filled all seats
-    while ((aIndex < aSeriesStudents.length || bIndex < bSeriesStudents.length) && seatIndex < totalSeats) {
-      // Place an A series student if available
-      if (aIndex < aSeriesStudents.length && seatIndex < totalSeats) {
-        const student = aSeriesStudents[aIndex];
-        assignedSeats[seatIndex] = {
-          ...assignedSeats[seatIndex],
-          seatNo: student.seatNo,
-          studentName: student.name,
-          regNo: student.regNo,
-          department: student.department,
-          subjectCode: student.subjectCode,
-          subjectName: student.subjectName,
-        };
-        aIndex++;
-        seatIndex++;
+    for (let i = 0; i < maxStudentsPerSeries; i++) {
+      // Add A series student
+      if (i < aSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = aSeriesStudents[i];
       }
       
-      // Place a B series student if available
-      if (bIndex < bSeriesStudents.length && seatIndex < totalSeats) {
-        const student = bSeriesStudents[bIndex];
-        assignedSeats[seatIndex] = {
-          ...assignedSeats[seatIndex],
-          seatNo: student.seatNo,
-          studentName: student.name,
-          regNo: student.regNo,
-          department: student.department,
-          subjectCode: student.subjectCode,
-          subjectName: student.subjectName,
-        };
-        bIndex++;
-        seatIndex++;
+      // Add B series student
+      if (i < bSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = bSeriesStudents[i];
+      }
+
+      // Add C series student
+      if (i < cSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = cSeriesStudents[i];
+      }
+      
+      // Add D series student
+      if (i < dSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = dSeriesStudents[i];
+      }
+
+      // Add E series student
+      if (i < eSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = eSeriesStudents[i];
+      }
+      
+      // Add F series student
+      if (i < fSeriesStudents.length && seatIndex < totalSeats) {
+        assignedStudents[seatIndex++] = fSeriesStudents[i];
       }
     }
     
-    setSeats(assignedSeats);
+    // Convert to the final seats format
+    const finalSeats = emptySeats.map((seat, index) => {
+      const student = assignedStudents[index];
+      if (student) {
+        return {
+          ...seat,
+          seatNo: student.seatNo,
+          studentName: student.name,
+          regNo: student.regNo,
+          department: student.department,
+          subjectCode: student.subjectCode,
+          subjectName: student.subjectName,
+        };
+      }
+      return seat;
+    });
+    
+    setSeats(finalSeats);
     
     toast({
       title: "Success",
@@ -499,31 +577,6 @@ const Seating = () => {
     });
   };
 
-  const getASeriesDepartments = () => {
-    return departments.filter(dept => dept.prefix === 'A');
-  };
-  
-  const getBSeriesDepartments = () => {
-    return departments.filter(dept => dept.prefix === 'B');
-  };
-  
-  const getStudentCountByDepartment = (prefix: 'A' | 'B') => {
-    const depts = departments.filter(dept => dept.prefix === prefix);
-    let total = 0;
-    
-    depts.forEach(dept => {
-      if (dept.startRegNo && dept.endRegNo) {
-        const start = parseInt(dept.startRegNo);
-        const end = parseInt(dept.endRegNo);
-        if (!isNaN(start) && !isNaN(end) && end >= start) {
-          total += (end - start + 1);
-        }
-      }
-    });
-    
-    return total;
-  };
-
   return (
     <Layout>
       <div className="space-y-6 animate-fadeIn">
@@ -534,429 +587,304 @@ const Seating = () => {
           <p className="text-muted-foreground mt-2">
             Generate and manage exam hall seating arrangements for multiple departments
           </p>
-          
-          <div className="mt-4 flex space-x-2">
-            <Button 
-              variant={activeTab === "config" ? "default" : "outline"}
-              onClick={() => setActiveTab("config")}
-              className={activeTab === "config" ? "bg-blue-600" : ""}
-            >
-              Configuration
-            </Button>
-            <Button 
-              variant={activeTab === "preview" ? "default" : "outline"}
-              onClick={() => setActiveTab("preview")}
-              className={activeTab === "preview" ? "bg-blue-600" : ""}
-              disabled={seats.length === 0}
-            >
-              Seating Preview
-            </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100 shadow-sm">
+            <h3 className="font-semibold text-blue-800">Examination Center Details</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <Select value={centerName} onValueChange={(value) => {
+                setCenterName(value);
+                const center = examCenters.find(c => c.name === value);
+                if (center) {
+                  setCenterCode(center.code);
+                }
+              }}>
+                <SelectTrigger className="border-blue-200 focus:border-blue-400">
+                  <SelectValue placeholder="Select Center" />
+                </SelectTrigger>
+                <SelectContent>
+                  {examCenters.map((center) => (
+                    <SelectItem key={center.id} value={center.name}>
+                      {center.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Input
+                placeholder="Center Code"
+                value={centerCode}
+                readOnly
+                className="bg-white/50 border-blue-200"
+              />
+
+              <Select 
+                value={selectedHall} 
+                onValueChange={handleHallSelect}
+              >
+                <SelectTrigger className="border-blue-200 focus:border-blue-400">
+                  <SelectValue placeholder="Select Hall" />
+                </SelectTrigger>
+                <SelectContent>
+                  {halls.map((hall) => (
+                    <SelectItem key={hall.id} value={hall.id}>
+                      {hall.name} (Capacity: {hall.capacity})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  placeholder="Room Number"
+                  value={roomNo}
+                  onChange={(e) => setRoomNo(e.target.value)}
+                  className="border-blue-200 focus:border-blue-400"
+                />
+
+                <Input
+                  placeholder="Floor Number"
+                  value={floorNo}
+                  onChange={(e) => setFloorNo(e.target.value)}
+                  className="border-blue-200 focus:border-blue-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">Rows</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={rows}
+                    onChange={(e) => setRows(parseInt(e.target.value) || 5)}
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">Columns</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={cols}
+                    onChange={(e) => setColumns(parseInt(e.target.value) || 6)}
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {activeTab === "config" && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100 shadow-sm">
-                <h3 className="font-semibold text-blue-800">Examination Center Details</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <Select value={centerName} onValueChange={(value) => {
-                    setCenterName(value);
-                    const center = examCenters.find(c => c.name === value);
-                    if (center) {
-                      setCenterCode(center.code);
-                    }
-                  }}>
-                    <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                      <SelectValue placeholder="Select Center" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {examCenters.map((center) => (
-                        <SelectItem key={center.id} value={center.name}>
-                          {center.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Input
-                    placeholder="Center Code"
-                    value={centerCode}
-                    readOnly
-                    className="bg-white/50 border-blue-200"
-                  />
-
-                  <Select 
-                    value={selectedHall} 
-                    onValueChange={handleHallSelect}
-                  >
-                    <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                      <SelectValue placeholder="Select Hall" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {halls.map((hall) => (
-                        <SelectItem key={hall.id} value={hall.id}>
-                          {hall.name} (Capacity: {hall.capacity})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      placeholder="Room Number"
-                      value={roomNo}
-                      onChange={(e) => setRoomNo(e.target.value)}
-                      className="border-blue-200 focus:border-blue-400"
-                    />
-
-                    <Input
-                      placeholder="Floor Number"
-                      value={floorNo}
-                      onChange={(e) => setFloorNo(e.target.value)}
-                      className="border-blue-200 focus:border-blue-400"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-500">Rows</p>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={20}
-                        value={rows}
-                        onChange={(e) => setRows(parseInt(e.target.value) || 5)}
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-500">Columns</p>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={20}
-                        value={cols}
-                        onChange={(e) => setColumns(parseInt(e.target.value) || 6)}
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100 shadow-sm">
-                <h3 className="font-semibold text-blue-800">Series Overview</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-blue-100 rounded-lg">
-                    <h4 className="font-medium text-blue-700">A Series</h4>
-                    <p className="text-sm mt-1">Departments: {getASeriesDepartments().length}</p>
-                    <p className="text-sm">Students: {getStudentCountByDepartment('A')}</p>
-                  </div>
-                  <div className="p-4 bg-purple-100 rounded-lg">
-                    <h4 className="font-medium text-purple-700">B Series</h4>
-                    <p className="text-sm mt-1">Departments: {getBSeriesDepartments().length}</p>
-                    <p className="text-sm">Students: {getStudentCountByDepartment('B')}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-semibold text-blue-800">Department Configuration</h3>
-                <div className="space-x-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={addASeries}
-                    className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:border-blue-400 transition-all"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add A Series Department
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={addBSeries}
-                    className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200 hover:border-purple-400 transition-all"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add B Series Department
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* A Series Departments */}
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h3 className="font-semibold text-blue-800 mb-4">A Series Departments</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Dept/Module</TableHead>
-                        <TableHead>Start Reg</TableHead>
-                        <TableHead>End Reg</TableHead>
-                        <TableHead>Start #</TableHead>
-                        <TableHead>Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {getASeriesDepartments().map((dept, index) => (
-                        <TableRow key={dept.id}>
-                          <TableCell>
-                            <Select 
-                              value={dept.department} 
-                              onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
-                            >
-                              <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                                <SelectValue placeholder="Select department" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(groupedSubjects).map(([department, subjects]) => (
-                                  <SelectGroup key={department}>
-                                    <SelectLabel className="font-bold">{department}</SelectLabel>
-                                    {subjects.map((subject) => (
-                                      <SelectItem key={subject.id} value={subject.name}>
-                                        {subject.name} ({subject.code})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectGroup>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              placeholder="Start"
-                              value={dept.startRegNo}
-                              onChange={(e) => updateDepartment(dept.id, 'startRegNo', e.target.value)}
-                              className="border-blue-200 focus:border-blue-400"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              placeholder="End"
-                              value={dept.endRegNo}
-                              onChange={(e) => updateDepartment(dept.id, 'endRegNo', e.target.value)}
-                              className="border-blue-200 focus:border-blue-400"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="number"
-                                min={1}
-                                placeholder="Start #"
-                                value={dept.startSeatNo || 1}
-                                onChange={(e) => updateDepartmentStartSeat(dept.id, parseInt(e.target.value) || 1)}
-                                className="border-blue-200 focus:border-blue-400 w-16"
-                              />
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                      <Info className="h-4 w-4 text-blue-500" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="text-xs">Start seat number for this department (e.g., A10)</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => removeDepartment(dept.id)}
-                              className="hover:bg-red-50 hover:text-red-600 transition-colors"
-                              disabled={getASeriesDepartments().length <= 1}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* B Series Departments */}
-                <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                  <h3 className="font-semibold text-purple-800 mb-4">B Series Departments</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Dept/Module</TableHead>
-                        <TableHead>Start Reg</TableHead>
-                        <TableHead>End Reg</TableHead>
-                        <TableHead>Start #</TableHead>
-                        <TableHead>Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {getBSeriesDepartments().map((dept, index) => (
-                        <TableRow key={dept.id}>
-                          <TableCell>
-                            <Select 
-                              value={dept.department} 
-                              onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
-                            >
-                              <SelectTrigger className="border-purple-200 focus:border-purple-400">
-                                <SelectValue placeholder="Select department" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(groupedSubjects).map(([department, subjects]) => (
-                                  <SelectGroup key={department}>
-                                    <SelectLabel className="font-bold">{department}</SelectLabel>
-                                    {subjects.map((subject) => (
-                                      <SelectItem key={subject.id} value={subject.name}>
-                                        {subject.name} ({subject.code})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectGroup>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              placeholder="Start"
-                              value={dept.startRegNo}
-                              onChange={(e) => updateDepartment(dept.id, 'startRegNo', e.target.value)}
-                              className="border-purple-200 focus:border-purple-400"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              placeholder="End"
-                              value={dept.endRegNo}
-                              onChange={(e) => updateDepartment(dept.id, 'endRegNo', e.target.value)}
-                              className="border-purple-200 focus:border-purple-400"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="number"
-                                min={1}
-                                placeholder="Start #"
-                                value={dept.startSeatNo || 1}
-                                onChange={(e) => updateDepartmentStartSeat(dept.id, parseInt(e.target.value) || 1)}
-                                className="border-purple-200 focus:border-purple-400 w-16"
-                              />
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                      <Info className="h-4 w-4 text-purple-500" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="text-xs">Start seat number for this department (e.g., B10)</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => removeDepartment(dept.id)}
-                              className="hover:bg-red-50 hover:text-red-600 transition-colors"
-                              disabled={getBSeriesDepartments().length <= 1}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-4 items-center">
-              <Button onClick={generateSeating} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300">
-                <Grid3X3 className="mr-2 h-4 w-4" />
-                Generate Seating
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => rotateStudents('left')}
-                disabled={seats.length === 0}
-                className="hover:bg-blue-50 transition-colors"
+        <div className="space-y-4">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-semibold text-blue-800">Department Configuration</h3>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                variant="outline" 
+                onClick={addASeries}
+                className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:border-blue-400 transition-all"
               >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Rotate Left
+                <Plus className="h-4 w-4 mr-2" />
+                Add A Series
               </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => rotateStudents('right')}
-                disabled={seats.length === 0}
-                className="hover:bg-blue-50 transition-colors"
+              <Button 
+                variant="outline" 
+                onClick={addBSeries}
+                className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200 hover:border-purple-400 transition-all"
               >
-                <ArrowRight className="mr-2 h-4 w-4" />
-                Rotate Right
+                <Plus className="h-4 w-4 mr-2" />
+                Add B Series
               </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => setSeats([])}
-                disabled={seats.length === 0}
-                className="hover:bg-red-50 hover:text-red-600 transition-colors"
+              <Button 
+                variant="outline" 
+                onClick={addCSeries}
+                className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 hover:border-green-400 transition-all"
               >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Reset
+                <Plus className="h-4 w-4 mr-2" />
+                Add C Series
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={addDSeries}
+                className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-200 hover:border-yellow-400 transition-all"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add D Series
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={addESeries}
+                className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 hover:border-red-400 transition-all"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add E Series
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={addFSeries}
+                className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-indigo-200 hover:border-indigo-400 transition-all"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add F Series
               </Button>
             </div>
-          </>
-        )}
+          </div>
 
-        {activeTab === "preview" && seats.length > 0 && (
-          <div className="mt-6">
-            <h3 className="font-semibold text-blue-800 mb-4">Seating Preview</h3>
-            <div className="grid gap-4" style={{
-              gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-            }}>
-              {seats.map((seat) => (
-                <div
-                  key={seat.id}
-                  className={`p-4 rounded-lg shadow-sm transition-all hover:shadow-md ${
-                    seat.studentName
-                      ? departments.find(d => d.department === seat.department)?.department === seat.department
-                        ? `bg-gradient-to-br ${
-                            departments.findIndex(d => d.department === seat.department) % 5 === 0 ? 'from-blue-50 to-blue-100 border-blue-200' : 
-                            departments.findIndex(d => d.department === seat.department) % 5 === 1 ? 'from-green-50 to-green-100 border-green-200' :
-                            departments.findIndex(d => d.department === seat.department) % 5 === 2 ? 'from-yellow-50 to-yellow-100 border-yellow-200' :
-                            departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'from-purple-50 to-purple-100 border-purple-200' :
-                            'from-pink-50 to-pink-100 border-pink-200'
-                          }`
-                        : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
-                      : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 opacity-50"
-                  } flex flex-col items-center justify-center text-center min-h-[120px] text-sm border animate-fadeIn`}
+          {departments.map((dept, index) => (
+            <div key={dept.id} className={`p-6 rounded-lg border shadow-sm transition-all hover:shadow-md ${
+              dept.prefix === 'A' 
+                ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200' 
+                : dept.prefix === 'B'
+                  ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200'
+                  : dept.prefix === 'C'
+                    ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200'
+                    : dept.prefix === 'D'
+                      ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200'
+                      : dept.prefix === 'E'
+                        ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
+                        : 'bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200'
+            }`}>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-blue-800">
+                  Department {index + 1} 
+                  <span className={`ml-2 px-2 py-1 rounded-md text-sm ${
+                    dept.prefix === 'A' 
+                      ? 'bg-blue-100 text-blue-700' 
+                      : dept.prefix === 'B'
+                        ? 'bg-purple-100 text-purple-700'
+                        : dept.prefix === 'C'
+                          ? 'bg-green-100 text-green-700'
+                          : dept.prefix === 'D'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : dept.prefix === 'E'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-indigo-100 text-indigo-700'
+                  }`}>
+                    {dept.prefix} Series
+                  </span>
+                </h3>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => removeDepartment(dept.id)}
+                  className="hover:bg-red-50 hover:text-red-600 transition-colors"
                 >
-                  {seat.studentName ? (
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Select 
+                  value={dept.department} 
+                  onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
+                >
+                  <SelectTrigger className="border-blue-200 focus:border-blue-400">
+                    <SelectValue placeholder="Select department and module" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(groupedSubjects).map(([department, subjects]) => (
+                      <SelectGroup key={department}>
+                        <SelectLabel className="font-bold">{department}</SelectLabel>
+                        {subjects.map((subject) => (
+                          <SelectItem key={subject.id} value={subject.name}>
+                            {subject.name} ({subject.code})
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Start Reg No"
+                  value={dept.startRegNo}
+                  onChange={(e) => updateDepartment(dept.id, 'startRegNo', e.target.value)}
+                  className="border-blue-200 focus:border-blue-400"
+                />
+                <Input
+                  placeholder="End Reg No"
+                  value={dept.endRegNo}
+                  onChange={(e) => updateDepartment(dept.id, 'endRegNo', e.target.value)}
+                  className="border-blue-200 focus:border-blue-400"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-4 items-center">
+          <Button onClick={generateSeating} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300">
+            <Grid3X3 className="mr-2 h-4 w-4" />
+            Generate Seating
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => rotateStudents('left')}
+            disabled={seats.length === 0}
+            className="hover:bg-blue-50 transition-colors"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Rotate Left
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => rotateStudents('right')}
+            disabled={seats.length === 0}
+            className="hover:bg-blue-50 transition-colors"
+          >
+            <ArrowRight className="mr-2 h-4 w-4" />
+            Rotate Right
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => setSeats([])}
+            disabled={seats.length === 0}
+            className="hover:bg-red-50 hover:text-red-600 transition-colors"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Reset
+          </Button>
+        </div>
+
+        {seats.length > 0 && (
+          <div className="grid gap-4" style={{
+            gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+          }}>
+            {seats.map((seat) => (
+              <div
+                key={seat.id}
+                className={`p-4 rounded-lg shadow-sm transition-all hover:shadow-md ${
+                  seat.studentName
+                    ? departments.find(d => d.department === seat.department)?.department === seat.department
+                      ? `bg-gradient-to-br ${
+                          departments.findIndex(d => d.department === seat.department) % 5 === 0 ? 'from-blue-50 to-blue-100 border-blue-200' : 
+                          departments.findIndex(d => d.department === seat.department) % 5 === 1 ? 'from-green-50 to-green-100 border-green-200' :
+                          departments.findIndex(d => d.department === seat.department) % 5 === 2 ? 'from-yellow-50 to-yellow-100 border-yellow-200' :
+                          departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'from-purple-50 to-purple-100 border-purple-200' :
+                          'from-pink-50 to-pink-100 border-pink-200'
+                        }`
+                      : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
+                    : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
+                }`}
+              >
+                <div className="text-center">
+                  <div className="font-bold">{seat.seatNo || 'Empty'}</div>
+                  {seat.studentName && (
                     <>
-                      <span className="font-bold text-lg mb-1">{seat.seatNo}</span>
-                      <span className="font-medium">{seat.studentName}</span>
-                      <span className="text-xs text-gray-600">Reg: {seat.regNo}</span>
-                      <span className="text-xs text-gray-500">{seat.department}</span>
-                      <span className="text-xs text-gray-500">
-                        {seat.subjectCode} - {seat.subjectName}
-                      </span>
+                      <div className="text-sm text-gray-600 truncate">{seat.studentName}</div>
+                      <div className="text-xs text-gray-500">Reg: {seat.regNo}</div>
+                      <div className="text-xs text-gray-400 truncate mt-1">{seat.department}</div>
                     </>
-                  ) : (
-                    "Empty"
                   )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
