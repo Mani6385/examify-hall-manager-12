@@ -1,4 +1,4 @@
-<lov-code>
+
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -881,4 +881,27 @@ const Seating = () => {
                           departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'from-purple-50 to-purple-100 border-purple-200' :
                           'from-pink-50 to-pink-100 border-pink-200'
                         }`
-                      : "bg-gradient-to
+                      : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
+                    : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
+                }`}
+              >
+                <div className="text-center">
+                  <div className="font-bold">{seat.seatNo || 'Empty'}</div>
+                  {seat.studentName && (
+                    <>
+                      <div className="text-sm text-gray-600 truncate">{seat.studentName}</div>
+                      <div className="text-xs text-gray-500">Reg: {seat.regNo}</div>
+                      <div className="text-xs text-gray-400 truncate mt-1">{seat.department}</div>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+};
+
+export default Seating;
