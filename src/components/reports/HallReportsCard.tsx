@@ -5,8 +5,10 @@ import { ReportButtons } from "./ReportButtons";
 import { ArrangementsTable } from "./ArrangementsTable";
 import { SeatingArrangement } from "@/utils/reportUtils";
 import { useToast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Grid, RefreshCw } from "lucide-react";
+import { useState } from "react";
 
 interface HallReportsCardProps {
   selectedHall: string;
@@ -19,6 +21,7 @@ interface HallReportsCardProps {
   onGeneratePdf: () => void;
   onGenerateExcel: () => void;
   onRetry: () => void;
+  onRemoveArrangement: (id: string) => void;
 }
 
 export function HallReportsCard({
@@ -31,9 +34,11 @@ export function HallReportsCard({
   isError,
   onGeneratePdf,
   onGenerateExcel,
-  onRetry
+  onRetry,
+  onRemoveArrangement
 }: HallReportsCardProps) {
   const { toast } = useToast();
+  const [arrangementToDelete, setArrangementToDelete] = useState<string | null>(null);
   
   const handleGenerateExcel = () => {
     if (!filteredArrangements || filteredArrangements.length === 0) {
@@ -57,6 +62,22 @@ export function HallReportsCard({
       return;
     }
     onGeneratePdf();
+  };
+
+  const handleRemoveConfirm = () => {
+    if (arrangementToDelete) {
+      onRemoveArrangement(arrangementToDelete);
+      setArrangementToDelete(null);
+      
+      toast({
+        title: "Seating Plan Removed",
+        description: "The seating arrangement has been successfully removed.",
+      });
+    }
+  };
+
+  const handleRemoveRequest = (id: string) => {
+    setArrangementToDelete(id);
   };
 
   return (
@@ -110,10 +131,29 @@ export function HallReportsCard({
               arrangements={filteredArrangements}
               isLoading={isLoading}
               selectedHall={selectedHall}
+              onRemoveArrangement={handleRemoveRequest}
             />
           )}
         </div>
       </CardContent>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!arrangementToDelete} onOpenChange={(open) => !open && setArrangementToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Seating Arrangement</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this seating arrangement? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemoveConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

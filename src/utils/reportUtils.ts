@@ -1,10 +1,8 @@
 
-// Define hall data since we don't have a halls table in the database
-export const HALLS = [
-  { id: '1', name: 'Hall A', capacity: 30 },
-  { id: '2', name: 'Hall B', capacity: 40 },
-  { id: '3', name: 'Hall C', capacity: 50 }
-];
+import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils } from './hallUtils';
+
+// Use the halls from hallUtils
+export const HALLS = DEFAULT_HALLS;
 
 export interface SeatingAssignment {
   id: string;
@@ -52,8 +50,5 @@ export const filterArrangementsByHall = (
   });
 };
 
-// Get hall name by ID
-export const getHallNameById = (hallId: string): string => {
-  if (!hallId || hallId === "all") return 'All Halls';
-  return HALLS.find(h => h.id === hallId)?.name || 'Selected Hall';
-};
+// Get hall name by ID - reusing from hallUtils
+export const getHallNameById = getHallNameByIdFromUtils;

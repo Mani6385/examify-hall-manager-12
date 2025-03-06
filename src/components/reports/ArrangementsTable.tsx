@@ -8,7 +8,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Loader2, PlusCircle } from "lucide-react";
+import { AlertCircle, Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { SeatingArrangement } from "@/utils/reportUtils";
 import { DetailedReportView } from "./DetailedReportView";
 import { SeatingGridPreview } from "./SeatingGridPreview";
@@ -18,9 +18,15 @@ interface ArrangementsTableProps {
   arrangements: SeatingArrangement[];
   isLoading: boolean;
   selectedHall: string;
+  onRemoveArrangement?: (id: string) => void;
 }
 
-export function ArrangementsTable({ arrangements, isLoading, selectedHall }: ArrangementsTableProps) {
+export function ArrangementsTable({ 
+  arrangements, 
+  isLoading, 
+  selectedHall,
+  onRemoveArrangement
+}: ArrangementsTableProps) {
   const navigate = useNavigate();
   
   // Navigate to Seating page
@@ -78,6 +84,16 @@ export function ArrangementsTable({ arrangements, isLoading, selectedHall }: Arr
               <div className="flex space-x-2">
                 <SeatingGridPreview arrangement={arrangement} />
                 <DetailedReportView arrangement={arrangement} />
+                {onRemoveArrangement && (
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                    onClick={() => onRemoveArrangement(arrangement.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </TableCell>
           </TableRow>

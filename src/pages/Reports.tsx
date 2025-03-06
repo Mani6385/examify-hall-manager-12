@@ -14,7 +14,6 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, PlusCircle, RefreshCw } from "lucide-react";
 
-// Mock data for when the actual data fetch fails
 const mockArrangements: SeatingArrangement[] = [
   {
     id: "mock-1",
@@ -43,7 +42,6 @@ const Reports = () => {
   const fetchSeatingArrangements = async () => {
     console.log("Fetching seating arrangements...");
     try {
-      // Updated query to specify which relationship to use
       const { data, error } = await supabase
         .from('seating_arrangements')
         .select(`
@@ -96,7 +94,6 @@ const Reports = () => {
     retryDelay: 1000,
   });
 
-  // Handle failed data fetch by setting up mock data
   useEffect(() => {
     if (isError && !useFallbackData) {
       console.log("Using fallback data due to fetch error");
@@ -109,10 +106,8 @@ const Reports = () => {
     }
   }, [isError, toast, useFallbackData]);
 
-  // Get the data to display (real or fallback)
   const displayData = useFallbackData ? mockArrangements : allSeatingArrangements;
 
-  // Filter the data based on the selected hall
   const filteredArrangements = filterArrangementsByHall(displayData, selectedHall);
 
   const handleRetry = useCallback(() => {
@@ -124,7 +119,6 @@ const Reports = () => {
     });
   }, [refetch, toast]);
 
-  // Automatically refetch data when component mounts to ensure latest data from Seating page
   useEffect(() => {
     refetch();
   }, [refetch]);
@@ -189,14 +183,64 @@ const Reports = () => {
     }
   };
 
-  // Count rooms and students in the filtered arrangements
+  const handleRemoveArrangement = async (id: string) => {
+    try {
+      if (useFallbackData) {
+        const updatedArrangements = displayData.filter(arr => arr.id !== id);
+        setUseFallbackData(false);
+        setTimeout(() => {
+          setUseFallbackData(true);
+        }, 10);
+        return;
+      }
+
+      const { error: deleteAssignmentsError } = await supabase
+        .from('seating_assignments')
+        .delete()
+        .eq('arrangement_id', id);
+
+      if (deleteAssignmentsError) {
+        console.error("Error deleting assignments:", deleteAssignmentsError);
+        throw deleteAssignmentsError;
+      }
+
+      const { error: deleteConfigsError } = await supabase
+        .from('department_configs')
+        .delete()
+        .eq('arrangement_id', id);
+
+      if (deleteConfigsError) {
+        console.error("Error deleting department configs:", deleteConfigsError);
+        throw deleteConfigsError;
+      }
+
+      const { error: deleteArrangementError } = await supabase
+        .from('seating_arrangements')
+        .delete()
+        .eq('id', id);
+
+      if (deleteArrangementError) {
+        console.error("Error deleting arrangement:", deleteArrangementError);
+        throw deleteArrangementError;
+      }
+
+      refetch();
+    } catch (error) {
+      console.error("Failed to remove seating arrangement:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove seating arrangement. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const roomCount = filteredArrangements.length;
   const studentCount = filteredArrangements.reduce(
     (total, arr) => total + arr.seating_assignments.length, 
     0
   );
 
-  // Get unique departments
   const departments = new Set<string>();
   filteredArrangements.forEach(arr => {
     arr.seating_assignments.forEach(assignment => {
@@ -206,12 +250,10 @@ const Reports = () => {
     });
   });
 
-  // Navigate to Seating page
   const goToSeatingPage = () => {
     navigate('/seating');
   };
 
-  // If we have an error but are not using fallback data yet
   if (isError && !useFallbackData) {
     return (
       <Layout>
@@ -261,7 +303,6 @@ const Reports = () => {
           </Button>
         </div>
 
-        {/* Stats overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
@@ -320,6 +361,7 @@ const Reports = () => {
           onGeneratePdf={generateConsolidatedPDF}
           onGenerateExcel={generateConsolidatedExcel}
           onRetry={handleRetry}
+          onRemoveArrangement={handleRemoveArrangement}
         />
 
         <div className="grid gap-6">
