@@ -1,3 +1,4 @@
+<lov-code>
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -195,6 +196,18 @@ const Seating = () => {
   };
 
   const addASeries = () => {
+    // Check if this prefix already exists in the departments
+    const existingASeries = departments.filter(dept => dept.prefix === 'A');
+    
+    if (existingASeries.length > 0) {
+      toast({
+        title: "Error",
+        description: "An A series department already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
     setDepartments([...departments, {
       id: newId,
@@ -211,6 +224,18 @@ const Seating = () => {
   };
 
   const addBSeries = () => {
+    // Check if this prefix already exists in the departments
+    const existingBSeries = departments.filter(dept => dept.prefix === 'B');
+    
+    if (existingBSeries.length > 0) {
+      toast({
+        title: "Error",
+        description: "A B series department already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
     setDepartments([...departments, {
       id: newId,
@@ -227,6 +252,18 @@ const Seating = () => {
   };
 
   const addCSeries = () => {
+    // Check if this prefix already exists in the departments
+    const existingCSeries = departments.filter(dept => dept.prefix === 'C');
+    
+    if (existingCSeries.length > 0) {
+      toast({
+        title: "Error",
+        description: "A C series department already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
     setDepartments([...departments, {
       id: newId,
@@ -243,6 +280,18 @@ const Seating = () => {
   };
 
   const addDSeries = () => {
+    // Check if this prefix already exists in the departments
+    const existingDSeries = departments.filter(dept => dept.prefix === 'D');
+    
+    if (existingDSeries.length > 0) {
+      toast({
+        title: "Error",
+        description: "A D series department already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
     setDepartments([...departments, {
       id: newId,
@@ -259,6 +308,18 @@ const Seating = () => {
   };
 
   const addESeries = () => {
+    // Check if this prefix already exists in the departments
+    const existingESeries = departments.filter(dept => dept.prefix === 'E');
+    
+    if (existingESeries.length > 0) {
+      toast({
+        title: "Error",
+        description: "An E series department already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
     setDepartments([...departments, {
       id: newId,
@@ -275,6 +336,18 @@ const Seating = () => {
   };
 
   const addFSeries = () => {
+    // Check if this prefix already exists in the departments
+    const existingFSeries = departments.filter(dept => dept.prefix === 'F');
+    
+    if (existingFSeries.length > 0) {
+      toast({
+        title: "Error",
+        description: "An F series department already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newId = (Math.max(...departments.map(d => parseInt(d.id))) + 1).toString();
     setDepartments([...departments, {
       id: newId,
@@ -808,27 +881,4 @@ const Seating = () => {
                           departments.findIndex(d => d.department === seat.department) % 5 === 3 ? 'from-purple-50 to-purple-100 border-purple-200' :
                           'from-pink-50 to-pink-100 border-pink-200'
                         }`
-                      : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
-                    : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
-                }`}
-              >
-                <div className="text-center">
-                  <div className="font-bold">{seat.seatNo || 'Empty'}</div>
-                  {seat.studentName && (
-                    <>
-                      <div className="text-sm text-gray-600 truncate">{seat.studentName}</div>
-                      <div className="text-xs text-gray-500">Reg: {seat.regNo}</div>
-                      <div className="text-xs text-gray-400 truncate mt-1">{seat.department}</div>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </Layout>
-  );
-};
-
-export default Seating;
+                      : "bg-gradient-to
