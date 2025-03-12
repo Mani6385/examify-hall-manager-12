@@ -1,4 +1,5 @@
-import { UseToastType } from "@/hooks/use-toast";
+
+import { Toast } from "@/components/ui/use-toast";
 
 export interface DepartmentConfig {
   id: string;
@@ -9,6 +10,15 @@ export interface DepartmentConfig {
   year?: string;
 }
 
+export interface Student {
+  name: string;
+  regNo: string;
+  department: string;
+  subjectCode?: string;
+  subjectName: string;
+  seatNo: string;
+}
+
 export const prefixExists = (departments: DepartmentConfig[], prefix: string): boolean => {
   return departments.some(dept => dept.prefix === prefix);
 };
@@ -16,7 +26,7 @@ export const prefixExists = (departments: DepartmentConfig[], prefix: string): b
 export const addDepartmentSeries = (
   departments: DepartmentConfig[],
   prefix: string,
-  { toast }: { toast: UseToastType }
+  { toast }: { toast: (props: Toast) => void }
 ): DepartmentConfig[] => {
   if (prefixExists(departments, prefix)) {
     toast({
@@ -47,7 +57,7 @@ export const addDepartmentSeries = (
 export const removeDepartment = (
   departments: DepartmentConfig[],
   id: string,
-  { toast }: { toast: UseToastType }
+  { toast }: { toast: (props: Toast) => void }
 ): DepartmentConfig[] => {
   const targetDept = departments.find(d => d.id === id);
   if (!targetDept) return departments;

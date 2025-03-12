@@ -25,11 +25,17 @@ export interface SeatingArrangement {
   rows: number;
   columns: number;
   seating_assignments: {
-    id: string;
     seat_no: string;
+    student_name: string | null;
     reg_no: string | null;
     department: string | null;
-    student_name: string | null;
+  }[];
+  department_configs: {
+    department: string;
+    prefix: string;
+    start_reg_no: string;
+    end_reg_no: string;
+    year?: string;
   }[];
 }
 

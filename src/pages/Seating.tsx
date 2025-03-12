@@ -95,7 +95,7 @@ const Seating = () => {
           
           const { data: deptConfigData, error: deptConfigError } = await supabase
             .from('department_configs')
-            .select('*')
+            .select('department, start_reg_no, end_reg_no, prefix, year')
             .eq('arrangement_id', editId);
           
           if (deptConfigError) throw deptConfigError;
@@ -107,7 +107,7 @@ const Seating = () => {
               startRegNo: dept.start_reg_no,
               endRegNo: dept.end_reg_no,
               prefix: dept.prefix,
-              year: dept.year || ""
+              year: dept.year || undefined
             }));
             
             setDepartments(formattedDepts);
