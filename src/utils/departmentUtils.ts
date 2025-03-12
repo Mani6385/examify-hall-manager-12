@@ -1,5 +1,4 @@
-
-import { toast } from "@/components/ui/use-toast";
+import { UseToastType } from "@/hooks/use-toast";
 
 export interface DepartmentConfig {
   id: string;
@@ -7,29 +6,18 @@ export interface DepartmentConfig {
   startRegNo: string;
   endRegNo: string;
   prefix: string;
+  year?: string;
 }
 
-export interface Student {
-  name: string;
-  regNo: string;
-  department: string;
-  subjectCode?: string;
-  subjectName?: string;
-  seatNo: string;
-}
-
-// Validates if a prefix already exists in the departments list
 export const prefixExists = (departments: DepartmentConfig[], prefix: string): boolean => {
   return departments.some(dept => dept.prefix === prefix);
 };
 
-// Adds a new department with the specified prefix
 export const addDepartmentSeries = (
   departments: DepartmentConfig[],
   prefix: string,
-  { toast }: { toast: any }
+  { toast }: { toast: UseToastType }
 ): DepartmentConfig[] => {
-  // Check if this prefix already exists in the departments
   if (prefixExists(departments, prefix)) {
     toast({
       title: "Error",
@@ -56,11 +44,10 @@ export const addDepartmentSeries = (
   return newDepartments;
 };
 
-// Removes a department by ID
 export const removeDepartment = (
   departments: DepartmentConfig[],
   id: string,
-  { toast }: { toast: any }
+  { toast }: { toast: UseToastType }
 ): DepartmentConfig[] => {
   const targetDept = departments.find(d => d.id === id);
   if (!targetDept) return departments;
@@ -75,7 +62,6 @@ export const removeDepartment = (
   return newDepartments;
 };
 
-// Updates a specific field of a department
 export const updateDepartment = (
   departments: DepartmentConfig[],
   id: string,

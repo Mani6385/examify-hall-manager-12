@@ -67,6 +67,27 @@ export function ArrangementsTable({
     );
   }
 
+  // Group arrangements by department and year
+  const groupedArrangements = arrangements.reduce((acc, arrangement) => {
+    // Extract unique departments and years from the seating assignments
+    const departmentsWithYears = arrangement.department_configs
+      .filter(config => config.department && config.year)
+      .map(config => ({
+        department: config.department,
+        year: config.year
+      }));
+    
+    // Create a string representation for display
+    const deptYearInfo = departmentsWithYears
+      .map(item => `${item.department} (${item.year})`)
+      .join(', ');
+    
+    return {
+      ...acc,
+      [arrangement.id]: deptYearInfo || 'Not specified'
+    };
+  }, {} as Record<string, string>);
+
   return (
     <Table>
       <TableHeader>
@@ -74,6 +95,7 @@ export function ArrangementsTable({
           <TableHead>Room</TableHead>
           <TableHead>Floor</TableHead>
           <TableHead>Dimensions</TableHead>
+          <TableHead>Departments & Years</TableHead>
           <TableHead>Students</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
@@ -84,6 +106,9 @@ export function ArrangementsTable({
             <TableCell className="font-medium">{arrangement.room_no}</TableCell>
             <TableCell>{arrangement.floor_no}</TableCell>
             <TableCell>{arrangement.rows} × {arrangement.columns}</TableCell>
+            <TableCell className="max-w-xs truncate" title={groupedArrangements[arrangement.id]}>
+              {groupedArrangements[arrangement.id]}
+            </TableCell>
             <TableCell>{arrangement.seating_assignments.length}</TableCell>
             <TableCell>
               <div className="flex space-x-2">

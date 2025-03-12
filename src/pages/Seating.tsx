@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
@@ -47,7 +46,6 @@ const Seating = () => {
   const [cols, setColumns] = useState(6);
   const [seats, setSeats] = useState<Seat[]>([]);
   
-  // Instead of fetching halls from the database (which doesn't exist), we'll use our default halls
   const halls = DEFAULT_HALLS;
 
   const { data: examCenters = [] } = useQuery({
@@ -76,13 +74,11 @@ const Seating = () => {
     },
   });
 
-  // Fetch existing seating arrangement data if in edit mode
   useEffect(() => {
     const fetchSeatingArrangement = async () => {
       if (!editId) return;
       setIsLoading(true);
       try {
-        // Fetch arrangement details
         const { data: arrangementData, error: arrangementError } = await supabase
           .from('seating_arrangements')
           .select('*')
@@ -97,7 +93,6 @@ const Seating = () => {
           setRows(arrangementData.rows);
           setColumns(arrangementData.columns);
           
-          // Fetch department configs
           const { data: deptConfigData, error: deptConfigError } = await supabase
             .from('department_configs')
             .select('*')
@@ -111,13 +106,13 @@ const Seating = () => {
               department: dept.department,
               startRegNo: dept.start_reg_no,
               endRegNo: dept.end_reg_no,
-              prefix: dept.prefix
+              prefix: dept.prefix,
+              year: dept.year || ""
             }));
             
             setDepartments(formattedDepts);
           }
           
-          // Fetch seating assignments
           const { data: assignmentsData, error: assignmentsError } = await supabase
             .from('seating_assignments')
             .select('*')
@@ -170,9 +165,7 @@ const Seating = () => {
 
   const createSeatingMutation = useMutation({
     mutationFn: async () => {
-      // If editing, update existing arrangement instead of creating new one
       if (isEditing && editId) {
-        // Update the arrangement
         const { data: arrangement, error: arrangementError } = await supabase
           .from('seating_arrangements')
           .update({
@@ -187,7 +180,6 @@ const Seating = () => {
 
         if (arrangementError) throw arrangementError;
 
-        // Delete existing department configs
         const { error: deleteConfigError } = await supabase
           .from('department_configs')
           .delete()
@@ -195,7 +187,6 @@ const Seating = () => {
 
         if (deleteConfigError) throw deleteConfigError;
 
-        // Add new department configs
         const departmentConfigPromises = departments.map(dept => 
           supabase
             .from('department_configs')
@@ -205,12 +196,12 @@ const Seating = () => {
               start_reg_no: dept.startRegNo,
               end_reg_no: dept.endRegNo,
               prefix: dept.prefix,
+              year: dept.year || null
             }])
         );
 
         await Promise.all(departmentConfigPromises);
 
-        // Delete existing seating assignments
         const { error: deleteAssignmentsError } = await supabase
           .from('seating_assignments')
           .delete()
@@ -218,7 +209,6 @@ const Seating = () => {
 
         if (deleteAssignmentsError) throw deleteAssignmentsError;
 
-        // Add new seating assignments
         const seatingAssignments = seats.map((seat, index) => ({
           arrangement_id: editId,
           seat_no: seat.seatNo,
@@ -236,7 +226,6 @@ const Seating = () => {
 
         return arrangement;
       } else {
-        // Create new arrangement
         const { data: arrangement, error: arrangementError } = await supabase
           .from('seating_arrangements')
           .insert([{
@@ -259,6 +248,7 @@ const Seating = () => {
               start_reg_no: dept.startRegNo,
               end_reg_no: dept.endRegNo,
               prefix: dept.prefix,
+              year: dept.year || null
             }])
         );
 
@@ -311,7 +301,6 @@ const Seating = () => {
     setSelectedHall(hallId);
     const selectedHallData = halls.find(h => h.id === hallId);
     if (selectedHallData) {
-      // Calculate appropriate rows and columns based on hall capacity
       const capacity = selectedHallData.capacity;
       const optimalColumns = Math.ceil(Math.sqrt(capacity));
       const optimalRows = Math.ceil(capacity / optimalColumns);
@@ -381,7 +370,6 @@ const Seating = () => {
       return;
     }
 
-    // Only generate new seats if not editing or if editing but seats are empty
     if (!isEditing || seats.length === 0) {
       const generatedSeats = generateSeatingArrangement(departments, rows, cols, departmentsList);
       setSeats(generatedSeats);
