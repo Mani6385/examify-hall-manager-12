@@ -8,7 +8,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Loader2, PlusCircle, Trash2 } from "lucide-react";
+import { AlertCircle, Edit, Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { SeatingArrangement } from "@/utils/reportUtils";
 import { DetailedReportView } from "./DetailedReportView";
 import { SeatingGridPreview } from "./SeatingGridPreview";
@@ -32,6 +32,11 @@ export function ArrangementsTable({
   // Navigate to Seating page
   const goToSeatingPage = () => {
     navigate('/seating');
+  };
+
+  // Navigate to edit a specific seating plan
+  const editSeatingPlan = (arrangementId: string) => {
+    navigate(`/seating?edit=${arrangementId}`);
   };
 
   if (isLoading) {
@@ -84,6 +89,16 @@ export function ArrangementsTable({
               <div className="flex space-x-2">
                 <SeatingGridPreview arrangement={arrangement} />
                 <DetailedReportView arrangement={arrangement} />
+                
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                  onClick={() => editSeatingPlan(arrangement.id)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                
                 {onRemoveArrangement && (
                   <Button 
                     variant="outline" 

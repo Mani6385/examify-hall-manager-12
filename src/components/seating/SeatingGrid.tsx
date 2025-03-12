@@ -1,9 +1,13 @@
 
-import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
+import { Grid3X3, ArrowLeft, ArrowRight, RotateCcw, Edit, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Seat } from "@/utils/studentUtils";
 import { DepartmentConfig } from "@/utils/departmentUtils";
 import { VisualSeatingChart } from "./VisualSeatingChart";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SeatingGridProps {
   seats: Seat[];
@@ -24,6 +28,39 @@ export const SeatingGrid = ({
   rows,
   cols,
 }: SeatingGridProps) => {
+  const [editingSeatId, setEditingSeatId] = useState<number | null>(null);
+  const [editedName, setEditedName] = useState("");
+  const [editedRegNo, setEditedRegNo] = useState("");
+  const [editedDepartment, setEditedDepartment] = useState("");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const handleEdit = (seat: Seat) => {
+    setEditingSeatId(seat.id);
+    setEditedName(seat.studentName || "");
+    setEditedRegNo(seat.regNo || "");
+    setEditedDepartment(seat.department || "");
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingSeatId === null) return;
+    
+    const updatedSeats = seats.map(seat => 
+      seat.id === editingSeatId 
+        ? {
+            ...seat,
+            studentName: editedName || null,
+            regNo: editedRegNo || null,
+            department: editedDepartment || null
+          }
+        : seat
+    );
+    
+    setSeats(updatedSeats);
+    setIsEditDialogOpen(false);
+    setEditingSeatId(null);
+  };
+
   return (
     <>
       <div className="flex flex-wrap gap-4 items-center">
@@ -107,10 +144,69 @@ export const SeatingGrid = ({
                       <div className="text-xs text-gray-400 truncate mt-1">{seat.department}</div>
                     </>
                   )}
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleEdit(seat)}
+                    className="mt-2 w-full h-7"
+                  >
+                    <Edit className="h-3 w-3 mr-1" />
+                    Edit
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
+          
+          {/* Edit Seat Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Edit Seat Assignment</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Student Name</label>
+                  <Input
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    placeholder="Student Name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Registration Number</label>
+                  <Input
+                    value={editedRegNo}
+                    onChange={(e) => setEditedRegNo(e.target.value)}
+                    placeholder="Registration Number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Department</label>
+                  <Select value={editedDepartment} onValueChange={setEditedDepartment}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        dept.department && (
+                          <SelectItem key={dept.id} value={dept.department}>
+                            {dept.department}
+                          </SelectItem>
+                        )
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end mt-4">
+                  <Button onClick={handleSaveEdit} className="bg-gradient-to-r from-blue-600 to-purple-600">
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </>
