@@ -74,9 +74,10 @@ export const useDashboardStats = () => {
       }
 
       // Fetch recent activities (latest 4 seating assignments)
+      // Use the explicit relationship hint as mentioned in the error message
       const { data: recentAssignments, error: assignmentsError } = await supabase
         .from("seating_assignments")
-        .select("*, seating_arrangements(room_no)")
+        .select("*, seating_arrangements!fk_seating_assignments_arrangement(room_no)")
         .order("created_at", { ascending: false })
         .limit(4);
 
@@ -86,6 +87,7 @@ export const useDashboardStats = () => {
 
       // Format recent activities
       const recentActivities = (recentAssignments || []).map(assignment => {
+        // Access room_no safely using optional chaining
         const roomNo = assignment.seating_arrangements?.room_no || 'Unknown';
         return `Seat ${assignment.seat_no} assigned in Room ${roomNo}`;
       });
