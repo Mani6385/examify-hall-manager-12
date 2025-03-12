@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,8 +81,7 @@ const Reports = () => {
             department,
             start_reg_no,
             end_reg_no,
-            prefix,
-            year
+            prefix
           )
         `)
         .order('room_no');
@@ -91,10 +91,20 @@ const Reports = () => {
         throw error;
       }
       
-      const transformedData: SeatingArrangement[] = data?.map(arr => ({
+      // Transform the data to ensure it matches our expected structure
+      const transformedData = data?.map(arr => ({
         ...arr,
         seating_assignments: arr.seating_assignments || [],
-        department_configs: arr.department_configs || []
+        department_configs: (arr.department_configs || []).map(config => ({
+          ...config,
+          // Convert database column names if they differ from our interface
+          id: config.id,
+          department: config.department,
+          start_reg_no: config.start_reg_no,
+          end_reg_no: config.end_reg_no,
+          prefix: config.prefix
+          // Note: year is omitted as it doesn't exist in the database
+        }))
       })) || [];
       
       console.log("Fetched seating arrangements:", transformedData);
@@ -107,7 +117,7 @@ const Reports = () => {
         });
       }
       
-      return transformedData;
+      return transformedData as SeatingArrangement[];
     } catch (error) {
       console.error("Failed to fetch seating arrangements:", error);
       toast({

@@ -1,3 +1,4 @@
+
 import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils } from './hallUtils';
 
 // Use the halls from hallUtils
@@ -23,6 +24,7 @@ export interface DepartmentConfig {
   start_reg_no: string;
   end_reg_no: string;
   prefix: string;
+  // year may not exist in the database
   year?: string;
 }
 
