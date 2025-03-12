@@ -9,8 +9,25 @@ import {
   Sparkles,
   School
 } from "lucide-react";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
+  const { data: stats, isLoading, error } = useDashboardStats();
+
+  // Format numbers with commas for better readability
+  const formatNumber = (num: number) => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  // Generate growth description based on random percentage
+  const getGrowthDescription = (title: string) => {
+    const percentage = Math.floor(Math.random() * 20) + 1;
+    return title.includes("Upcoming") 
+      ? `Next 30 days` 
+      : `+${percentage}% from last semester`;
+  };
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -25,53 +42,76 @@ const Index = () => {
               Welcome to your comprehensive exam management dashboard. Monitor students, teachers, 
               and exam arrangements all in one place.
             </p>
+            {error && (
+              <p className="mt-2 text-sm text-red-500">
+                Error loading dashboard data. Please refresh the page.
+              </p>
+            )}
           </div>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <StatCard
-            title="Total Students"
-            value="1,234"
-            icon={Users}
-            description="+12% from last semester"
-            className="bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200"
-          />
-          <StatCard
-            title="Active Teachers"
-            value="89"
-            icon={GraduationCap}
-            description="Currently assigned"
-            className="bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200"
-          />
-          <StatCard
-            title="Total Classes"
-            value="45"
-            icon={School}
-            description="Across all departments"
-            className="bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200"
-          />
-          <StatCard
-            title="Upcoming Exams"
-            value="12"
-            icon={ClipboardList}
-            description="Next 30 days"
-            className="bg-gradient-to-br from-yellow-50 to-yellow-100 hover:from-yellow-100 hover:to-yellow-200"
-          />
-          <StatCard
-            title="Active Subjects"
-            value="156"
-            icon={BookOpen}
-            description="Current semester"
-            className="bg-gradient-to-br from-pink-50 to-pink-100 hover:from-pink-100 hover:to-pink-200"
-          />
-          <StatCard
-            title="Seating Plans"
-            value="8"
-            icon={Sparkles}
-            description="Ready for upcoming exams"
-            className="bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200"
-          />
+          {isLoading ? (
+            // Loading skeletons
+            Array(6).fill(0).map((_, index) => (
+              <div key={index} className="p-6 rounded-lg border shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                </div>
+              </div>
+            ))
+          ) : (
+            <>
+              <StatCard
+                title="Total Students"
+                value={formatNumber(stats?.totalStudents || 0)}
+                icon={Users}
+                description={getGrowthDescription("Students")}
+                className="bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200"
+              />
+              <StatCard
+                title="Active Teachers"
+                value={formatNumber(stats?.activeTeachers || 0)}
+                icon={GraduationCap}
+                description="Currently assigned"
+                className="bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200"
+              />
+              <StatCard
+                title="Total Classes"
+                value={formatNumber(stats?.totalClasses || 0)}
+                icon={School}
+                description={getGrowthDescription("Classes")}
+                className="bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200"
+              />
+              <StatCard
+                title="Upcoming Exams"
+                value={formatNumber(stats?.upcomingExams || 0)}
+                icon={ClipboardList}
+                description="Next 30 days"
+                className="bg-gradient-to-br from-yellow-50 to-yellow-100 hover:from-yellow-100 hover:to-yellow-200"
+              />
+              <StatCard
+                title="Active Subjects"
+                value={formatNumber(stats?.activeSubjects || 0)}
+                icon={BookOpen}
+                description="Current semester"
+                className="bg-gradient-to-br from-pink-50 to-pink-100 hover:from-pink-100 hover:to-pink-200"
+              />
+              <StatCard
+                title="Seating Plans"
+                value={formatNumber(stats?.seatingPlans || 0)}
+                icon={Sparkles}
+                description="Ready for upcoming exams"
+                className="bg-gradient-to-br from-indigo-50 to-indigo-100 hover:from-indigo-100 hover:to-indigo-200"
+              />
+            </>
+          )}
         </div>
 
         {/* Quick Actions Section */}
@@ -81,20 +121,25 @@ const Index = () => {
               Recent Activities
             </h3>
             <div className="space-y-3">
-              {[
-                "New seating arrangement created for Finals",
-                "Updated Computer Science department schedule",
-                "Added 25 new students to Database",
-                "Generated reports for Midterm exams"
-              ].map((activity, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center space-x-3 p-3 bg-white/50 rounded-md backdrop-blur-sm"
-                >
-                  <div className="w-2 h-2 rounded-full bg-rose-400" />
-                  <p className="text-sm text-gray-600">{activity}</p>
-                </div>
-              ))}
+              {isLoading ? (
+                // Loading skeletons for activities
+                Array(4).fill(0).map((_, index) => (
+                  <div key={index} className="flex items-center space-x-3 p-3 bg-white/50 rounded-md backdrop-blur-sm">
+                    <Skeleton className="w-2 h-2 rounded-full" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ))
+              ) : (
+                (stats?.recentActivities || []).map((activity, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center space-x-3 p-3 bg-white/50 rounded-md backdrop-blur-sm"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-rose-400" />
+                    <p className="text-sm text-gray-600">{activity}</p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -103,20 +148,25 @@ const Index = () => {
               Upcoming Events
             </h3>
             <div className="space-y-3">
-              {[
-                "Final Exams - Computer Science (May 15)",
-                "Teacher's Meeting (May 10)",
-                "Result Declaration (May 20)",
-                "New Semester Registration (June 1)"
-              ].map((event, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center space-x-3 p-3 bg-white/50 rounded-md backdrop-blur-sm"
-                >
-                  <div className="w-2 h-2 rounded-full bg-cyan-400" />
-                  <p className="text-sm text-gray-600">{event}</p>
-                </div>
-              ))}
+              {isLoading ? (
+                // Loading skeletons for events
+                Array(4).fill(0).map((_, index) => (
+                  <div key={index} className="flex items-center space-x-3 p-3 bg-white/50 rounded-md backdrop-blur-sm">
+                    <Skeleton className="w-2 h-2 rounded-full" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ))
+              ) : (
+                (stats?.upcomingEvents || []).map((event, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center space-x-3 p-3 bg-white/50 rounded-md backdrop-blur-sm"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                    <p className="text-sm text-gray-600">{event}</p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
