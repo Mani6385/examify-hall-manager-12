@@ -22,6 +22,7 @@ const mockArrangements: SeatingArrangement[] = [
     rows: 5,
     columns: 5,
     seating_assignments: Array(10).fill(null).map((_, i) => ({
+      id: `seat-${i+1}`,
       seat_no: `${i % 2 === 0 ? 'A' : 'B'}${Math.floor(i/2) + 1}`,
       reg_no: `10${i+1}`,
       department: i % 2 === 0 ? "Computer Science" : "Electronics",
@@ -29,17 +30,19 @@ const mockArrangements: SeatingArrangement[] = [
     })),
     department_configs: [
       {
+        id: "mock-config-1",
         department: "Computer Science",
-        prefix: "A",
         start_reg_no: "101",
         end_reg_no: "105",
+        prefix: "A",
         year: "I Year"
       },
       {
+        id: "mock-config-2", 
         department: "Electronics",
-        prefix: "B",
         start_reg_no: "106",
         end_reg_no: "110",
+        prefix: "B",
         year: "II Year"
       }
     ]
@@ -71,6 +74,14 @@ const Reports = () => {
             reg_no,
             department,
             student_name
+          ),
+          department_configs (
+            id,
+            department,
+            start_reg_no,
+            end_reg_no,
+            prefix,
+            year
           )
         `)
         .order('room_no');
@@ -80,9 +91,15 @@ const Reports = () => {
         throw error;
       }
       
-      console.log("Fetched seating arrangements:", data);
+      const transformedData: SeatingArrangement[] = data?.map(arr => ({
+        ...arr,
+        seating_assignments: arr.seating_assignments || [],
+        department_configs: arr.department_configs || []
+      })) || [];
       
-      if (!data || data.length === 0) {
+      console.log("Fetched seating arrangements:", transformedData);
+      
+      if (!transformedData || transformedData.length === 0) {
         toast({
           title: "No seating arrangements found",
           description: "Please create seating arrangements first in the Seating page.",
@@ -90,7 +107,7 @@ const Reports = () => {
         });
       }
       
-      return data as SeatingArrangement[];
+      return transformedData;
     } catch (error) {
       console.error("Failed to fetch seating arrangements:", error);
       toast({

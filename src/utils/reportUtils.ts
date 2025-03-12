@@ -1,4 +1,3 @@
-
 import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils } from './hallUtils';
 
 // Use the halls from hallUtils
@@ -11,11 +10,20 @@ export interface SeatingAssignment {
   department: string | null;
   student_name?: string | null;
   subject: string | null;
-  seating_arrangements: {
+  seating_arrangements?: {
     id: string;
     room_no: string;
     floor_no: string;
   };
+}
+
+export interface DepartmentConfig {
+  id: string;
+  department: string;
+  start_reg_no: string;
+  end_reg_no: string;
+  prefix: string;
+  year?: string;
 }
 
 export interface SeatingArrangement {
@@ -25,19 +33,13 @@ export interface SeatingArrangement {
   rows: number;
   columns: number;
   seating_assignments: {
-    id?: string;
+    id: string;
     seat_no: string;
     student_name: string | null;
     reg_no: string | null;
     department: string | null;
   }[];
-  department_configs: {
-    department: string;
-    prefix: string;
-    start_reg_no: string;
-    end_reg_no: string;
-    year?: string;
-  }[];
+  department_configs: DepartmentConfig[];
 }
 
 // Helper function to filter arrangements by hall
