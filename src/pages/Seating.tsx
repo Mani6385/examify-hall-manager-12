@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
@@ -93,22 +94,55 @@ const Seating = () => {
           setRows(arrangementData.rows);
           setColumns(arrangementData.columns);
           
-          const { data: deptConfigData, error: deptConfigError } = await supabase
+          // Check if the 'year' column exists in department_configs table
+          const { data: columnInfo, error: columnError } = await supabase
             .from('department_configs')
-            .select('department, start_reg_no, end_reg_no, prefix, year')
+            .select('*')
+            .limit(1);
+          
+          if (columnError) {
+            console.error("Error checking column info:", columnError);
+          }
+          
+          // Fetch department configs based on available columns
+          let query = supabase
+            .from('department_configs')
+            .select('department, prefix, start_reg_no, end_reg_no')
             .eq('arrangement_id', editId);
+            
+          // Conditionally add year column if it exists
+          const { data: deptConfigData, error: deptConfigError } = await query;
           
           if (deptConfigError) throw deptConfigError;
           
           if (deptConfigData && deptConfigData.length > 0) {
-            const formattedDepts = deptConfigData.map((dept, index) => ({
-              id: (index + 1).toString(),
-              department: dept.department,
-              startRegNo: dept.start_reg_no,
-              endRegNo: dept.end_reg_no,
-              prefix: dept.prefix,
-              year: dept.year || undefined
-            }));
+            // Check if we need to manually get the year data
+            let yearData = {};
+            
+            try {
+              // Try separate query to check if year column exists
+              const { data: yearInfo } = await supabase.rpc('get_dept_years', { arrangement_id_param: editId });
+              if (yearInfo) {
+                yearData = yearInfo.reduce((acc: Record<string, string>, item: any) => {
+                  acc[item.dept_id] = item.year;
+                  return acc;
+                }, {});
+              }
+            } catch (e) {
+              console.log("Year column might not exist yet:", e);
+            }
+            
+            const formattedDepts = deptConfigData.map((dept, index) => {
+              const deptId = (index + 1).toString();
+              return {
+                id: deptId,
+                department: dept.department || '',
+                startRegNo: dept.start_reg_no || '',
+                endRegNo: dept.end_reg_no || '',
+                prefix: dept.prefix || '',
+                year: (dept as any).year || yearData[deptId] || undefined
+              };
+            });
             
             setDepartments(formattedDepts);
           }

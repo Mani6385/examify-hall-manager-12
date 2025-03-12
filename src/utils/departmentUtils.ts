@@ -1,5 +1,4 @@
-
-import { Toast } from "@/components/ui/use-toast";
+import { ToastProps } from "@/hooks/use-toast";
 
 export interface DepartmentConfig {
   id: string;
@@ -26,7 +25,7 @@ export const prefixExists = (departments: DepartmentConfig[], prefix: string): b
 export const addDepartmentSeries = (
   departments: DepartmentConfig[],
   prefix: string,
-  { toast }: { toast: (props: Toast) => void }
+  { toast }: { toast: (props: ToastProps) => void }
 ): DepartmentConfig[] => {
   if (prefixExists(departments, prefix)) {
     toast({
@@ -57,7 +56,7 @@ export const addDepartmentSeries = (
 export const removeDepartment = (
   departments: DepartmentConfig[],
   id: string,
-  { toast }: { toast: (props: Toast) => void }
+  { toast }: { toast: (props: ToastProps) => void }
 ): DepartmentConfig[] => {
   const targetDept = departments.find(d => d.id === id);
   if (!targetDept) return departments;

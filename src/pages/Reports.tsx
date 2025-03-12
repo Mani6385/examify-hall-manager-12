@@ -22,12 +22,27 @@ const mockArrangements: SeatingArrangement[] = [
     rows: 5,
     columns: 5,
     seating_assignments: Array(10).fill(null).map((_, i) => ({
-      id: `mock-assignment-${i}`,
       seat_no: `${i % 2 === 0 ? 'A' : 'B'}${Math.floor(i/2) + 1}`,
       reg_no: `10${i+1}`,
       department: i % 2 === 0 ? "Computer Science" : "Electronics",
       student_name: `Student ${i+1}`
-    }))
+    })),
+    department_configs: [
+      {
+        department: "Computer Science",
+        prefix: "A",
+        start_reg_no: "101",
+        end_reg_no: "105",
+        year: "I Year"
+      },
+      {
+        department: "Electronics",
+        prefix: "B",
+        start_reg_no: "106",
+        end_reg_no: "110",
+        year: "II Year"
+      }
+    ]
   }
 ];
 
