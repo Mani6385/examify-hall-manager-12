@@ -1,4 +1,5 @@
-import { ToastProps } from "@/hooks/use-toast";
+
+import { ToastProps } from "@/components/ui/toast";
 
 export interface DepartmentConfig {
   id: string;
