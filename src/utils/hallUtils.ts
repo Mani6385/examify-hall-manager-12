@@ -44,3 +44,8 @@ export const printElement = (elementId: string) => {
   // Reload the page to restore all event listeners
   window.location.reload();
 };
+
+// Filter halls and return a new array without the removed hall
+export const removeHall = (halls: Hall[], hallIdToRemove: string): Hall[] => {
+  return halls.filter(hall => hall.id !== hallIdToRemove);
+};

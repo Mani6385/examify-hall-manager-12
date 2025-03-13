@@ -1,5 +1,5 @@
 
-import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils } from './hallUtils';
+import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils } from './hallUtils';
 
 // Use the halls from hallUtils
 export const HALLS = DEFAULT_HALLS;
@@ -63,3 +63,6 @@ export const filterArrangementsByHall = (
 
 // Get hall name by ID - reusing from hallUtils
 export const getHallNameById = getHallNameByIdFromUtils;
+
+// Remove hall by ID - reusing from hallUtils
+export const removeHall = removeHallFromUtils;
