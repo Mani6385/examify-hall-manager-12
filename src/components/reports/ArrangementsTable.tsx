@@ -69,7 +69,7 @@ export function ArrangementsTable({
 
   // Group arrangements by department and year
   const groupedArrangements = arrangements.reduce((acc, arrangement) => {
-    // Extract unique departments and years from the seating assignments
+    // Extract unique departments and years from the department configs
     const departmentsWithYears = arrangement.department_configs
       .filter(config => config.department && config.year)
       .map(config => ({
@@ -78,13 +78,13 @@ export function ArrangementsTable({
       }));
     
     // Create a string representation for display
-    const deptYearInfo = departmentsWithYears
-      .map(item => `${item.department} (${item.year})`)
-      .join(', ');
+    const deptYearInfo = departmentsWithYears.length > 0 
+      ? departmentsWithYears.map(item => `${item.department} (${item.year || 'N/A'})`).join(', ')
+      : 'Not specified';
     
     return {
       ...acc,
-      [arrangement.id]: deptYearInfo || 'Not specified'
+      [arrangement.id]: deptYearInfo
     };
   }, {} as Record<string, string>);
 
