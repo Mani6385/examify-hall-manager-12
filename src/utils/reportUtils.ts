@@ -66,3 +66,31 @@ export const getHallNameById = getHallNameByIdFromUtils;
 
 // Remove hall by ID - reusing from hallUtils
 export const removeHall = removeHallFromUtils;
+
+// Helper function to format department and year information consistently
+export const formatDepartmentWithYear = (department: string, year?: string | null): string => {
+  if (!department) return 'Not specified';
+  return year ? `${department} (${year})` : department;
+};
+
+// Helper function to extract department and year from seating arrangement
+export const getDepartmentsWithYears = (arrangement: SeatingArrangement): {department: string, year: string | null}[] => {
+  // Extract unique departments and years from the department configs
+  return arrangement.department_configs
+    .filter(config => config.department)
+    .map(config => ({
+      department: config.department,
+      year: config.year || null
+    }));
+};
+
+// Format a list of departments and years for display
+export const formatDepartmentsWithYears = (arrangement: SeatingArrangement): string => {
+  const departmentsWithYears = getDepartmentsWithYears(arrangement);
+  
+  if (departmentsWithYears.length === 0) return 'Not specified';
+  
+  return departmentsWithYears
+    .map(item => formatDepartmentWithYear(item.department, item.year))
+    .join(', ');
+};

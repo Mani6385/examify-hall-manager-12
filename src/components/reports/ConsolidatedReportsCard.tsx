@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { SeatingArrangement, getHallNameById } from "@/utils/reportUtils";
+import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears } from "@/utils/reportUtils";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 
@@ -79,15 +79,8 @@ export function ConsolidatedReportsCard({
   // Count total rooms
   const totalRooms = arrangements.length;
 
-  // Calculate departments
-  const departments = new Set<string>();
-  arrangements.forEach(arr => {
-    arr.seating_assignments.forEach(assignment => {
-      if (assignment.department) {
-        departments.add(assignment.department);
-      }
-    });
-  });
+  // Display departments and years information
+  const deptYearInfo = arrangements.map(arr => formatDepartmentsWithYears(arr));
 
   return (
     <Card>
@@ -196,14 +189,24 @@ export function ConsolidatedReportsCard({
                 </thead>
                 <tbody>
                   {arrangements.slice(0, 3).map((arr, index) => {
-                    // Group students by department
+                    // Group students by department with year information
                     const deptGroups = new Map<string, any[]>();
                     arr.seating_assignments.forEach(assignment => {
-                      const dept = assignment.department || 'Unassigned';
-                      if (!deptGroups.has(dept)) {
-                        deptGroups.set(dept, []);
+                      if (!assignment.department) return;
+                      
+                      // Find matching department config
+                      const deptConfig = arr.department_configs.find(
+                        config => config.department === assignment.department
+                      );
+                      
+                      const key = deptConfig && deptConfig.year 
+                        ? `${assignment.department} (${deptConfig.year})` 
+                        : assignment.department || 'Unassigned';
+                      
+                      if (!deptGroups.has(key)) {
+                        deptGroups.set(key, []);
                       }
-                      deptGroups.get(dept)?.push(assignment);
+                      deptGroups.get(key)?.push(assignment);
                     });
                     
                     return (

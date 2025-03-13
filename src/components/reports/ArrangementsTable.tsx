@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Edit, Loader2, PlusCircle, Trash2 } from "lucide-react";
-import { SeatingArrangement } from "@/utils/reportUtils";
+import { SeatingArrangement, formatDepartmentsWithYears } from "@/utils/reportUtils";
 import { DetailedReportView } from "./DetailedReportView";
 import { SeatingGridPreview } from "./SeatingGridPreview";
 import { useNavigate } from "react-router-dom";
@@ -67,24 +67,11 @@ export function ArrangementsTable({
     );
   }
 
-  // Group arrangements by department and year
+  // Group arrangements by department and year using the new utility function
   const groupedArrangements = arrangements.reduce((acc, arrangement) => {
-    // Extract unique departments and years from the department configs
-    const departmentsWithYears = arrangement.department_configs
-      .filter(config => config.department && config.year)
-      .map(config => ({
-        department: config.department,
-        year: config.year
-      }));
-    
-    // Create a string representation for display
-    const deptYearInfo = departmentsWithYears.length > 0 
-      ? departmentsWithYears.map(item => `${item.department} (${item.year || 'N/A'})`).join(', ')
-      : 'Not specified';
-    
     return {
       ...acc,
-      [arrangement.id]: deptYearInfo
+      [arrangement.id]: formatDepartmentsWithYears(arrangement)
     };
   }, {} as Record<string, string>);
 
