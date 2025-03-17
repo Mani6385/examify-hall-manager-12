@@ -182,7 +182,7 @@ export function ConsolidatedReportsCard({
                   <tr>
                     <th className="p-2 text-left">S.No</th>
                     <th className="p-2 text-left">Room No</th>
-                    <th className="p-2 text-left">Class</th>
+                    <th className="p-2 text-left">Department</th>
                     <th className="p-2 text-left">Year</th>
                     <th className="p-2 text-left">Seats (Reg. Numbers)</th>
                     <th className="p-2 text-right">Total</th>
@@ -200,7 +200,7 @@ export function ConsolidatedReportsCard({
                         config => config.department === assignment.department
                       );
                       
-                      const key = deptConfig ? assignment.department : (assignment.department || 'Unassigned');
+                      const key = assignment.department || 'Unassigned';
                       const year = deptConfig?.year || null;
                       
                       if (!deptGroups.has(key)) {
@@ -220,7 +220,7 @@ export function ConsolidatedReportsCard({
                         </td>
                         <td className="p-2">
                           {Array.from(deptGroups.entries()).map(([dept, {year}]) => (
-                            <div key={dept} className="mb-1">{year || 'N/A'}</div>
+                            <div key={dept} className="mb-1 font-medium">{year || 'N/A'}</div>
                           ))}
                         </td>
                         <td className="p-2">
@@ -263,7 +263,7 @@ export function ConsolidatedReportsCard({
               </table>
             </div>
             <div className="text-xs text-muted-foreground mt-2 text-right">
-              PDF and Excel reports will include complete student lists with registration numbers and year information
+              PDF and Excel reports will include complete student lists with registration numbers, departments, and year information
             </div>
           </div>
         </div>

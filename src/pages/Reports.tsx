@@ -81,7 +81,8 @@ const Reports = () => {
             department,
             start_reg_no,
             end_reg_no,
-            prefix
+            prefix,
+            year
           )
         `)
         .order('room_no');
@@ -102,8 +103,8 @@ const Reports = () => {
           department: config.department,
           start_reg_no: config.start_reg_no,
           end_reg_no: config.end_reg_no,
-          prefix: config.prefix
-          // Note: year is omitted as it doesn't exist in the database
+          prefix: config.prefix,
+          year: config.year || null  // Ensure year is properly handled
         }))
       })) || [];
       
