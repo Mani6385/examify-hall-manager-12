@@ -124,7 +124,7 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
     ["DEPARTMENT OF COMPUTER SCIENCE AND BCA"],
     [`SEATING PLAN(${new Date().toLocaleDateString()})`],
     [],
-    ["S.NO", "ROOM NO", "CLASS", "SEATS", "TOTAL"]
+    ["S.NO", "ROOM NO", "CLASS", "YEAR", "SEATS", "TOTAL"]
   ], { origin: "A1" });
   
   // Prepare data for the consolidated format
@@ -140,13 +140,14 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
         (index + 1).toString(),      // S.No
         arrangement.room_no,         // Room No
         "Not specified",             // Class
+        "N/A",                      // Year (added)
         "",                          // Seats (empty when no departments)
         arrangement.seating_assignments.length.toString() // Total
       ];
       tableData.push(row);
     } else {
       // Group students by department and year
-      const deptGroups = new Map<string, any[]>();
+      const deptGroups = new Map<string, {students: any[], year: string | null}>();
       
       arrangement.seating_assignments.forEach(assignment => {
         if (!assignment.department) return;
@@ -157,18 +158,20 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
         );
         
         const key = deptConfig ? 
-          `${deptConfig.department}${deptConfig.year ? ` (${deptConfig.year})` : ''}` : 
+          `${deptConfig.department}` : 
           assignment.department;
         
+        const year = deptConfig?.year || null;
+        
         if (!deptGroups.has(key)) {
-          deptGroups.set(key, []);
+          deptGroups.set(key, {students: [], year});
         }
-        deptGroups.get(key)?.push(assignment);
+        deptGroups.get(key)?.students.push(assignment);
       });
       
       // Add a row for each department in this room
       let firstDeptInRoom = true;
-      Array.from(deptGroups.entries()).forEach(([deptKey, students]) => {
+      Array.from(deptGroups.entries()).forEach(([deptKey, {students, year}]) => {
         // Skip if no students
         if (students.length === 0) return;
         
@@ -225,7 +228,8 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
         const row = [
           firstDeptInRoom ? (index + 1).toString() : '',  // S.No
           firstDeptInRoom ? arrangement.room_no : '',     // Room No
-          deptKey,                                        // Class (Dept + Year)
+          deptKey,                                        // Class (Dept)
+          year || "N/A",                                  // Year (added)
           regNosFormatted,                                // Registration Numbers (start-end format)
           firstDeptInRoom ? students.length.toString() : '' // Total for the room
         ];
@@ -237,7 +241,7 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
     
     // Add an empty row between rooms for better readability
     if (index < arrangements.length - 1) {
-      tableData.push(['', '', '', '', '']);
+      tableData.push(['', '', '', '', '', '']);
     }
   });
   
@@ -249,6 +253,7 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
     { wch: 6 },    // S.No
     { wch: 10 },   // Room No
     { wch: 20 },   // Class
+    { wch: 12 },   // Year (added)
     { wch: 60 },   // Seats (registration numbers)
     { wch: 10 },   // Total
   ];
@@ -263,9 +268,9 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
   
   // Merge cells for titles
   ws['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },  // Title row
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },  // Department row
-    { s: { r: 2, c: 0 }, e: { r: 2, c: 4 } },  // Seating plan row
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },  // Title row
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },  // Department row
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } },  // Seating plan row
   ];
   
   return ws;
@@ -277,7 +282,7 @@ function createDetailedRoomWorksheet(arrangement: SeatingArrangement): XLSX.Work
   const deptYearsFormatted = formatDepartmentsWithYears(arrangement);
   
   // Group students by department
-  const deptGroups = new Map<string, any[]>();
+  const deptGroups = new Map<string, {students: any[], year: string | null}>();
   arrangement.seating_assignments.forEach(assignment => {
     const dept = assignment.department || 'Unassigned';
     
@@ -286,15 +291,14 @@ function createDetailedRoomWorksheet(arrangement: SeatingArrangement): XLSX.Work
       config => config.department === dept
     );
     
-    // Create key with department and year if available
-    const key = deptConfig && deptConfig.year 
-      ? `${dept} (${deptConfig.year})` 
-      : dept;
+    // Create key with department
+    const key = dept;
+    const year = deptConfig?.year || null;
     
     if (!deptGroups.has(key)) {
-      deptGroups.set(key, []);
+      deptGroups.set(key, {students: [], year});
     }
-    deptGroups.get(key)?.push(assignment);
+    deptGroups.get(key)?.students.push(assignment);
   });
   
   // Create empty worksheet
@@ -314,26 +318,27 @@ function createDetailedRoomWorksheet(arrangement: SeatingArrangement): XLSX.Work
   let currentRow = 7;
   
   // Add each department section
-  Array.from(deptGroups.entries()).forEach(([dept, students]) => {
+  Array.from(deptGroups.entries()).forEach(([dept, {students, year}]) => {
     // Sort students by reg_no
     students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
     
-    // Add department header
+    // Add department header with year
+    const yearDisplay = year ? ` (${year})` : '';
     XLSX.utils.sheet_add_aoa(ws, [
-      [dept]
+      [`${dept}${yearDisplay}`]
     ], { origin: { r: currentRow, c: 0 } });
     currentRow++;
     
     // Add headers for student table
     XLSX.utils.sheet_add_aoa(ws, [
-      ["S.No", "Seat No", "Registration No", "Student Name"]
+      ["S.No", "Seat No", "Registration No", "Student Name", "Year"]
     ], { origin: { r: currentRow, c: 0 } });
     currentRow++;
     
     // Add students
     students.forEach((student, index) => {
       XLSX.utils.sheet_add_aoa(ws, [
-        [index + 1, student.seat_no, student.reg_no || 'N/A', student.student_name || 'Unassigned']
+        [index + 1, student.seat_no, student.reg_no || 'N/A', student.student_name || 'Unassigned', year || 'N/A']
       ], { origin: { r: currentRow, c: 0 } });
       currentRow++;
     });
@@ -351,6 +356,7 @@ function createDetailedRoomWorksheet(arrangement: SeatingArrangement): XLSX.Work
     { wch: 10 },  // Seat No
     { wch: 20 },  // Registration No
     { wch: 30 },  // Student Name
+    { wch: 12 },  // Year
   ];
   
   return ws;
@@ -394,11 +400,21 @@ function createVisualSeatingGrid(arrangement: SeatingArrangement): XLSX.WorkShee
       // Get assignment for this seat
       const assignment = assignmentMap.get(seatNo);
       
+      // Find department config to get year
+      let yearInfo = '';
+      if (assignment && assignment.department) {
+        const deptConfig = arrangement.department_configs.find(
+          config => config.department === assignment.department
+        );
+        yearInfo = deptConfig?.year || 'N/A';
+      }
+      
       // Add cell content
       const cellData = [
         [seatNo],
         [assignment ? (assignment.department || 'N/A') : 'Empty'],
-        [assignment ? (assignment.reg_no || 'N/A') : '']
+        [assignment ? (assignment.reg_no || 'N/A') : ''],
+        [assignment ? yearInfo : '']
       ];
       
       XLSX.utils.sheet_add_aoa(ws, cellData, {
