@@ -39,11 +39,11 @@ export function AppSidebar() {
   const location = useLocation();
   
   return (
-    <Sidebar className="border-r border-gray-100 bg-white/80 backdrop-blur-sm">
+    <Sidebar className="border-r border-gray-100 bg-white/90 backdrop-blur-sm">
       <SidebarContent>
         <div className="py-4 px-6 mb-2">
           <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
               E
             </div>
             <div>
@@ -87,11 +87,17 @@ export function AppSidebar() {
         </SidebarGroup>
         
         <div className="px-6 py-4 mt-auto">
-          <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 p-4 border border-indigo-100">
+          <div className="rounded-xl bg-gradient-to-br from-indigo-50 via-purple-50 to-fuchsia-50 p-4 border border-indigo-100 shadow-sm">
             <p className="text-xs text-gray-600 mb-2 font-medium">Upcoming Exams</p>
             <div className="text-xs text-gray-500">
-              <p className="mb-1">• Final Exams: June 15</p>
-              <p className="mb-1">• Midterms: April 10</p>
+              <p className="mb-1 flex items-center">
+                <span className="w-2 h-2 rounded-full bg-indigo-500 mr-2"></span>
+                Final Exams: June 15
+              </p>
+              <p className="mb-1 flex items-center">
+                <span className="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
+                Midterms: April 10
+              </p>
             </div>
           </div>
         </div>
