@@ -1,4 +1,3 @@
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -52,22 +51,22 @@ export const CenterDetails = ({
     const fetchHalls = async () => {
       setIsLoadingHalls(true);
       try {
-        // Try to fetch real hall data from database
+        // Try to fetch classes and map them to halls
         const { data, error } = await supabase
-          .from('halls')
+          .from('classes')
           .select('*')
           .order('name');
         
         if (error) {
-          console.error("Error fetching halls:", error);
+          console.error("Error fetching classes:", error);
           // If there's an error, use provided halls
           setAvailableHalls(initialHalls);
         } else if (data && data.length > 0) {
-          // Map database data to Hall interface
-          const mappedHalls: Hall[] = data.map(hall => ({
-            id: hall.id,
-            name: hall.name,
-            capacity: hall.capacity || 30
+          // Map classes data to Hall interface
+          const mappedHalls: Hall[] = data.map((item, index) => ({
+            id: item.id,
+            name: item.name || `Hall ${index + 1}`,
+            capacity: parseInt(item.capacity) || 30
           }));
           setAvailableHalls(mappedHalls);
         } else {
@@ -75,7 +74,7 @@ export const CenterDetails = ({
           setAvailableHalls(initialHalls);
         }
       } catch (error) {
-        console.error("Failed to fetch halls:", error);
+        console.error("Failed to fetch classes:", error);
         setAvailableHalls(initialHalls);
       } finally {
         setIsLoadingHalls(false);

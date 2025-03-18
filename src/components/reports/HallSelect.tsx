@@ -33,22 +33,22 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
     const fetchHalls = async () => {
       setIsLoading(true);
       try {
-        // Try to fetch real hall data from database
+        // Try to fetch classes and map them to halls
         const { data, error } = await supabase
-          .from('halls')
+          .from('classes')
           .select('*')
           .order('name');
         
         if (error) {
-          console.error("Error fetching halls:", error);
+          console.error("Error fetching classes:", error);
           // If there's an error, use default halls
           setAvailableHalls(DEFAULT_HALLS);
         } else if (data && data.length > 0) {
-          // Map database data to Hall interface
-          const mappedHalls: Hall[] = data.map(hall => ({
-            id: hall.id,
-            name: hall.name,
-            capacity: hall.capacity || 30
+          // Map classes data to Hall interface
+          const mappedHalls: Hall[] = data.map((item, index) => ({
+            id: item.id,
+            name: item.name || `Hall ${index + 1}`,
+            capacity: parseInt(item.capacity) || 30
           }));
           setAvailableHalls(mappedHalls);
         } else {
@@ -56,7 +56,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
           setAvailableHalls(DEFAULT_HALLS);
         }
       } catch (error) {
-        console.error("Failed to fetch halls:", error);
+        console.error("Failed to fetch classes:", error);
         setAvailableHalls(DEFAULT_HALLS);
       } finally {
         setIsLoading(false);
