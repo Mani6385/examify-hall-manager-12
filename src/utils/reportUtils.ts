@@ -34,6 +34,8 @@ export interface SeatingArrangement {
   floor_no: string;
   rows: number;
   columns: number;
+  hall_name?: string; // Added this property as optional
+  hall_id?: string;   // Added for reference to the hall
   seating_assignments: {
     id: string;
     seat_no: string;
@@ -57,6 +59,13 @@ export const filterArrangementsByHall = (
     const roomFirstDigit = arrangement.room_no.charAt(0);
     const mappedHallId = roomFirstDigit === '1' ? '1' : 
                          roomFirstDigit === '2' ? '2' : '3';
+    
+    // Assign hall_name to the arrangement if it's not already set
+    if (!arrangement.hall_name) {
+      arrangement.hall_id = mappedHallId;
+      arrangement.hall_name = getHallNameById(mappedHallId);
+    }
+    
     return mappedHallId === hallId;
   });
 };
