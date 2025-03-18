@@ -3,9 +3,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-import { useState } from "react";
+import { X, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Hall, removeHall } from "@/utils/hallUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CenterDetailsProps {
   centerName: string;
@@ -45,6 +46,44 @@ export const CenterDetails = ({
   halls: initialHalls,
 }: CenterDetailsProps) => {
   const [availableHalls, setAvailableHalls] = useState<Hall[]>(initialHalls);
+  const [isLoadingHalls, setIsLoadingHalls] = useState(false);
+
+  useEffect(() => {
+    const fetchHalls = async () => {
+      setIsLoadingHalls(true);
+      try {
+        // Try to fetch real hall data from database
+        const { data, error } = await supabase
+          .from('halls')
+          .select('*')
+          .order('name');
+        
+        if (error) {
+          console.error("Error fetching halls:", error);
+          // If there's an error, use provided halls
+          setAvailableHalls(initialHalls);
+        } else if (data && data.length > 0) {
+          // Map database data to Hall interface
+          const mappedHalls: Hall[] = data.map(hall => ({
+            id: hall.id,
+            name: hall.name,
+            capacity: hall.capacity || 30
+          }));
+          setAvailableHalls(mappedHalls);
+        } else {
+          // If no data, use provided halls
+          setAvailableHalls(initialHalls);
+        }
+      } catch (error) {
+        console.error("Failed to fetch halls:", error);
+        setAvailableHalls(initialHalls);
+      } finally {
+        setIsLoadingHalls(false);
+      }
+    };
+
+    fetchHalls();
+  }, [initialHalls]);
 
   const handleRemoveHall = (hallId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -100,11 +139,18 @@ export const CenterDetails = ({
             <SelectValue placeholder="Select Hall" />
           </SelectTrigger>
           <SelectContent>
-            {availableHalls.map((hall) => (
-              <SelectItem key={hall.id} value={hall.id}>
-                {hall.name} (Capacity: {hall.capacity})
-              </SelectItem>
-            ))}
+            {isLoadingHalls ? (
+              <div className="flex items-center justify-center p-2">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <span>Loading halls...</span>
+              </div>
+            ) : (
+              availableHalls.map((hall) => (
+                <SelectItem key={hall.id} value={hall.id}>
+                  {hall.name} (Capacity: {hall.capacity})
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
 

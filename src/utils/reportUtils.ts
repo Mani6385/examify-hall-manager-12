@@ -1,4 +1,3 @@
-
 import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils } from './hallUtils';
 
 // Use the halls from hallUtils
@@ -54,17 +53,19 @@ export const filterArrangementsByHall = (
   if (!hallId || hallId === "all") return arrangements;
   
   return arrangements.filter(arrangement => {
-    // Map rooms to halls (just for demonstration)
-    // In a real app, this mapping would come from the database
+    // If arrangement already has a hall_id, use that
+    if (arrangement.hall_id) {
+      return arrangement.hall_id === hallId;
+    }
+    
+    // Otherwise map rooms to halls based on logic
     const roomFirstDigit = arrangement.room_no.charAt(0);
     const mappedHallId = roomFirstDigit === '1' ? '1' : 
                          roomFirstDigit === '2' ? '2' : '3';
     
     // Assign hall_name to the arrangement if it's not already set
-    if (!arrangement.hall_name) {
-      arrangement.hall_id = mappedHallId;
-      arrangement.hall_name = getHallNameById(mappedHallId);
-    }
+    arrangement.hall_id = mappedHallId;
+    arrangement.hall_name = getHallNameById(mappedHallId);
     
     return mappedHallId === hallId;
   });
