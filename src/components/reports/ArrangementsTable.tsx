@@ -13,6 +13,7 @@ import { SeatingArrangement, formatDepartmentsWithYears } from "@/utils/reportUt
 import { DetailedReportView } from "./DetailedReportView";
 import { SeatingGridPreview } from "./SeatingGridPreview";
 import { useNavigate } from "react-router-dom";
+import { getHallNameById } from "@/utils/hallUtils";
 
 interface ArrangementsTableProps {
   arrangements: SeatingArrangement[];
@@ -52,11 +53,11 @@ export function ArrangementsTable({
       <div className="flex flex-col items-center justify-center py-10 space-y-4">
         <div className="flex items-center text-amber-500">
           <AlertCircle className="h-6 w-6 mr-2" />
-          <span className="font-medium">No seating arrangements found {selectedHall !== "all" ? "for this hall" : ""}</span>
+          <span className="font-medium">No seating arrangements found {selectedHall !== "all" ? `for ${getHallNameById(selectedHall)}` : ""}</span>
         </div>
         <p className="text-muted-foreground text-center max-w-md">
           {selectedHall !== "all" 
-            ? "There are no seating plans created for this hall yet. Please select a different hall or create a new seating plan."
+            ? `There are no seating plans created for ${getHallNameById(selectedHall)} yet. Please select a different hall or create a new seating plan.`
             : "There are no seating plans in the system. Create a seating plan first to view and generate reports."}
         </p>
         <Button onClick={goToSeatingPage} className="mt-4">
@@ -79,6 +80,7 @@ export function ArrangementsTable({
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead>Hall</TableHead>
           <TableHead>Room</TableHead>
           <TableHead>Floor</TableHead>
           <TableHead>Dimensions</TableHead>
@@ -90,7 +92,8 @@ export function ArrangementsTable({
       <TableBody>
         {arrangements.map((arrangement) => (
           <TableRow key={arrangement.id}>
-            <TableCell className="font-medium">{arrangement.room_no}</TableCell>
+            <TableCell className="font-medium">{arrangement.hall_name || "Not specified"}</TableCell>
+            <TableCell>{arrangement.room_no}</TableCell>
             <TableCell>{arrangement.floor_no}</TableCell>
             <TableCell>{arrangement.rows} × {arrangement.columns}</TableCell>
             <TableCell className="max-w-xs truncate" title={groupedArrangements[arrangement.id]}>

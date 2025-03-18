@@ -49,3 +49,22 @@ export const printElement = (elementId: string) => {
 export const removeHall = (halls: Hall[], hallIdToRemove: string): Hall[] => {
   return halls.filter(hall => hall.id !== hallIdToRemove);
 };
+
+// Get available halls (excluding removed ones)
+export const getAvailableHalls = (): Hall[] => {
+  return [...DEFAULT_HALLS];
+};
+
+// Create a new hall
+export const createHall = (halls: Hall[], name: string, capacity: number): Hall[] => {
+  const newId = (Math.max(...halls.map(h => parseInt(h.id))) + 1).toString();
+  const newHall: Hall = { id: newId, name, capacity };
+  return [...halls, newHall];
+};
+
+// Update a hall
+export const updateHall = (halls: Hall[], id: string, updates: Partial<Hall>): Hall[] => {
+  return halls.map(hall => 
+    hall.id === id ? { ...hall, ...updates } : hall
+  );
+};
