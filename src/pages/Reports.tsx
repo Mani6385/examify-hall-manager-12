@@ -13,7 +13,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, PlusCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, PlusCircle, RefreshCw } from "lucide-react";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 const mockArrangements: SeatingArrangement[] = [
   {
@@ -57,6 +59,7 @@ const Reports = () => {
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [selectedHall, setSelectedHall] = useState<string>("all");
   const [useFallbackData, setUseFallbackData] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchSeatingArrangements = async () => {
     console.log("Fetching seating arrangements...");
@@ -151,7 +154,59 @@ const Reports = () => {
 
   const displayData = useFallbackData ? mockArrangements : allSeatingArrangements;
 
+  // Extract unique hall IDs from all arrangements
+  const getUniqueHallIds = (): string[] => {
+    const hallIds = new Set<string>();
+    
+    // Add 'all' as the first option
+    hallIds.add('all');
+    
+    // Extract hall_id from each arrangement or derive it from room_no
+    displayData.forEach(arrangement => {
+      if (arrangement.hall_id) {
+        hallIds.add(arrangement.hall_id);
+      } else {
+        // Map rooms to halls based on the first digit of room_no
+        const roomFirstDigit = arrangement.room_no.charAt(0);
+        const mappedHallId = roomFirstDigit === '1' ? '1' : 
+                            roomFirstDigit === '2' ? '2' : '3';
+        hallIds.add(mappedHallId);
+      }
+    });
+    
+    return Array.from(hallIds);
+  };
+  
+  const uniqueHallIds = getUniqueHallIds();
+  
+  // Handle hall pagination
+  const handlePreviousHall = () => {
+    const currentIndex = uniqueHallIds.indexOf(selectedHall);
+    if (currentIndex > 0) {
+      setSelectedHall(uniqueHallIds[currentIndex - 1]);
+      setCurrentPage(1); // Reset to first page when changing halls
+    }
+  };
+  
+  const handleNextHall = () => {
+    const currentIndex = uniqueHallIds.indexOf(selectedHall);
+    if (currentIndex < uniqueHallIds.length - 1) {
+      setSelectedHall(uniqueHallIds[currentIndex + 1]);
+      setCurrentPage(1); // Reset to first page when changing halls
+    }
+  };
+
   const filteredArrangements = filterArrangementsByHall(displayData, selectedHall);
+  
+  // Calculate pagination for arrangements within the selected hall
+  const itemsPerPage = 1; // Show one arrangement per page
+  const totalPages = Math.ceil(filteredArrangements.length / itemsPerPage);
+  
+  // Get current page arrangements
+  const currentArrangements = filteredArrangements.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleRetry = useCallback(() => {
     setUseFallbackData(false);
@@ -297,6 +352,9 @@ const Reports = () => {
     navigate('/seating');
   };
 
+  // Get the current arrangement for detailed view
+  const currentArrangement = currentArrangements.length > 0 ? currentArrangements[0] : null;
+
   if (isError && !useFallbackData) {
     return (
       <Layout>
@@ -346,57 +404,100 @@ const Reports = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Selected Hall</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{getHallNameById(selectedHall)}</div>
-              <p className="text-xs text-muted-foreground">
-                {selectedHall === "all" ? "All examination halls" : `Hall ID: ${selectedHall}`}
-              </p>
-            </CardContent>
-          </Card>
+        {/* Hall Navigation */}
+        <div className="flex justify-between items-center bg-white/80 backdrop-blur-sm rounded-lg p-4 shadow-sm border border-gray-100">
+          <Button 
+            variant="outline" 
+            onClick={handlePreviousHall}
+            disabled={uniqueHallIds.indexOf(selectedHall) === 0}
+          >
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Previous Hall
+          </Button>
           
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Rooms & Students</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{roomCount} Rooms</div>
-              <p className="text-xs text-muted-foreground">
-                {studentCount} Students Assigned
-              </p>
-            </CardContent>
-          </Card>
+          <div className="text-center">
+            <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+              {getHallNameById(selectedHall)}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {selectedHall === "all" 
+                ? "All examination halls" 
+                : `Hall ID: ${selectedHall} (${roomCount} rooms, ${studentCount} students)`}
+            </p>
+          </div>
           
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Departments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{departments.size}</div>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {Array.from(departments).slice(0, 3).map(dept => (
-                  <Badge key={dept} variant="outline" className="text-xs">
-                    {dept}
-                  </Badge>
-                ))}
-                {departments.size > 3 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{departments.size - 3} more
-                  </Badge>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <Button 
+            variant="outline" 
+            onClick={handleNextHall}
+            disabled={uniqueHallIds.indexOf(selectedHall) === uniqueHallIds.length - 1}
+          >
+            Next Hall
+            <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <StatCard 
+            title="Rooms" 
+            value={roomCount} 
+            icon={PlusCircle}
+            description="Total examination rooms" 
+            className="bg-gradient-blue text-white"
+          />
+          
+          <StatCard 
+            title="Students" 
+            value={studentCount} 
+            icon={PlusCircle}
+            description="Total assigned students" 
+            className="bg-gradient-purple text-white"
+          />
+          
+          <StatCard 
+            title="Departments" 
+            value={departments.size} 
+            icon={PlusCircle}
+            description="Unique departments" 
+            className="bg-gradient-indigo text-white"
+          />
+        </div>
+
+        {/* Pagination for arrangements within a hall */}
+        {selectedHall !== "all" && filteredArrangements.length > 1 && (
+          <Pagination className="my-4">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <PaginationItem key={i}>
+                  <PaginationLink 
+                    isActive={currentPage === i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                  >
+                    {i + 1}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
 
         <HallReportsCard
           selectedHall={selectedHall}
           setSelectedHall={setSelectedHall}
-          filteredArrangements={filteredArrangements}
+          filteredArrangements={currentArrangements}
           isLoading={isLoading}
           isLoadingPdf={isLoadingPdf}
           isLoadingExcel={isLoadingExcel}
