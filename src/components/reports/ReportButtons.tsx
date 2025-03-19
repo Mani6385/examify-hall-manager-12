@@ -1,22 +1,41 @@
 
 import { Button } from "@/components/ui/button";
-import { File, FileText, Loader2 } from "lucide-react";
+import { File, FileText, Loader2, Printer } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface ReportButtonsProps {
   onGeneratePdf: () => void;
   onGenerateExcel: () => void;
+  onPrint?: () => void;
   isLoading: boolean;
   isLoadingPdf: boolean;
   isLoadingExcel: boolean;
+  isPrintable?: boolean;
 }
 
 export function ReportButtons({ 
   onGeneratePdf, 
   onGenerateExcel, 
+  onPrint,
   isLoading, 
   isLoadingPdf, 
-  isLoadingExcel 
+  isLoadingExcel,
+  isPrintable = false
 }: ReportButtonsProps) {
+  const { toast } = useToast();
+
+  const handlePrint = () => {
+    if (onPrint) {
+      onPrint();
+    } else {
+      toast({
+        title: "Print function",
+        description: "Print function triggered through browser",
+      });
+      window.print();
+    }
+  };
+
   return (
     <div className="flex gap-4">
       <Button
@@ -53,6 +72,16 @@ export function ReportButtons({
           </>
         )}
       </Button>
+      {isPrintable && (
+        <Button
+          variant="outline"
+          onClick={handlePrint}
+          disabled={isLoading}
+        >
+          <Printer className="mr-2 h-4 w-4" />
+          Print
+        </Button>
+      )}
     </div>
   );
 }

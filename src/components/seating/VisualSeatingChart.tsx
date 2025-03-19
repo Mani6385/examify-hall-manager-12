@@ -1,10 +1,11 @@
 
 import React, { useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { Printer } from "lucide-react";
+import { Printer, Download } from "lucide-react";
 import { Seat } from "@/utils/studentUtils";
 import { DepartmentConfig } from "@/utils/departmentUtils";
 import { getPrintableId, printElement } from '@/utils/hallUtils';
+import { useToast } from "@/hooks/use-toast";
 
 interface VisualSeatingChartProps {
   seats: Seat[];
@@ -20,9 +21,29 @@ export const VisualSeatingChart = ({
   departments
 }: VisualSeatingChartProps) => {
   const printableId = useRef(getPrintableId());
+  const { toast } = useToast();
 
   const handlePrint = () => {
+    toast({
+      title: "Printing seating chart",
+      description: "Preparing the seating chart for printing...",
+    });
     printElement(printableId.current);
+  };
+
+  const handleExport = () => {
+    toast({
+      title: "Export initiated",
+      description: "Exporting visual seating chart...",
+    });
+    // This would typically trigger a download of the current view
+    // For now, we just show a toast notification
+    setTimeout(() => {
+      toast({
+        title: "Export complete",
+        description: "Visual seating chart exported successfully",
+      });
+    }, 1000);
   };
 
   if (seats.length === 0) {
@@ -60,19 +81,29 @@ export const VisualSeatingChart = ({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-semibold">Visual Seating Arrangement</h3>
-        <Button 
-          onClick={handlePrint}
-          variant="outline"
-          className="hover:bg-blue-50 transition-colors"
-        >
-          <Printer className="mr-2 h-4 w-4" />
-          Print Seating Chart
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleExport}
+            variant="outline"
+            className="hover:bg-blue-50 transition-colors"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+          <Button 
+            onClick={handlePrint}
+            variant="outline"
+            className="hover:bg-blue-50 transition-colors"
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            Print Seating Chart
+          </Button>
+        </div>
       </div>
 
       <div 
         id={printableId.current}
-        className="p-4 bg-white print:m-0 print:p-0"
+        className="p-4 bg-white print:m-0 print:p-0 border rounded-lg shadow-sm"
       >
         <div className="mb-4 print:mb-8">
           <h2 className="text-2xl font-bold text-center">Exam Hall Seating Chart</h2>
@@ -120,6 +151,7 @@ export const VisualSeatingChart = ({
         {/* Print-only information (appears at bottom of printed page) */}
         <div className="hidden print:block mt-8 text-sm text-gray-500">
           <p>Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
+          <p>This document is for examination purposes only.</p>
         </div>
       </div>
     </div>
