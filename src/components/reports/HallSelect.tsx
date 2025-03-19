@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { X, Info } from "lucide-react";
+import { X, Info, Check, School } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Hall, DEFAULT_HALLS, removeHall, getHallNameById } from "@/utils/hallUtils";
 import { 
@@ -80,34 +80,51 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
   };
 
   return (
-    <Card className="bg-white">
+    <Card className="bg-white/90 backdrop-blur-sm shadow-md border border-gray-100 w-full">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-medium">Hall Selection</CardTitle>
+        <div className="flex items-center gap-2">
+          <School className="h-5 w-5 text-primary" />
+          <CardTitle className="text-lg font-medium">Hall Selection</CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <Select value={selectedHall} onValueChange={setSelectedHall}>
-          <SelectTrigger className="w-full bg-white">
+          <SelectTrigger className="w-full bg-white/80 border-gray-200">
             <SelectValue placeholder="Select Hall" />
           </SelectTrigger>
-          <SelectContent className="bg-white">
-            <SelectItem value="all">All Halls</SelectItem>
+          <SelectContent className="bg-white max-h-[300px]">
+            <SelectItem value="all" className="flex items-center gap-2">
+              <div className="flex items-center justify-between w-full">
+                <span className="font-medium">All Halls</span>
+                {selectedHall === "all" && <Check className="h-4 w-4 text-primary ml-2" />}
+              </div>
+            </SelectItem>
+            
             {isLoading ? (
               <SelectItem value="loading" disabled>
-                Loading halls...
+                <span className="text-gray-400 italic">Loading halls...</span>
               </SelectItem>
             ) : (
               availableHalls.map((hall) => (
                 <SelectItem key={hall.id} value={hall.id} className="flex justify-between">
                   <div className="flex items-center justify-between w-full">
-                    <span>{hall.name} - Capacity: {hall.capacity}</span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 w-6 p-0 ml-2 hover:bg-red-100"
-                      onClick={(e) => handleRemoveHall(hall.id, e)}
-                    >
-                      <X className="h-3 w-3 text-red-500" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <span>{hall.name}</span>
+                      <Badge variant="outline" className="ml-2 text-xs bg-gray-50">
+                        {hall.capacity} seats
+                      </Badge>
+                    </div>
+                    <div className="flex items-center">
+                      {selectedHall === hall.id && <Check className="h-4 w-4 text-primary mr-2" />}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 w-6 p-0 ml-2 hover:bg-red-100 rounded-full"
+                        onClick={(e) => handleRemoveHall(hall.id, e)}
+                      >
+                        <X className="h-3 w-3 text-red-500" />
+                      </Button>
+                    </div>
                   </div>
                 </SelectItem>
               ))
@@ -115,14 +132,18 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
           </SelectContent>
         </Select>
         
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 min-h-[40px]">
           {availableHalls.map((hall) => (
             <TooltipProvider key={hall.id}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Badge 
-                    variant="outline" 
-                    className={`${selectedHall === hall.id ? 'bg-primary/10 border-primary' : 'bg-background'} cursor-pointer`}
+                    variant={selectedHall === hall.id ? "default" : "outline"}
+                    className={`${
+                      selectedHall === hall.id 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-background hover:bg-gray-100'
+                    } cursor-pointer transition-all duration-200 py-1.5`}
                     onClick={() => setSelectedHall(hall.id)}
                   >
                     {hall.name}
@@ -148,9 +169,20 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
         </div>
         
         {availableHalls.length === 0 && (
-          <div className="flex items-center justify-center py-2 text-amber-600 text-sm">
+          <div className="flex items-center justify-center py-2 px-3 bg-amber-50 rounded-md text-amber-600 text-sm">
             <Info className="h-4 w-4 mr-2" />
             <span>All halls have been removed. Refresh the page to reset.</span>
+          </div>
+        )}
+        
+        {selectedHall !== "all" && (
+          <div className="pt-2 border-t border-gray-100">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span className="font-medium">Selected:</span>
+              <Badge variant="secondary" className="bg-primary/10 text-primary">
+                {getHallNameById(selectedHall)}
+              </Badge>
+            </div>
           </div>
         )}
       </CardContent>
