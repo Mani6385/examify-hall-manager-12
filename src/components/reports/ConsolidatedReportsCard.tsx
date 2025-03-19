@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportButtons } from "./ReportButtons";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, BarChart, FileSpreadsheet, Users, FileText, Table, Download } from "lucide-react";
+import { ChevronDown, BarChart, FileSpreadsheet, Users, FileText, Table, Download, Printer, FileUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import { useState } from "react";
 import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears } from "@/utils/reportUtils";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ConsolidatedReportsCardProps {
   isLoading: boolean;
@@ -38,6 +39,7 @@ export function ConsolidatedReportsCard({
   const { toast } = useToast();
   const [detailedFormat, setDetailedFormat] = useState<boolean>(true);
   const [includeStudentInfo, setIncludeStudentInfo] = useState<boolean>(true);
+  const [previewTab, setPreviewTab] = useState<string>("consolidated");
   
   const handleFormatChange = (checked: boolean) => {
     setDetailedFormat(checked);
@@ -79,8 +81,28 @@ export function ConsolidatedReportsCard({
   // Count total rooms
   const totalRooms = arrangements.length;
 
-  // Display departments and years information
-  const deptYearInfo = arrangements.map(arr => formatDepartmentsWithYears(arr));
+  // Get students by department
+  const departmentData = new Map<string, { count: number, years: Set<string> }>();
+  arrangements.forEach(arr => {
+    arr.seating_assignments.forEach(student => {
+      if (!student.department) return;
+      
+      // Find matching department config to get year information
+      const deptConfig = arr.department_configs.find(
+        config => config.department === student.department
+      );
+      
+      const year = deptConfig?.year || 'Unspecified';
+      
+      if (!departmentData.has(student.department)) {
+        departmentData.set(student.department, { count: 0, years: new Set() });
+      }
+      
+      const data = departmentData.get(student.department)!;
+      data.count++;
+      data.years.add(year);
+    });
+  });
 
   return (
     <Card>
@@ -174,96 +196,251 @@ export function ConsolidatedReportsCard({
             </DropdownMenu>
           </div>
           
-          <div className="bg-muted/20 p-4 rounded-lg mt-2">
-            <h3 className="text-sm font-semibold mb-2">Preview of Report Format</h3>
-            <div className="border rounded overflow-hidden">
-              <table className="w-full text-xs">
-                <thead className="bg-primary text-primary-foreground">
-                  <tr>
-                    <th className="p-2 text-left">S.No</th>
-                    <th className="p-2 text-left">Room No</th>
-                    <th className="p-2 text-left">Department</th>
-                    <th className="p-2 text-left">Year</th>
-                    <th className="p-2 text-left">Seats (Reg. Numbers)</th>
-                    <th className="p-2 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {arrangements.slice(0, 3).map((arr, index) => {
-                    // Group students by department with year information
-                    const deptGroups = new Map<string, {students: any[], year: string | null}>();
-                    arr.seating_assignments.forEach(assignment => {
-                      if (!assignment.department) return;
-                      
-                      // Find matching department config
-                      const deptConfig = arr.department_configs.find(
-                        config => config.department === assignment.department
-                      );
-                      
-                      const key = assignment.department || 'Unassigned';
-                      const year = deptConfig?.year || null;
-                      
-                      if (!deptGroups.has(key)) {
-                        deptGroups.set(key, {students: [], year});
-                      }
-                      deptGroups.get(key)?.students.push(assignment);
-                    });
-                    
-                    return (
-                      <tr key={arr.id} className="border-t">
-                        <td className="p-2">{index + 1}</td>
-                        <td className="p-2 font-medium">{arr.room_no}</td>
-                        <td className="p-2">
-                          {Array.from(deptGroups.keys()).map(dept => (
-                            <div key={dept} className="mb-1">{dept}</div>
-                          ))}
-                        </td>
-                        <td className="p-2">
-                          {Array.from(deptGroups.entries()).map(([dept, {year}]) => (
-                            <div key={dept} className="mb-1 font-medium">{year || 'N/A'}</div>
-                          ))}
-                        </td>
-                        <td className="p-2">
-                          {Array.from(deptGroups.entries()).map(([dept, {students}]) => {
-                            // Sort students by reg_no
-                            students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
-                            
-                            // Get start and end reg numbers for this group
-                            let regDisplay = "";
-                            if (students.length > 0) {
-                              const start = students[0].reg_no || '';
-                              const end = students[students.length - 1].reg_no || '';
-                              
-                              if (start === end || students.length === 1) {
-                                regDisplay = start;
-                              } else {
-                                regDisplay = `${start}-${end}`;
-                              }
-                            }
-                            
-                            return (
-                              <div key={dept} className="mb-1 truncate max-w-[250px]">
-                                {regDisplay}
-                              </div>
-                            );
-                          })}
-                        </td>
-                        <td className="p-2 text-right font-medium">{arr.seating_assignments.length}</td>
-                      </tr>
-                    );
-                  })}
-                  {arrangements.length > 3 && (
-                    <tr className="border-t">
-                      <td colSpan={6} className="p-2 text-center text-muted-foreground">
-                        + {arrangements.length - 3} more rooms
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+          <div className="bg-white rounded-lg border shadow-sm mt-2 overflow-hidden">
+            <div className="bg-muted/50 p-3 border-b">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Export Preview</h3>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>PDF</span>
+                  <FileSpreadsheet className="h-3.5 w-3.5 ml-2" />
+                  <span>Excel</span>
+                  <Printer className="h-3.5 w-3.5 ml-2" />
+                  <span>Print</span>
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground mt-2 text-right">
-              PDF and Excel reports will include complete student lists with registration numbers, departments, and year information
+            
+            <Tabs value={previewTab} onValueChange={setPreviewTab} className="p-2">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="consolidated">Consolidated View</TabsTrigger>
+                <TabsTrigger value="detailed">Room Details</TabsTrigger>
+                <TabsTrigger value="department">Department Lists</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="consolidated" className="mt-2">
+                <div className="border rounded overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-primary text-primary-foreground">
+                      <tr>
+                        <th className="p-2 text-left">S.No</th>
+                        <th className="p-2 text-left">Room No</th>
+                        <th className="p-2 text-left">Department</th>
+                        <th className="p-2 text-left">Year</th>
+                        <th className="p-2 text-left">Seats (Reg. Numbers)</th>
+                        <th className="p-2 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {arrangements.slice(0, 3).map((arr, index) => {
+                        // Group students by department with year information
+                        const deptGroups = new Map<string, {students: any[], year: string | null}>();
+                        arr.seating_assignments.forEach(assignment => {
+                          if (!assignment.department) return;
+                          
+                          // Find matching department config
+                          const deptConfig = arr.department_configs.find(
+                            config => config.department === assignment.department
+                          );
+                          
+                          const key = assignment.department || 'Unassigned';
+                          const year = deptConfig?.year || null;
+                          
+                          if (!deptGroups.has(key)) {
+                            deptGroups.set(key, {students: [], year});
+                          }
+                          deptGroups.get(key)?.students.push(assignment);
+                        });
+                        
+                        // If there are no departments, create a single row
+                        if (deptGroups.size === 0) {
+                          return (
+                            <tr key={arr.id} className="border-t">
+                              <td className="p-2">{index + 1}</td>
+                              <td className="p-2 font-medium">{arr.room_no}</td>
+                              <td className="p-2" colSpan={2}>No students assigned</td>
+                              <td className="p-2">-</td>
+                              <td className="p-2 text-right font-medium">0</td>
+                            </tr>
+                          );
+                        }
+                        
+                        // Create a row for each department in this room
+                        return Array.from(deptGroups.entries()).map(([dept, {students, year}], deptIndex) => {
+                          // Sort students by reg_no
+                          students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
+                          
+                          // Get start and end reg numbers for this group
+                          let regDisplay = "";
+                          if (students.length > 0) {
+                            const start = students[0].reg_no || '';
+                            const end = students[students.length - 1].reg_no || '';
+                            
+                            if (start === end || students.length === 1) {
+                              regDisplay = start;
+                            } else {
+                              regDisplay = `${start}-${end}`;
+                            }
+                          }
+                          
+                          return (
+                            <tr key={`${arr.id}-${dept}`} className="border-t">
+                              <td className="p-2">{deptIndex === 0 ? index + 1 : ''}</td>
+                              <td className="p-2 font-medium">{deptIndex === 0 ? arr.room_no : ''}</td>
+                              <td className="p-2">{dept}</td>
+                              <td className="p-2">{year || 'N/A'}</td>
+                              <td className="p-2 truncate max-w-[250px]">{regDisplay}</td>
+                              <td className="p-2 text-right font-medium">
+                                {deptIndex === 0 ? students.length : ''}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })}
+                      {arrangements.length > 3 && (
+                        <tr className="border-t">
+                          <td colSpan={6} className="p-2 text-center text-muted-foreground">
+                            + {arrangements.length - 3} more rooms
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  <div className="flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    <span>PDF export includes a cover page, consolidated table, and room-specific details</span>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="detailed" className="space-y-4 mt-2">
+                {arrangements.length > 0 ? (
+                  <div className="border rounded p-3">
+                    <h4 className="text-xs font-medium mb-2">Room {arrangements[0].room_no} - Student Assignments</h4>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                      {arrangements[0].department_configs.slice(0, 2).map(config => (
+                        <div key={config.id} className="border rounded p-2">
+                          <div className="font-medium">{config.department} {config.year ? `(${config.year})` : ''}</div>
+                          <div className="grid grid-cols-2 gap-1 mt-1">
+                            {arrangements[0].seating_assignments
+                              .filter(a => a.department === config.department)
+                              .slice(0, 4)
+                              .map(student => (
+                                <div key={student.id} className="flex justify-between">
+                                  <span>{student.seat_no}</span>
+                                  <span className="text-muted-foreground">{student.reg_no}</span>
+                                </div>
+                              ))}
+                          </div>
+                          {arrangements[0].seating_assignments.filter(a => a.department === config.department).length > 4 && (
+                            <div className="text-center text-muted-foreground mt-1">+ more students</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="border rounded-md p-2 mt-2 text-[10px]">
+                      <div className="font-medium mb-1">Visual Seating Chart</div>
+                      <div className="grid gap-1" 
+                           style={{ 
+                             gridTemplateColumns: `repeat(${Math.min(arrangements[0].columns, 6)}, 1fr)`,
+                           }}>
+                        {Array.from({ length: Math.min(arrangements[0].rows * arrangements[0].columns, 24) }).map((_, i) => {
+                          const seatLetter = String.fromCharCode(65 + Math.floor(i / arrangements[0].columns));
+                          const seatNumber = (i % arrangements[0].columns) + 1;
+                          const seatId = `${seatLetter}${seatNumber}`;
+                          
+                          // Find if there's a student at this seat
+                          const assignment = arrangements[0].seating_assignments.find(a => a.seat_no === seatId);
+                          
+                          return (
+                            <div key={i} className={`border rounded flex flex-col items-center justify-center p-1 text-center ${assignment ? 'bg-primary/5' : ''}`} style={{minHeight: '24px'}}>
+                              <div className="font-bold">{seatId}</div>
+                              {assignment && <div className="truncate w-full">{assignment.reg_no}</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-4 text-muted-foreground">
+                    No rooms available to preview
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    <span>Room details in PDF show complete student lists with seating grid</span>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="department" className="mt-2">
+                <div className="border rounded overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-primary text-primary-foreground">
+                      <tr>
+                        <th className="p-2 text-left">Department</th>
+                        <th className="p-2 text-left">Year</th>
+                        <th className="p-2 text-left">Students</th>
+                        <th className="p-2 text-left">Rooms</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from(departmentData.entries()).slice(0, 4).map(([dept, data]) => {
+                        // Count rooms for this department
+                        const roomsWithDept = new Set<string>();
+                        arrangements.forEach(arr => {
+                          const hasStudentsFromDept = arr.seating_assignments.some(a => a.department === dept);
+                          if (hasStudentsFromDept) {
+                            roomsWithDept.add(arr.room_no);
+                          }
+                        });
+                        
+                        return (
+                          <tr key={dept} className="border-t">
+                            <td className="p-2 font-medium">{dept}</td>
+                            <td className="p-2">
+                              {Array.from(data.years).join(', ')}
+                            </td>
+                            <td className="p-2">{data.count}</td>
+                            <td className="p-2">{roomsWithDept.size} rooms</td>
+                          </tr>
+                        );
+                      })}
+                      {departmentData.size > 4 && (
+                        <tr className="border-t">
+                          <td colSpan={4} className="p-2 text-center text-muted-foreground">
+                            + {departmentData.size - 4} more departments
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  <div className="flex items-center gap-1">
+                    <FileSpreadsheet className="h-3 w-3" />
+                    <span>Excel exports include department-wise breakdowns and student details</span>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+            
+            <div className="border-t p-3 bg-muted/20">
+              <div className="text-xs text-muted-foreground flex flex-col sm:flex-row justify-between gap-2">
+                <div>
+                  <FileUp className="h-3.5 w-3.5 inline mr-1" />
+                  <span>Exported files include all information shown in these previews and more</span>
+                </div>
+                <div>
+                  <span className="font-medium text-primary">Total:</span> {totalRooms} rooms, {totalStudents} students, {departmentData.size} departments
+                </div>
+              </div>
             </div>
           </div>
         </div>
