@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { X, Info, Check, School } from "lucide-react";
+import { X, Info, Check, School, BuildingIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Hall, DEFAULT_HALLS, removeHall, getHallNameById } from "@/utils/hallUtils";
 import { 
@@ -109,7 +109,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
                 <SelectItem key={hall.id} value={hall.id} className="flex justify-between">
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-2">
-                      <span>{hall.name}</span>
+                      <span className="font-medium">{hall.name}</span>
                       <Badge variant="outline" className="ml-2 text-xs bg-gray-50">
                         {hall.capacity} seats
                       </Badge>
@@ -132,7 +132,19 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
           </SelectContent>
         </Select>
         
-        <div className="flex flex-wrap gap-2 min-h-[40px]">
+        <div className="flex flex-wrap gap-2 min-h-[40px] mt-3">
+          <Badge 
+            variant={selectedHall === "all" ? "default" : "outline"}
+            className={`${
+              selectedHall === "all" 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-background hover:bg-gray-100'
+            } cursor-pointer transition-all duration-200 py-1.5`}
+            onClick={() => setSelectedHall("all")}
+          >
+            All Halls
+          </Badge>
+          
           {availableHalls.map((hall) => (
             <TooltipProvider key={hall.id}>
               <Tooltip>
@@ -161,6 +173,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
                   <div className="text-xs">
                     <p className="font-semibold">{hall.name}</p>
                     <p>Capacity: {hall.capacity} seats</p>
+                    <p className="text-gray-500">ID: {hall.id}</p>
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -177,11 +190,23 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
         
         {selectedHall !== "all" && (
           <div className="pt-2 border-t border-gray-100">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <span className="font-medium">Selected:</span>
-              <Badge variant="secondary" className="bg-primary/10 text-primary">
-                {getHallNameById(selectedHall)}
-              </Badge>
+            <div className="flex flex-col gap-1 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-600">Selected Hall:</span>
+                <Badge variant="secondary" className="bg-primary/10 text-primary">
+                  {getHallNameById(selectedHall)}
+                </Badge>
+              </div>
+              
+              {availableHalls.find(hall => hall.id === selectedHall) && (
+                <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                  <BuildingIcon className="h-3 w-3" />
+                  <span>
+                    Hall ID: {selectedHall} | 
+                    Capacity: {availableHalls.find(hall => hall.id === selectedHall)?.capacity || 'N/A'} seats
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}

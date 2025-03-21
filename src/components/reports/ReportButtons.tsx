@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { File, FileText, Loader2, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface ReportButtonsProps {
   onGeneratePdf: () => void;
@@ -11,6 +12,8 @@ interface ReportButtonsProps {
   isLoadingPdf: boolean;
   isLoadingExcel: boolean;
   isPrintable?: boolean;
+  selectedHall?: string;
+  hallName?: string;
 }
 
 export function ReportButtons({ 
@@ -20,7 +23,9 @@ export function ReportButtons({
   isLoading, 
   isLoadingPdf, 
   isLoadingExcel,
-  isPrintable = false
+  isPrintable = false,
+  selectedHall,
+  hallName
 }: ReportButtonsProps) {
   const { toast } = useToast();
 
@@ -37,51 +42,62 @@ export function ReportButtons({
   };
 
   return (
-    <div className="flex gap-4">
-      <Button
-        variant="outline"
-        onClick={onGeneratePdf}
-        disabled={isLoading || isLoadingPdf}
-      >
-        {isLoadingPdf ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Generating...
-          </>
-        ) : (
-          <>
-            <FileText className="mr-2 h-4 w-4" />
-            Download PDF
-          </>
-        )}
-      </Button>
-      <Button
-        variant="outline"
-        onClick={onGenerateExcel}
-        disabled={isLoading || isLoadingExcel}
-      >
-        {isLoadingExcel ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Generating...
-          </>
-        ) : (
-          <>
-            <File className="mr-2 h-4 w-4" />
-            Download Excel
-          </>
-        )}
-      </Button>
-      {isPrintable && (
+    <div className="flex flex-col gap-2">
+      {selectedHall && hallName && (
+        <Badge variant="outline" className="self-start mb-1 bg-primary/5 border-primary/20">
+          Generating for: {hallName}
+        </Badge>
+      )}
+      
+      <div className="flex gap-2 flex-wrap">
         <Button
           variant="outline"
-          onClick={handlePrint}
-          disabled={isLoading}
+          onClick={onGeneratePdf}
+          disabled={isLoading || isLoadingPdf}
+          className="bg-white hover:bg-gray-50"
         >
-          <Printer className="mr-2 h-4 w-4" />
-          Print
+          {isLoadingPdf ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Generating PDF...
+            </>
+          ) : (
+            <>
+              <FileText className="mr-2 h-4 w-4 text-red-500" />
+              Download PDF
+            </>
+          )}
         </Button>
-      )}
+        <Button
+          variant="outline"
+          onClick={onGenerateExcel}
+          disabled={isLoading || isLoadingExcel}
+          className="bg-white hover:bg-gray-50"
+        >
+          {isLoadingExcel ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Generating Excel...
+            </>
+          ) : (
+            <>
+              <File className="mr-2 h-4 w-4 text-green-600" />
+              Download Excel
+            </>
+          )}
+        </Button>
+        {isPrintable && (
+          <Button
+            variant="outline"
+            onClick={handlePrint}
+            disabled={isLoading}
+            className="bg-white hover:bg-gray-50"
+          >
+            <Printer className="mr-2 h-4 w-4 text-blue-500" />
+            Print
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
