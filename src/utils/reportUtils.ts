@@ -1,7 +1,7 @@
 import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils } from './hallUtils';
 
-// Use the halls from hallUtils
-export const HALLS = DEFAULT_HALLS;
+// Use the halls from hallUtils - create a deep copy to prevent modifications
+export const HALLS = JSON.parse(JSON.stringify(DEFAULT_HALLS));
 
 export interface SeatingAssignment {
   id: string;

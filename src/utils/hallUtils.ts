@@ -57,12 +57,12 @@ export const printElement = (elementId: string) => {
 export const removeHall = (halls: Hall[], hallIdToRemove: string): Hall[] => {
   console.log(`Removing hall with ID: ${hallIdToRemove}`, halls);
   // Make a deep copy to ensure we don't modify the original array
-  return halls.filter(hall => hall.id !== hallIdToRemove);
+  return [...halls].filter(hall => hall.id !== hallIdToRemove);
 };
 
 // Get available halls (excluding removed ones)
 export const getAvailableHalls = (): Hall[] => {
-  return [...DEFAULT_HALLS];
+  return JSON.parse(JSON.stringify(DEFAULT_HALLS));
 };
 
 // Create a new hall

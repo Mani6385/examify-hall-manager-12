@@ -26,7 +26,7 @@ interface HallSelectProps {
 }
 
 export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
-  const [availableHalls, setAvailableHalls] = useState<Hall[]>(DEFAULT_HALLS);
+  const [availableHalls, setAvailableHalls] = useState<Hall[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
         if (error) {
           console.error("Error fetching classes:", error);
           // If there's an error, use default halls
-          setAvailableHalls(DEFAULT_HALLS);
+          setAvailableHalls(JSON.parse(JSON.stringify(DEFAULT_HALLS)));
         } else if (data && data.length > 0) {
           // Map classes data to Hall interface
           const mappedHalls: Hall[] = data.map((item, index) => ({
@@ -53,11 +53,11 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
           setAvailableHalls(mappedHalls);
         } else {
           // If no data, use default halls
-          setAvailableHalls(DEFAULT_HALLS);
+          setAvailableHalls(JSON.parse(JSON.stringify(DEFAULT_HALLS)));
         }
       } catch (error) {
         console.error("Failed to fetch classes:", error);
-        setAvailableHalls(DEFAULT_HALLS);
+        setAvailableHalls(JSON.parse(JSON.stringify(DEFAULT_HALLS)));
       } finally {
         setIsLoading(false);
       }
@@ -68,6 +68,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
 
   const handleRemoveHall = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log("Before removal:", availableHalls);
     
     // If the hall being removed is currently selected, switch to "all"
     if (selectedHall === id) {
@@ -75,7 +76,8 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
     }
     
     // Remove the hall from available halls
-    const updatedHalls = removeHall(availableHalls, id);
+    const updatedHalls = removeHall([...availableHalls], id);
+    console.log("After removal:", updatedHalls);
     setAvailableHalls(updatedHalls);
   };
 
@@ -194,7 +196,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
               <div className="flex items-center gap-2">
                 <span className="font-medium text-gray-600">Selected Hall:</span>
                 <Badge variant="secondary" className="bg-primary/10 text-primary">
-                  {getHallNameById(selectedHall)}
+                  {getHallNameById(selectedHall, availableHalls)}
                 </Badge>
               </div>
               
