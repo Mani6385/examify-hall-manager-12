@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { File, FileText, Loader2, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { getHallNameById } from "@/utils/hallUtils";
 
 interface ReportButtonsProps {
   onGeneratePdf: () => void;
@@ -14,6 +15,7 @@ interface ReportButtonsProps {
   isPrintable?: boolean;
   selectedHall?: string;
   hallName?: string;
+  availableHalls?: Array<{ id: string; name: string; capacity: number }>;
 }
 
 export function ReportButtons({ 
@@ -25,7 +27,8 @@ export function ReportButtons({
   isLoadingExcel,
   isPrintable = false,
   selectedHall,
-  hallName
+  hallName,
+  availableHalls
 }: ReportButtonsProps) {
   const { toast } = useToast();
 
@@ -41,11 +44,14 @@ export function ReportButtons({
     }
   };
 
+  // Get the hall name using the updated function
+  const displayHallName = hallName || (selectedHall ? getHallNameById(selectedHall, availableHalls) : undefined);
+
   return (
     <div className="flex flex-col gap-2">
-      {selectedHall && hallName && (
+      {selectedHall && displayHallName && (
         <Badge variant="outline" className="self-start mb-1 bg-primary/5 border-primary/20">
-          Generating for: {hallName}
+          Generating for: {displayHallName}
         </Badge>
       )}
       

@@ -18,10 +18,18 @@ export const getHallById = (hallId: string): Hall | undefined => {
 };
 
 // Helper function to get hall name by ID
-export const getHallNameById = (hallId: string): string => {
+export const getHallNameById = (hallId: string, availableHalls?: Hall[]): string => {
   if (!hallId || hallId === "all") return 'All Halls';
+  
+  // First try to find in provided halls (if available)
+  if (availableHalls && availableHalls.length > 0) {
+    const hall = availableHalls.find(h => h.id === hallId);
+    if (hall) return hall.name;
+  }
+  
+  // Then try to find in default halls
   const hall = DEFAULT_HALLS.find(h => h.id === hallId);
-  return hall ? hall.name : 'Unknown Hall';
+  return hall ? hall.name : `Hall ${hallId}`;  // Return "Hall ID" instead of "Unknown Hall"
 };
 
 // Generate a unique ref ID for the printable section
