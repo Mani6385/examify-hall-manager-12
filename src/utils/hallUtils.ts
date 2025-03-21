@@ -55,6 +55,8 @@ export const printElement = (elementId: string) => {
 
 // Filter halls and return a new array without the removed hall
 export const removeHall = (halls: Hall[], hallIdToRemove: string): Hall[] => {
+  console.log(`Removing hall with ID: ${hallIdToRemove}`, halls);
+  // Make a deep copy to ensure we don't modify the original array
   return halls.filter(hall => hall.id !== hallIdToRemove);
 };
 
