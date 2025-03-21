@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportButtons } from "./ReportButtons";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears } from "@/utils/reportUtils";
+import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, generateConsolidatedReportData } from "@/utils/reportUtils";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -103,6 +102,9 @@ export function ConsolidatedReportsCard({
       data.years.add(year);
     });
   });
+
+  // Generate consolidated data for preview
+  const consolidatedData = generateConsolidatedReportData(arrangements);
 
   return (
     <Card>
@@ -232,32 +234,13 @@ export function ConsolidatedReportsCard({
                       </tr>
                     </thead>
                     <tbody>
-                      {arrangements.slice(0, 3).map((arr, index) => {
-                        // Group students by department with year information
-                        const deptGroups = new Map<string, {students: any[], year: string | null}>();
-                        arr.seating_assignments.forEach(assignment => {
-                          if (!assignment.department) return;
-                          
-                          // Find matching department config
-                          const deptConfig = arr.department_configs.find(
-                            config => config.department === assignment.department
-                          );
-                          
-                          const key = assignment.department || 'Unassigned';
-                          const year = deptConfig?.year || null;
-                          
-                          if (!deptGroups.has(key)) {
-                            deptGroups.set(key, {students: [], year});
-                          }
-                          deptGroups.get(key)?.students.push(assignment);
-                        });
-                        
+                      {consolidatedData.slice(0, 3).map((roomData, roomIndex) => {
                         // If there are no departments, create a single row
-                        if (deptGroups.size === 0) {
+                        if (roomData.departmentRows.length === 0) {
                           return (
-                            <tr key={arr.id} className="border-t">
-                              <td className="p-2">{index + 1}</td>
-                              <td className="p-2 font-medium">{arr.room_no}</td>
+                            <tr key={`room-${roomIndex}`} className="border-t">
+                              <td className="p-2">{roomIndex + 1}</td>
+                              <td className="p-2 font-medium">{roomData.room}</td>
                               <td className="p-2" colSpan={2}>No students assigned</td>
                               <td className="p-2">-</td>
                               <td className="p-2 text-right font-medium">0</td>
@@ -266,41 +249,23 @@ export function ConsolidatedReportsCard({
                         }
                         
                         // Create a row for each department in this room
-                        return Array.from(deptGroups.entries()).map(([dept, {students, year}], deptIndex) => {
-                          // Sort students by reg_no
-                          students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
-                          
-                          // Get start and end reg numbers for this group
-                          let regDisplay = "";
-                          if (students.length > 0) {
-                            const start = students[0].reg_no || '';
-                            const end = students[students.length - 1].reg_no || '';
-                            
-                            if (start === end || students.length === 1) {
-                              regDisplay = start;
-                            } else {
-                              regDisplay = `${start}-${end}`;
-                            }
-                          }
-                          
-                          return (
-                            <tr key={`${arr.id}-${dept}`} className="border-t">
-                              <td className="p-2">{deptIndex === 0 ? index + 1 : ''}</td>
-                              <td className="p-2 font-medium">{deptIndex === 0 ? arr.room_no : ''}</td>
-                              <td className="p-2">{dept}</td>
-                              <td className="p-2">{year || 'N/A'}</td>
-                              <td className="p-2 truncate max-w-[250px]">{regDisplay}</td>
-                              <td className="p-2 text-right font-medium">
-                                {deptIndex === 0 ? students.length : ''}
-                              </td>
-                            </tr>
-                          );
-                        });
+                        return roomData.departmentRows.map((deptRow, deptIndex) => (
+                          <tr key={`room-${roomIndex}-dept-${deptIndex}`} className="border-t">
+                            <td className="p-2">{deptRow.isFirstDeptInRoom ? roomIndex + 1 : ''}</td>
+                            <td className="p-2 font-medium">{deptRow.isFirstDeptInRoom ? roomData.room : ''}</td>
+                            <td className="p-2">{deptRow.department}</td>
+                            <td className="p-2">{deptRow.year}</td>
+                            <td className="p-2 truncate max-w-[250px]">{deptRow.regNumbers}</td>
+                            <td className="p-2 text-right font-medium">
+                              {deptRow.isFirstDeptInRoom ? roomData.totalStudents : ''}
+                            </td>
+                          </tr>
+                        ));
                       })}
-                      {arrangements.length > 3 && (
+                      {consolidatedData.length > 3 && (
                         <tr className="border-t">
                           <td colSpan={6} className="p-2 text-center text-muted-foreground">
-                            + {arrangements.length - 3} more rooms
+                            + {consolidatedData.length - 3} more rooms
                           </td>
                         </tr>
                       )}
