@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, getDepartmentsWithYears, generateConsolidatedReportData } from '@/utils/reportUtils';
 import { toast } from '@/hooks/use-toast';
@@ -112,8 +111,7 @@ export const generateExcelReport = (
   }
 };
 
-// Updated function to create consolidated worksheet with start-to-end reg numbers format
-// and improved department/year display
+// Updated function to create consolidated worksheet with improved registration number range display
 function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallName: string): XLSX.WorkSheet {
   // Create empty worksheet
   const ws = XLSX.utils.aoa_to_sheet([]);
@@ -154,7 +152,7 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
           deptRow.isFirstDeptInRoom ? roomData.room : '',               // Room No
           deptRow.department,                                           // Class
           deptRow.year,                                                 // Year
-          deptRow.regRange,                                             // Reg. Range (start-end)
+          deptRow.regRange,                                             // Reg. Range (explicit start-end from config)
           deptRow.regNumbers,                                           // Seats (assigned reg numbers)
           deptRow.isFirstDeptInRoom ? roomData.totalStudents.toString() : '' // Total
         ]);
@@ -176,7 +174,7 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
     { wch: 10 },   // Room No
     { wch: 20 },   // Class (Department)
     { wch: 12 },   // Year
-    { wch: 20 },   // Reg. Range
+    { wch: 25 },   // Reg. Range - Increased width for better visibility
     { wch: 50 },   // Seats (registration numbers)
     { wch: 10 },   // Total
   ];
@@ -255,7 +253,7 @@ function createDetailedRoomWorksheet(arrangement: SeatingArrangement): XLSX.Work
     // Sort students by reg_no
     students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
     
-    // Add department header with year and reg range
+    // Add department header with year and registration range
     const yearDisplay = year ? ` (${year})` : '';
     XLSX.utils.sheet_add_aoa(ws, [
       [`${dept}${yearDisplay} - Reg. Range: ${regRange}`]

@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, generateConsolidatedReportData } from "@/utils/reportUtils";
+import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, generateConsolidatedReportData } from '@/utils/reportUtils';
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -254,14 +254,14 @@ export function ConsolidatedReportsCard({
                         // Create a row for each department in this room
                         return roomData.departmentRows.map((deptRow, deptIndex) => (
                           <tr key={`room-${roomIndex}-dept-${deptIndex}`} className="border-t">
-                            <td className="p-2">{deptRow.isFirstDeptInRoom ? roomIndex + 1 : ''}</td>
+                            <td className="p-2">{deptRow.isFirstDeptInRoom ? deptRow.rowIndex.toString() : ''}</td>
                             <td className="p-2 font-medium">{deptRow.isFirstDeptInRoom ? roomData.room : ''}</td>
                             <td className="p-2">{deptRow.department}</td>
                             <td className="p-2">{deptRow.year}</td>
                             <td className="p-2">{deptRow.regRange}</td>
                             <td className="p-2 truncate max-w-[250px]">{deptRow.regNumbers}</td>
                             <td className="p-2 text-right font-medium">
-                              {deptRow.isFirstDeptInRoom ? roomData.totalStudents : ''}
+                              {deptRow.isFirstDeptInRoom ? roomData.totalStudents.toString() : ''}
                             </td>
                           </tr>
                         ));
