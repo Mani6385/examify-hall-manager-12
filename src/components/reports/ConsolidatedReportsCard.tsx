@@ -229,7 +229,6 @@ export function ConsolidatedReportsCard({
                         <th className="p-2 text-left">Room No</th>
                         <th className="p-2 text-left">Department</th>
                         <th className="p-2 text-left">Year</th>
-                        <th className="p-2 text-left">Reg. Range</th>
                         <th className="p-2 text-left">Seats (Reg. Numbers)</th>
                         <th className="p-2 text-right">Total</th>
                       </tr>
@@ -243,7 +242,6 @@ export function ConsolidatedReportsCard({
                               <td className="p-2">{roomIndex + 1}</td>
                               <td className="p-2 font-medium">{roomData.room}</td>
                               <td className="p-2" colSpan={2}>No students assigned</td>
-                              <td className="p-2">-</td>
                               <td className="p-2">-</td>
                               <td className="p-2 text-right font-medium">0</td>
                             </tr>
@@ -275,7 +273,6 @@ export function ConsolidatedReportsCard({
                               <td className="p-2 font-medium">{deptRow.isFirstDeptInRoom ? roomData.room : ''}</td>
                               <td className="p-2">{deptRow.department}</td>
                               <td className="p-2">{deptRow.year}</td>
-                              <td className="p-2">{deptRow.regRange}</td>
                               <td className="p-2">{simplifiedRegNumbers}</td>
                               <td className="p-2 text-right font-medium">
                                 {deptRow.isFirstDeptInRoom ? roomData.totalStudents.toString() : ''}
@@ -286,7 +283,7 @@ export function ConsolidatedReportsCard({
                       })}
                       {consolidatedData.length > 3 && (
                         <tr className="border-t">
-                          <td colSpan={7} className="p-2 text-center text-muted-foreground">
+                          <td colSpan={6} className="p-2 text-center text-muted-foreground">
                             + {consolidatedData.length - 3} more rooms
                           </td>
                         </tr>
