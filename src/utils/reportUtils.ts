@@ -106,12 +106,28 @@ export const formatDepartmentsWithYears = (arrangement: SeatingArrangement): str
     .join(', ');
 };
 
+// Get registration number range for a department
+export const getRegNumberRange = (deptConfig: DepartmentConfig): string => {
+  if (!deptConfig.start_reg_no || !deptConfig.end_reg_no) {
+    return 'Not specified';
+  }
+  return `${deptConfig.start_reg_no} - ${deptConfig.end_reg_no}`;
+};
+
 // Helper for consolidated report data generation
 export const generateConsolidatedReportData = (arrangements: SeatingArrangement[]) => {
   // Create data structure for consolidated report
   const consolidatedData = arrangements.map((arrangement, index) => {
     // Group students by department with year information
-    const deptGroups = new Map<string, {students: any[], year: string | null}>();
+    const deptGroups = new Map<string, {students: any[], year: string | null, regRange: string}>();
+    
+    // First, collect reg number ranges from department_configs
+    const deptConfigMap = new Map<string, string>();
+    arrangement.department_configs.forEach(config => {
+      if (config.department && config.start_reg_no && config.end_reg_no) {
+        deptConfigMap.set(config.department, `${config.start_reg_no} - ${config.end_reg_no}`);
+      }
+    });
     
     arrangement.seating_assignments.forEach(assignment => {
       if (!assignment.department) return;
@@ -123,15 +139,17 @@ export const generateConsolidatedReportData = (arrangements: SeatingArrangement[
       
       const key = assignment.department || 'Unassigned';
       const year = deptConfig?.year || null;
+      // Get reg number range from the map
+      const regRange = deptConfigMap.get(key) || 'Not specified';
       
       if (!deptGroups.has(key)) {
-        deptGroups.set(key, {students: [], year});
+        deptGroups.set(key, {students: [], year, regRange});
       }
       deptGroups.get(key)?.students.push(assignment);
     });
     
     // Convert to array structure for reporting
-    const departmentRows = Array.from(deptGroups.entries()).map(([dept, {students, year}], deptIndex) => {
+    const departmentRows = Array.from(deptGroups.entries()).map(([dept, {students, year, regRange}], deptIndex) => {
       // Sort students by reg_no
       students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
       
@@ -182,6 +200,7 @@ export const generateConsolidatedReportData = (arrangements: SeatingArrangement[
         department: dept,
         year: year || 'N/A',
         regNumbers: regRanges,
+        regRange: regRange, // Add the configured reg number range
         studentCount: students.length,
         isFirstDeptInRoom: deptIndex === 0
       };
