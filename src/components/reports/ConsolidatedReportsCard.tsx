@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportButtons } from "./ReportButtons";
 import { Button } from "@/components/ui/button";
@@ -113,7 +114,7 @@ export function ConsolidatedReportsCard({
           <div>
             <CardTitle>Consolidated Reports</CardTitle>
             <CardDescription>
-              Download complete seating plan for {getHallNameById(selectedHall)}
+              Download complete consolidated seating plan for {getHallNameById(selectedHall)}
             </CardDescription>
           </div>
           <Badge variant="outline" className="px-3 py-1">
@@ -155,7 +156,7 @@ export function ConsolidatedReportsCard({
               className="gap-2"
             >
               <FileText className="h-4 w-4" />
-              {isLoadingPdf ? "Generating PDF..." : "Generate PDF Report"}
+              {isLoadingPdf ? "Generating PDF..." : "Generate Consolidated PDF"}
             </Button>
             
             <Button 
@@ -165,7 +166,7 @@ export function ConsolidatedReportsCard({
               className="gap-2"
             >
               <FileSpreadsheet className="h-4 w-4" />
-              {isLoadingExcel ? "Generating Excel..." : "Generate Excel Report"}
+              {isLoadingExcel ? "Generating Excel..." : "Generate Consolidated Excel"}
             </Button>
             
             <DropdownMenu>
@@ -201,7 +202,7 @@ export function ConsolidatedReportsCard({
           <div className="bg-white rounded-lg border shadow-sm mt-2 overflow-hidden">
             <div className="bg-muted/50 p-3 border-b">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Export Preview</h3>
+                <h3 className="text-sm font-semibold">Consolidated Report Preview</h3>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <FileText className="h-3.5 w-3.5" />
                   <span>PDF</span>
@@ -229,6 +230,7 @@ export function ConsolidatedReportsCard({
                         <th className="p-2 text-left">Room No</th>
                         <th className="p-2 text-left">Department</th>
                         <th className="p-2 text-left">Year</th>
+                        <th className="p-2 text-left">Reg. Range</th>
                         <th className="p-2 text-left">Seats (Reg. Numbers)</th>
                         <th className="p-2 text-right">Total</th>
                       </tr>
@@ -243,6 +245,7 @@ export function ConsolidatedReportsCard({
                               <td className="p-2 font-medium">{roomData.room}</td>
                               <td className="p-2" colSpan={2}>No students assigned</td>
                               <td className="p-2">-</td>
+                              <td className="p-2">-</td>
                               <td className="p-2 text-right font-medium">0</td>
                             </tr>
                           );
@@ -255,6 +258,7 @@ export function ConsolidatedReportsCard({
                             <td className="p-2 font-medium">{deptRow.isFirstDeptInRoom ? roomData.room : ''}</td>
                             <td className="p-2">{deptRow.department}</td>
                             <td className="p-2">{deptRow.year}</td>
+                            <td className="p-2">{deptRow.regRange}</td>
                             <td className="p-2 truncate max-w-[250px]">{deptRow.regNumbers}</td>
                             <td className="p-2 text-right font-medium">
                               {deptRow.isFirstDeptInRoom ? roomData.totalStudents : ''}
@@ -264,7 +268,7 @@ export function ConsolidatedReportsCard({
                       })}
                       {consolidatedData.length > 3 && (
                         <tr className="border-t">
-                          <td colSpan={6} className="p-2 text-center text-muted-foreground">
+                          <td colSpan={7} className="p-2 text-center text-muted-foreground">
                             + {consolidatedData.length - 3} more rooms
                           </td>
                         </tr>
@@ -289,6 +293,7 @@ export function ConsolidatedReportsCard({
                       {arrangements[0].department_configs.slice(0, 2).map(config => (
                         <div key={config.id} className="border rounded p-2">
                           <div className="font-medium">{config.department} {config.year ? `(${config.year})` : ''}</div>
+                          <div className="text-xs text-muted-foreground">Reg. Range: {config.start_reg_no} - {config.end_reg_no}</div>
                           <div className="grid grid-cols-2 gap-1 mt-1">
                             {arrangements[0].seating_assignments
                               .filter(a => a.department === config.department)
@@ -400,7 +405,7 @@ export function ConsolidatedReportsCard({
               <div className="text-xs text-muted-foreground flex flex-col sm:flex-row justify-between gap-2">
                 <div>
                   <FileUp className="h-3.5 w-3.5 inline mr-1" />
-                  <span>Exported files include all information shown in these previews and more</span>
+                  <span>Consolidated reports include all information shown in these previews and more</span>
                 </div>
                 <div>
                   <span className="font-medium text-primary">Total:</span> {totalRooms} rooms, {totalStudents} students, {departmentData.size} departments

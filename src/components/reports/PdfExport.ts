@@ -43,7 +43,8 @@ export const generatePdfReport = (
     addRoomDetailClassWise(doc, arrangement, index === 0 ? 30 : doc.lastAutoTable.finalY + 15);
   });
   
-  doc.save(`seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+  // Save the file with "consolidated" in the filename
+  doc.save(`consolidated-seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
 };
 
 function addCoverPage(doc: jsPDF, hallName: string) {

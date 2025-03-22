@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, getDepartmentsWithYears, generateConsolidatedReportData } from '@/utils/reportUtils';
 import { toast } from '@/hooks/use-toast';
@@ -92,14 +93,14 @@ export const generateExcelReport = (
       XLSX.utils.book_append_sheet(wb, visualWs, `Room ${arrangement.room_no} Grid`);
     });
 
-    // Save the file with a timestamp to avoid caching issues
+    // Save the file with a timestamp to avoid caching issues and include "consolidated" in the filename
     const timestamp = new Date().getTime();
-    XLSX.writeFile(wb, `seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}-${timestamp}.xlsx`);
+    XLSX.writeFile(wb, `consolidated-seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}-${timestamp}.xlsx`);
     
     // Show success message
     toast({
       title: "Success",
-      description: `Excel report for ${hallName} generated successfully`,
+      description: `Consolidated Excel report for ${hallName} generated successfully`,
     });
   } catch (error) {
     console.error("Error generating Excel report:", error);
