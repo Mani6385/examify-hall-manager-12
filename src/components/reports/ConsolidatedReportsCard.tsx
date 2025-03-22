@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportButtons } from "./ReportButtons";
 import { Button } from "@/components/ui/button";
@@ -252,19 +251,38 @@ export function ConsolidatedReportsCard({
                         }
                         
                         // Create a row for each department in this room
-                        return roomData.departmentRows.map((deptRow, deptIndex) => (
-                          <tr key={`room-${roomIndex}-dept-${deptIndex}`} className="border-t">
-                            <td className="p-2">{deptRow.isFirstDeptInRoom ? deptRow.rowIndex.toString() : ''}</td>
-                            <td className="p-2 font-medium">{deptRow.isFirstDeptInRoom ? roomData.room : ''}</td>
-                            <td className="p-2">{deptRow.department}</td>
-                            <td className="p-2">{deptRow.year}</td>
-                            <td className="p-2">{deptRow.regRange}</td>
-                            <td className="p-2 truncate max-w-[250px]">{deptRow.regNumbers}</td>
-                            <td className="p-2 text-right font-medium">
-                              {deptRow.isFirstDeptInRoom ? roomData.totalStudents.toString() : ''}
-                            </td>
-                          </tr>
-                        ));
+                        return roomData.departmentRows.map((deptRow, deptIndex) => {
+                          // Simplify the Seats column to only show first and last reg numbers
+                          let simplifiedRegNumbers = "N/A";
+                          if (deptRow.regNumbers && deptRow.regNumbers.trim() !== '') {
+                            const allRegNumbers = deptRow.regNumbers.split(', ');
+                            if (allRegNumbers.length > 0) {
+                              // Get the first and last registration number
+                              const firstReg = allRegNumbers[0];
+                              const lastReg = allRegNumbers[allRegNumbers.length - 1];
+                              
+                              if (firstReg === lastReg) {
+                                simplifiedRegNumbers = firstReg;
+                              } else {
+                                simplifiedRegNumbers = `${firstReg} - ${lastReg}`;
+                              }
+                            }
+                          }
+                          
+                          return (
+                            <tr key={`room-${roomIndex}-dept-${deptIndex}`} className="border-t">
+                              <td className="p-2">{deptRow.isFirstDeptInRoom ? deptRow.rowIndex.toString() : ''}</td>
+                              <td className="p-2 font-medium">{deptRow.isFirstDeptInRoom ? roomData.room : ''}</td>
+                              <td className="p-2">{deptRow.department}</td>
+                              <td className="p-2">{deptRow.year}</td>
+                              <td className="p-2">{deptRow.regRange}</td>
+                              <td className="p-2">{simplifiedRegNumbers}</td>
+                              <td className="p-2 text-right font-medium">
+                                {deptRow.isFirstDeptInRoom ? roomData.totalStudents.toString() : ''}
+                              </td>
+                            </tr>
+                          );
+                        });
                       })}
                       {consolidatedData.length > 3 && (
                         <tr className="border-t">

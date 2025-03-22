@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, getDepartmentsWithYears, generateConsolidatedReportData } from '@/utils/reportUtils';
 import { toast } from '@/hooks/use-toast';
@@ -147,13 +148,30 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
     } else {
       // Add rows for each department in this room
       roomData.departmentRows.forEach((deptRow) => {
+        // Simplify the Seats column to only show first and last reg numbers
+        let simplifiedRegNumbers = "N/A";
+        if (deptRow.regNumbers && deptRow.regNumbers.trim() !== '') {
+          const allRegNumbers = deptRow.regNumbers.split(', ');
+          if (allRegNumbers.length > 0) {
+            // Get the first and last registration number
+            const firstReg = allRegNumbers[0];
+            const lastReg = allRegNumbers[allRegNumbers.length - 1];
+            
+            if (firstReg === lastReg) {
+              simplifiedRegNumbers = firstReg;
+            } else {
+              simplifiedRegNumbers = `${firstReg} - ${lastReg}`;
+            }
+          }
+        }
+        
         tableData.push([
           deptRow.isFirstDeptInRoom ? deptRow.rowIndex.toString() : '',  // S.No
           deptRow.isFirstDeptInRoom ? roomData.room : '',               // Room No
           deptRow.department,                                           // Class
           deptRow.year,                                                 // Year
           deptRow.regRange,                                             // Reg. Range (explicit start-end from config)
-          deptRow.regNumbers,                                           // Seats (assigned reg numbers)
+          simplifiedRegNumbers,                                         // Seats (simplified to first-last)
           deptRow.isFirstDeptInRoom ? roomData.totalStudents.toString() : '' // Total
         ]);
       });
@@ -175,7 +193,7 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
     { wch: 20 },   // Class (Department)
     { wch: 12 },   // Year
     { wch: 25 },   // Reg. Range - Increased width for better visibility
-    { wch: 50 },   // Seats (registration numbers)
+    { wch: 25 },   // Seats (simplified reg numbers - reduced width since we show less)
     { wch: 10 },   // Total
   ];
   
