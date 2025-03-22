@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportButtons } from "./ReportButtons";
 import { Button } from "@/components/ui/button";
@@ -230,7 +231,8 @@ export function ConsolidatedReportsCard({
                         <th className="p-2 text-left">Department</th>
                         <th className="p-2 text-left">Year</th>
                         <th className="p-2 text-left">Seats (Reg. Numbers)</th>
-                        <th className="p-2 text-right">Total</th>
+                        <th className="p-2 text-right">Dept Total</th>
+                        <th className="p-2 text-right">Room Total</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -243,6 +245,7 @@ export function ConsolidatedReportsCard({
                               <td className="p-2 font-medium">{roomData.room}</td>
                               <td className="p-2" colSpan={2}>No students assigned</td>
                               <td className="p-2">-</td>
+                              <td className="p-2 text-right">0</td>
                               <td className="p-2 text-right font-medium">0</td>
                             </tr>
                           );
@@ -274,6 +277,7 @@ export function ConsolidatedReportsCard({
                               <td className="p-2">{deptRow.department}</td>
                               <td className="p-2">{deptRow.year}</td>
                               <td className="p-2">{simplifiedRegNumbers}</td>
+                              <td className="p-2 text-right">{deptRow.studentCount}</td>
                               <td className="p-2 text-right font-medium">
                                 {deptRow.isFirstDeptInRoom ? roomData.totalStudents.toString() : ''}
                               </td>
@@ -283,7 +287,7 @@ export function ConsolidatedReportsCard({
                       })}
                       {consolidatedData.length > 3 && (
                         <tr className="border-t">
-                          <td colSpan={6} className="p-2 text-center text-muted-foreground">
+                          <td colSpan={7} className="p-2 text-center text-muted-foreground">
                             + {consolidatedData.length - 3} more rooms
                           </td>
                         </tr>
@@ -294,7 +298,7 @@ export function ConsolidatedReportsCard({
                 <div className="text-xs text-muted-foreground mt-2">
                   <div className="flex items-center gap-1">
                     <FileText className="h-3 w-3" />
-                    <span>PDF export includes a cover page, consolidated table, and room-specific details</span>
+                    <span>PDF export includes a cover page and this consolidated table view</span>
                   </div>
                 </div>
               </TabsContent>
@@ -307,7 +311,8 @@ export function ConsolidatedReportsCard({
                     <div className="grid grid-cols-2 gap-2 text-[10px]">
                       {arrangements[0].department_configs.slice(0, 2).map(config => (
                         <div key={config.id} className="border rounded p-2">
-                          <div className="font-medium">{config.department} {config.year ? `(${config.year})` : ''}</div>
+                          <div className="font-medium">{config.department}</div>
+                          <div className="font-medium text-xs text-blue-600">{config.year || 'N/A'}</div>
                           <div className="text-xs text-muted-foreground">Reg. Range: {config.start_reg_no} - {config.end_reg_no}</div>
                           <div className="grid grid-cols-2 gap-1 mt-1">
                             {arrangements[0].seating_assignments
@@ -359,7 +364,7 @@ export function ConsolidatedReportsCard({
                 <div className="text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <FileText className="h-3 w-3" />
-                    <span>Room details in PDF show complete student lists with seating grid</span>
+                    <span>This detailed view is for preview only and not included in PDF reports</span>
                   </div>
                 </div>
               </TabsContent>
@@ -371,7 +376,7 @@ export function ConsolidatedReportsCard({
                       <tr>
                         <th className="p-2 text-left">Department</th>
                         <th className="p-2 text-left">Year</th>
-                        <th className="p-2 text-left">Students</th>
+                        <th className="p-2 text-right">Students</th>
                         <th className="p-2 text-left">Rooms</th>
                       </tr>
                     </thead>
@@ -392,7 +397,7 @@ export function ConsolidatedReportsCard({
                             <td className="p-2">
                               {Array.from(data.years).join(', ')}
                             </td>
-                            <td className="p-2">{data.count}</td>
+                            <td className="p-2 text-right">{data.count}</td>
                             <td className="p-2">{roomsWithDept.size} rooms</td>
                           </tr>
                         );

@@ -1,3 +1,4 @@
+
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, getDepartmentsWithYears } from '@/utils/reportUtils';
@@ -86,10 +87,11 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
       const row = [
         (index + 1).toString(),      // S.No
         arrangement.room_no,         // Room No
-        "Not specified",             // Class
+        "Not specified",             // Department
         "N/A",                       // Year
         "",                          // Seats (empty when no departments)
-        arrangement.seating_assignments.length.toString() // Total
+        "0",                         // Dept Total 
+        arrangement.seating_assignments.length.toString() // Room Total
       ];
       tableData.push(row);
     } else {
@@ -160,10 +162,11 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
         const row = [
           firstDeptInRoom ? (index + 1).toString() : '',  // S.No
           firstDeptInRoom ? arrangement.room_no : '',     // Room No
-          deptKey,                                        // Class (Dept)
+          deptKey,                                        // Department
           year || "N/A",                                  // Year
           regNosFormatted,                                // Registration Numbers (simplified to start-end)
-          firstDeptInRoom ? students.length.toString() : '' // Total for the room
+          students.length.toString(),                     // Department Total
+          firstDeptInRoom ? students.length.toString() : '' // Room Total (only for first dept)
         ];
         
         tableData.push(row);
@@ -173,13 +176,13 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
     
     // Add an empty row between rooms for better readability
     if (index < arrangements.length - 1) {
-      tableData.push(['', '', '', '', '', '']);
+      tableData.push(['', '', '', '', '', '', '']);
     }
   });
   
   // Add the consolidated table
   autoTable(doc, {
-    head: [['S.NO', 'ROOM NO', 'CLASS', 'YEAR', 'SEATS', 'TOTAL']],
+    head: [['S.NO', 'ROOM NO', 'DEPARTMENT', 'YEAR', 'SEATS', 'DEPT TOTAL', 'ROOM TOTAL']],
     body: tableData,
     startY: 40,
     styles: {
@@ -192,7 +195,8 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
       2: { cellWidth: 30 },
       3: { cellWidth: 20 },  // Year column
       4: { cellWidth: 'auto' },
-      5: { cellWidth: 15, halign: 'center' },
+      5: { cellWidth: 20, halign: 'right' },  // Department total
+      6: { cellWidth: 20, halign: 'right' },  // Room total
     },
     headStyles: {
       fillColor: [80, 80, 80],
