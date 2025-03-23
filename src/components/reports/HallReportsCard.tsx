@@ -5,10 +5,11 @@ import { ReportButtons } from "./ReportButtons";
 import { ArrangementsTable } from "./ArrangementsTable";
 import { SeatingArrangement } from "@/utils/reportUtils";
 import { useToast } from "@/hooks/use-toast";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Grid, RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { getHallNameById } from "@/utils/hallUtils";
 
 interface HallReportsCardProps {
   selectedHall: string;
@@ -44,7 +45,7 @@ export function HallReportsCard({
     if (!filteredArrangements || filteredArrangements.length === 0) {
       toast({
         title: "No Data Available",
-        description: "No seating arrangements to export. Please create a seating plan first.",
+        description: `No seating arrangements found for ${getHallNameById(selectedHall)}. Create a seating plan first.`,
         variant: "destructive",
       });
       return;
@@ -56,7 +57,7 @@ export function HallReportsCard({
     if (!filteredArrangements || filteredArrangements.length === 0) {
       toast({
         title: "No Data Available",
-        description: "No seating arrangements to export. Please create a seating plan first.",
+        description: `No seating arrangements found for ${getHallNameById(selectedHall)}. Create a seating plan first.`,
         variant: "destructive",
       });
       return;
@@ -80,6 +81,8 @@ export function HallReportsCard({
     setArrangementToDelete(id);
   };
 
+  const hallName = getHallNameById(selectedHall);
+
   return (
     <Card>
       <CardHeader>
@@ -95,7 +98,7 @@ export function HallReportsCard({
       </CardHeader>
       <CardContent>
         <div className="mb-6">
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center justify-between gap-4 mb-4">
             <HallSelect 
               selectedHall={selectedHall} 
               setSelectedHall={setSelectedHall} 
@@ -107,8 +110,20 @@ export function HallReportsCard({
               isLoading={isLoading}
               isLoadingPdf={isLoadingPdf}
               isLoadingExcel={isLoadingExcel}
+              disabled={filteredArrangements.length === 0}
             />
           </div>
+
+          {selectedHall !== "all" && (
+            <div className="mb-4">
+              <h3 className="text-md font-medium">Selected Hall: <span className="text-indigo-600">{hallName}</span></h3>
+              {selectedHall !== "all" && (
+                <p className="text-sm text-muted-foreground">
+                  Hall ID: {selectedHall} {filteredArrangements.length > 0 && `(Capacity: ${filteredArrangements.length > 0 ? filteredArrangements.reduce((acc, arr) => acc + arr.rows * arr.columns, 0) : 'N/A'} seats)`}
+                </p>
+              )}
+            </div>
+          )}
         
           {isError ? (
             <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-lg bg-gray-50">

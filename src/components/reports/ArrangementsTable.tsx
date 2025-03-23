@@ -50,17 +50,15 @@ export function ArrangementsTable({
 
   if (arrangements.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 space-y-4">
-        <div className="flex items-center text-amber-500">
-          <AlertCircle className="h-6 w-6 mr-2" />
-          <span className="font-medium">No seating arrangements found {selectedHall !== "all" ? `for ${getHallNameById(selectedHall)}` : ""}</span>
-        </div>
-        <p className="text-muted-foreground text-center max-w-md">
+      <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-lg bg-gray-50 my-4">
+        <AlertCircle className="h-12 w-12 text-amber-500 mb-4" />
+        <h3 className="text-lg font-medium mb-2">No seating arrangements found {selectedHall !== "all" ? `for ${getHallNameById(selectedHall)}` : ""}</h3>
+        <p className="text-muted-foreground text-center max-w-md mb-6">
           {selectedHall !== "all" 
             ? `There are no seating plans created for ${getHallNameById(selectedHall)} yet. Please select a different hall or create a new seating plan.`
             : "There are no seating plans in the system. Create a seating plan first to view and generate reports."}
         </p>
-        <Button onClick={goToSeatingPage} className="mt-4">
+        <Button onClick={goToSeatingPage} className="bg-indigo-600 hover:bg-indigo-700">
           <PlusCircle className="mr-2 h-4 w-4" />
           Create Seating Plan
         </Button>
