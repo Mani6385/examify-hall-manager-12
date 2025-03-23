@@ -16,6 +16,7 @@ interface ReportButtonsProps {
   selectedHall?: string;
   hallName?: string;
   availableHalls?: Array<{ id: string; name: string; capacity: number }>;
+  disabled?: boolean; // Added disabled prop to the interface
 }
 
 export function ReportButtons({ 
@@ -28,7 +29,8 @@ export function ReportButtons({
   isPrintable = false,
   selectedHall,
   hallName,
-  availableHalls
+  availableHalls,
+  disabled = false // Add default value
 }: ReportButtonsProps) {
   const { toast } = useToast();
 
@@ -59,7 +61,7 @@ export function ReportButtons({
         <Button
           variant="outline"
           onClick={onGeneratePdf}
-          disabled={isLoading || isLoadingPdf}
+          disabled={isLoading || isLoadingPdf || disabled}
           className="bg-white hover:bg-gray-50"
         >
           {isLoadingPdf ? (
@@ -77,7 +79,7 @@ export function ReportButtons({
         <Button
           variant="outline"
           onClick={onGenerateExcel}
-          disabled={isLoading || isLoadingExcel}
+          disabled={isLoading || isLoadingExcel || disabled}
           className="bg-white hover:bg-gray-50"
         >
           {isLoadingExcel ? (
@@ -96,7 +98,7 @@ export function ReportButtons({
           <Button
             variant="outline"
             onClick={handlePrint}
-            disabled={isLoading}
+            disabled={isLoading || disabled}
             className="bg-white hover:bg-gray-50"
           >
             <Printer className="mr-2 h-4 w-4 text-blue-500" />
