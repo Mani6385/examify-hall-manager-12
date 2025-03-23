@@ -1,3 +1,4 @@
+
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, getDepartmentsWithYears } from '@/utils/reportUtils';
@@ -251,39 +252,58 @@ function addHallWiseTable(doc: jsPDF, arrangement: SeatingArrangement) {
   });
   
   let startY = 30;
-  const maxColumns = 4; // Number of columns from the image
+  const maxColumns = 4; // Number of columns for the grid
   
   // Process each department
   Array.from(deptGroups.entries()).forEach(([dept, students]) => {
     // Sort students by seat_no for consistency
     students.sort((a, b) => a.seat_no.localeCompare(b.seat_no));
     
-    // Build table data for this department
-    const tableData: string[][] = [];
-    
     // Create chunks of students for rows
+    const rows = [];
     for (let i = 0; i < students.length; i += maxColumns) {
-      const rowStudents = students.slice(i, i + maxColumns);
-      const row: string[] = [];
+      rows.push(students.slice(i, i + maxColumns));
+    }
+    
+    // Create department header
+    const headerData = [dept];
+    // Add first row students to header
+    if (rows.length > 0) {
+      rows[0].forEach(student => {
+        headerData.push(`${student.seat_no}: ${student.reg_no || 'N/A'}`);
+      });
       
-      // Add each student's data
-      rowStudents.forEach(student => {
-        row.push(`${student.seat_no}: ${student.reg_no || 'N/A'}`);
+      // Fill header with empty cells if needed
+      while (headerData.length <= maxColumns) {
+        headerData.push('');
+      }
+    }
+    
+    // Create table for this department
+    const tableData = [];
+    // Add header row
+    tableData.push(headerData);
+    
+    // Add data rows (excluding first row which is in the header)
+    for (let i = 1; i < rows.length; i++) {
+      const rowData = [''];  // Empty first cell
+      
+      rows[i].forEach(student => {
+        rowData.push(`${student.seat_no}: ${student.reg_no || 'N/A'}`);
       });
       
       // Fill with empty cells if needed
-      while (row.length < maxColumns) {
-        row.push('');
+      while (rowData.length <= maxColumns) {
+        rowData.push('');
       }
       
-      tableData.push(row);
+      tableData.push(rowData);
     }
     
-    // Create the table for this department
+    // Create the table
     autoTable(doc, {
-      head: [[dept, 'Student 1', 'Student 2', 'Student 3', 'Student 4']],
-      body: tableData,
       startY: startY,
+      body: tableData,
       theme: 'grid',
       styles: {
         fontSize: 9,
@@ -291,24 +311,21 @@ function addHallWiseTable(doc: jsPDF, arrangement: SeatingArrangement) {
         lineWidth: 0.1,
       },
       headStyles: {
-        fillColor: [240, 240, 240],
-        textColor: [0, 0, 0],
         fontStyle: 'bold',
-        lineWidth: 0.1,
       },
       columnStyles: {
-        0: { cellWidth: 40, fontStyle: 'bold' }, // Department column
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 'auto' },
-        3: { cellWidth: 'auto' },
-        4: { cellWidth: 'auto' },
+        0: { fontStyle: 'bold', fillColor: [240, 240, 240] },
       },
-      didDrawPage: (data) => {
-        // If the table flows to a new page, add the title again
-        if (data.pageNumber > 1) {
-          doc.setFontSize(14);
-          doc.setFont('helvetica', 'bold');
-          doc.text(`Room ${arrangement.room_no} - Student Assignments by Department (cont.)`, pageWidth / 2, 20, { align: "center" });
+      // Style the header row (first row)
+      didDrawCell: (data) => {
+        if (data.row.index === 0) {
+          const cell = data.cell;
+          // Make the entire first row stand out with background color
+          doc.setFillColor(240, 240, 240);
+          doc.rect(cell.x, cell.y, cell.width, cell.height, 'F');
+          // Draw the text again to ensure it's visible on the background
+          doc.setTextColor(0, 0, 0);
+          doc.text(String(cell.text), cell.x + cell.padding('left'), cell.y + cell.padding('top') + 5);
         }
       }
     });

@@ -207,7 +207,7 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
   return ws;
 }
 
-// New function to create hall-wise worksheet with the format shown in the image
+// Updated function to create hall-wise worksheet with the grid format shown in the image
 function createHallWiseWorksheet(arrangement: SeatingArrangement): XLSX.WorkSheet {
   // Create empty worksheet
   const ws = XLSX.utils.aoa_to_sheet([]);
@@ -242,17 +242,34 @@ function createHallWiseWorksheet(arrangement: SeatingArrangement): XLSX.WorkShee
   
   // Current row for adding data
   let currentRow = 3;
-  const maxColumns = 4; // From the image
+  const maxColumns = 4; // From the image - 4 students per row
   
   // Add each department section
   Array.from(deptGroups.entries()).forEach(([dept, students]) => {
     // Sort students by seat_no
     students.sort((a, b) => a.seat_no.localeCompare(b.seat_no));
     
-    // Add department header
-    XLSX.utils.sheet_add_aoa(ws, [
-      [dept, "Student 1", "Student 2", "Student 3", "Student 4"]
-    ], { origin: { r: currentRow, c: 0 } });
+    // Create chunks of students for rows
+    const rows = [];
+    for (let i = 0; i < students.length; i += maxColumns) {
+      rows.push(students.slice(i, i + maxColumns));
+    }
+    
+    // First row with department name
+    const headerRow = [dept];
+    if (rows.length > 0) {
+      rows[0].forEach(student => {
+        headerRow.push(`${student.seat_no}: ${student.reg_no || 'N/A'}`);
+      });
+      
+      // Fill header with empty cells if needed
+      while (headerRow.length <= maxColumns) {
+        headerRow.push('');
+      }
+    }
+    
+    // Add the header row
+    XLSX.utils.sheet_add_aoa(ws, [headerRow], { origin: { r: currentRow, c: 0 } });
     
     // Style the header row
     for (let i = 0; i <= maxColumns; i++) {
@@ -268,27 +285,23 @@ function createHallWiseWorksheet(arrangement: SeatingArrangement): XLSX.WorkShee
     
     currentRow++;
     
-    // Add student rows with 4 students per row as in the image
-    for (let i = 0; i < students.length; i += maxColumns) {
-      const rowStudents = students.slice(i, i + maxColumns);
-      const rowData = [];
+    // Add remaining rows for this department
+    for (let i = 1; i < rows.length; i++) {
+      const rowData = [''];  // Empty first cell
       
-      // Add department name for first row only
-      rowData.push(i === 0 ? dept : "");
-      
-      // Add student data
-      rowStudents.forEach(student => {
+      rows[i].forEach(student => {
         rowData.push(`${student.seat_no}: ${student.reg_no || 'N/A'}`);
       });
       
-      // Fill remaining cells if needed
+      // Fill with empty cells if needed
       while (rowData.length <= maxColumns) {
-        rowData.push("");
+        rowData.push('');
       }
       
+      // Add the row
       XLSX.utils.sheet_add_aoa(ws, [rowData], { origin: { r: currentRow, c: 0 } });
       
-      // Style the cells
+      // Style the row cells
       for (let j = 0; j <= maxColumns; j++) {
         const cell = XLSX.utils.encode_cell({ r: currentRow, c: j });
         if (!ws[cell]) ws[cell] = { v: "" };
@@ -296,27 +309,22 @@ function createHallWiseWorksheet(arrangement: SeatingArrangement): XLSX.WorkShee
         ws[cell].s = { 
           border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
         };
-        
-        // Make department column bold
-        if (j === 0 && rowData[0]) {
-          ws[cell].s.font = { bold: true };
-        }
       }
       
       currentRow++;
     }
     
-    // Add a blank row after each department
-    currentRow++;
+    // Add an empty row after each department
+    currentRow += 1;
   });
   
   // Set column widths
   ws['!cols'] = [
-    { wch: 30 },  // Department
-    { wch: 25 },  // Student 1
-    { wch: 25 },  // Student 2
-    { wch: 25 },  // Student 3
-    { wch: 25 },  // Student 4
+    { wch: 25 },  // Department column
+    { wch: 20 },  // Student 1
+    { wch: 20 },  // Student 2
+    { wch: 20 },  // Student 3
+    { wch: 20 },  // Student 4
   ];
   
   // Merge cells for the title

@@ -1,5 +1,5 @@
 
-import { SeatingArrangement, filterArrangementsByHall, getDepartmentsWithYears } from "@/utils/reportUtils";
+import { SeatingArrangement, filterArrangementsByHall } from "@/utils/reportUtils";
 import { useState, useEffect } from "react";
 import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,77 +47,87 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
     window.print();
   };
 
-  // Function to organize students by department and create table rows
+  // Function to organize students by department for the grid format
   const getStudentsByDepartment = (arrangement: SeatingArrangement) => {
-    // Group students by department
-    const deptMap = new Map<string, any[]>();
+    // Create a map of department to students
+    const departmentStudents = new Map<string, any[]>();
     
     arrangement.seating_assignments.forEach(assignment => {
       const dept = assignment.department || 'Unassigned';
       
-      if (!deptMap.has(dept)) {
-        deptMap.set(dept, []);
+      if (!departmentStudents.has(dept)) {
+        departmentStudents.set(dept, []);
       }
       
-      deptMap.get(dept)?.push(assignment);
+      departmentStudents.get(dept)?.push(assignment);
     });
     
-    // Transform map to array of departments with students
-    return Array.from(deptMap.entries()).map(([dept, students]) => {
-      // Sort students by seat_no to ensure consistent ordering
+    // Convert map to array and sort students by seat_no
+    return Array.from(departmentStudents.entries()).map(([dept, students]) => {
       students.sort((a, b) => a.seat_no.localeCompare(b.seat_no));
-      
-      return {
-        department: dept,
-        students
-      };
+      return { department: dept, students };
     });
   };
   
-  // Function to create a table with students organized by department
-  const renderDepartmentTable = (arrangement: SeatingArrangement) => {
-    const departmentData = getStudentsByDepartment(arrangement);
-    const maxCols = 4; // Number of columns in the table (based on the image)
+  // Function to render a table in the format shown in the image
+  const renderRoomTable = (arrangement: SeatingArrangement) => {
+    const departmentsData = getStudentsByDepartment(arrangement);
+    const maxCols = 4; // Number of columns in the grid (based on the image)
     
     return (
       <Table className="border-collapse border">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-1/5 border p-2 font-bold">Department</TableHead>
-            <TableHead colSpan={maxCols} className="border p-2 font-bold">Student Assignments</TableHead>
-          </TableRow>
-        </TableHeader>
         <TableBody>
-          {departmentData.map((dept, index) => {
-            // Create chunks of students for each row
+          {departmentsData.map((deptData) => {
+            // Group students into rows of maxCols
             const rows = [];
-            const students = dept.students;
-            
-            for (let i = 0; i < students.length; i += maxCols) {
-              const rowStudents = students.slice(i, i + maxCols);
-              rows.push(rowStudents);
+            for (let i = 0; i < deptData.students.length; i += maxCols) {
+              rows.push(deptData.students.slice(i, i + maxCols));
             }
             
-            return rows.map((rowStudents, rowIndex) => (
-              <TableRow key={`${dept.department}-${rowIndex}`}>
-                {rowIndex === 0 ? (
-                  <TableCell rowSpan={rows.length} className="border p-2 align-top font-medium">
-                    {dept.department}
+            return (
+              <>
+                {/* Department row */}
+                <TableRow key={`${deptData.department}-header`}>
+                  <TableCell className="border p-2 bg-gray-50 font-medium">
+                    {deptData.department}
                   </TableCell>
-                ) : null}
+                  {rows[0]?.map((student, index) => (
+                    <TableCell key={`${deptData.department}-header-${index}`} className="border p-2 bg-gray-50">
+                      {student.seat_no}: {student.reg_no || 'N/A'}
+                    </TableCell>
+                  ))}
+                  {/* Add empty cells if first row isn't full */}
+                  {Array.from({ length: Math.max(0, maxCols - (rows[0]?.length || 0)) }).map((_, i) => (
+                    <TableCell key={`${deptData.department}-empty-header-${i}`} className="border p-2 bg-gray-50"></TableCell>
+                  ))}
+                </TableRow>
                 
-                {rowStudents.map((student, cellIndex) => (
-                  <TableCell key={student.id} className="border p-2">
-                    {student.seat_no}: {student.reg_no || 'N/A'}
-                  </TableCell>
+                {/* Additional rows for this department (if any) */}
+                {rows.slice(1).map((rowStudents, rowIndex) => (
+                  <TableRow key={`${deptData.department}-row-${rowIndex + 1}`}>
+                    <TableCell className="border p-2">
+                      {/* Empty first cell for additional rows */}
+                    </TableCell>
+                    {rowStudents.map((student, studentIndex) => (
+                      <TableCell key={`${deptData.department}-${rowIndex + 1}-${studentIndex}`} className="border p-2">
+                        {student.seat_no}: {student.reg_no || 'N/A'}
+                      </TableCell>
+                    ))}
+                    {/* Add empty cells if the row isn't full */}
+                    {Array.from({ length: maxCols - rowStudents.length }).map((_, i) => (
+                      <TableCell key={`${deptData.department}-${rowIndex + 1}-empty-${i}`} className="border p-2"></TableCell>
+                    ))}
+                  </TableRow>
                 ))}
                 
-                {/* Add empty cells if the row isn't full */}
-                {Array.from({ length: maxCols - rowStudents.length }).map((_, i) => (
-                  <TableCell key={`empty-${i}`} className="border p-2"></TableCell>
-                ))}
-              </TableRow>
-            ));
+                {/* Add an empty row as separator between departments */}
+                <TableRow className="h-2">
+                  {Array.from({ length: maxCols + 1 }).map((_, i) => (
+                    <TableCell key={`spacer-${deptData.department}-${i}`} className="p-0 border-0"></TableCell>
+                  ))}
+                </TableRow>
+              </>
+            );
           })}
         </TableBody>
       </Table>
@@ -145,7 +155,7 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
-                {renderDepartmentTable(arrangement)}
+                {renderRoomTable(arrangement)}
               </CardContent>
             </Card>
           ))}
