@@ -83,23 +83,19 @@ export const generateExcelReport = (
     
     // For each arrangement, create a detailed worksheet with students by department
     arrangements.forEach(arrangement => {
-      // Create a worksheet for each room with department-wise organization
-      const detailedWs = createDetailedRoomWorksheet(arrangement);
-      XLSX.utils.book_append_sheet(wb, detailedWs, `Room ${arrangement.room_no}`);
-      
-      // Keep the visual seating grid worksheet
-      const visualWs = createVisualSeatingGrid(arrangement);
-      XLSX.utils.book_append_sheet(wb, visualWs, `Room ${arrangement.room_no} Grid`);
+      // Create a department-wise table worksheet as shown in the image
+      const hallWiseWs = createHallWiseWorksheet(arrangement);
+      XLSX.utils.book_append_sheet(wb, hallWiseWs, `Room ${arrangement.room_no}`);
     });
 
-    // Save the file with a timestamp to avoid caching issues and include "consolidated" in the filename
+    // Save the file with a timestamp to avoid caching issues and include "hall-wise" in the filename
     const timestamp = new Date().getTime();
-    XLSX.writeFile(wb, `consolidated-seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}-${timestamp}.xlsx`);
+    XLSX.writeFile(wb, `hall-wise-seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}-${timestamp}.xlsx`);
     
     // Show success message
     toast({
       title: "Success",
-      description: `Consolidated Excel report for ${hallName} generated successfully`,
+      description: `Hall-wise Excel report for ${hallName} generated successfully`,
     });
   } catch (error) {
     console.error("Error generating Excel report:", error);
@@ -211,97 +207,121 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
   return ws;
 }
 
-// Updated function to create detailed room worksheet with improved department and year display
-function createDetailedRoomWorksheet(arrangement: SeatingArrangement): XLSX.WorkSheet {
-  // Get formatted departments and years
-  const deptYearsFormatted = formatDepartmentsWithYears(arrangement);
-  
-  // Group students by department
-  const deptGroups = new Map<string, {students: any[], year: string | null, regRange: string}>();
-  
-  // First, collect reg number ranges from department_configs
-  const deptConfigMap = new Map<string, string>();
-  arrangement.department_configs.forEach(config => {
-    if (config.department && config.start_reg_no && config.end_reg_no) {
-      deptConfigMap.set(config.department, `${config.start_reg_no} - ${config.end_reg_no}`);
-    }
-  });
-  
-  arrangement.seating_assignments.forEach(assignment => {
-    const dept = assignment.department || 'Unassigned';
-    
-    // Find matching department config to get year information
-    const deptConfig = arrangement.department_configs.find(
-      config => config.department === dept
-    );
-    
-    // Create key with department
-    const key = dept;
-    const year = deptConfig?.year || null;
-    const regRange = deptConfigMap.get(key) || 'Not specified';
-    
-    if (!deptGroups.has(key)) {
-      deptGroups.set(key, {students: [], year, regRange});
-    }
-    deptGroups.get(key)?.students.push(assignment);
-  });
-  
+// New function to create hall-wise worksheet with the format shown in the image
+function createHallWiseWorksheet(arrangement: SeatingArrangement): XLSX.WorkSheet {
   // Create empty worksheet
   const ws = XLSX.utils.aoa_to_sheet([]);
   
   // Add title
   XLSX.utils.sheet_add_aoa(ws, [
-    ["EXAMINATION SEATING PLAN"],
-    [`Room ${arrangement.room_no} - Department-wise Student Assignments`],
-    [`Total Capacity: ${arrangement.rows} × ${arrangement.columns} = ${arrangement.rows * arrangement.columns} seats`],
-    [`Assigned: ${arrangement.seating_assignments.length} seats (${Math.round((arrangement.seating_assignments.length / (arrangement.rows * arrangement.columns)) * 100)}% occupancy)`],
-    [`Departments & Years: ${deptYearsFormatted}`],
+    [`Room ${arrangement.room_no} - Student Assignments by Department`],
     []
   ], { origin: "A1" });
   
-  // Current row to add data
-  let currentRow = 7;
+  // Center and bold the title
+  if (ws['A1']) {
+    if (!ws['A1'].s) ws['A1'].s = {};
+    ws['A1'].s = { 
+      font: { bold: true, sz: 14 },
+      alignment: { horizontal: 'center' }
+    };
+  }
+  
+  // Group students by department
+  const deptGroups = new Map<string, any[]>();
+  
+  arrangement.seating_assignments.forEach(assignment => {
+    const dept = assignment.department || 'Unassigned';
+    
+    if (!deptGroups.has(dept)) {
+      deptGroups.set(dept, []);
+    }
+    
+    deptGroups.get(dept)?.push(assignment);
+  });
+  
+  // Current row for adding data
+  let currentRow = 3;
+  const maxColumns = 4; // From the image
   
   // Add each department section
-  Array.from(deptGroups.entries()).forEach(([dept, {students, year, regRange}]) => {
-    // Sort students by reg_no
-    students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
+  Array.from(deptGroups.entries()).forEach(([dept, students]) => {
+    // Sort students by seat_no
+    students.sort((a, b) => a.seat_no.localeCompare(b.seat_no));
     
-    // Add department header with year and registration range
-    const yearDisplay = year ? ` (${year})` : '';
+    // Add department header
     XLSX.utils.sheet_add_aoa(ws, [
-      [`${dept}${yearDisplay} - Reg. Range: ${regRange}`]
+      [dept, "Student 1", "Student 2", "Student 3", "Student 4"]
     ], { origin: { r: currentRow, c: 0 } });
+    
+    // Style the header row
+    for (let i = 0; i <= maxColumns; i++) {
+      const cell = XLSX.utils.encode_cell({ r: currentRow, c: i });
+      if (!ws[cell]) ws[cell] = { v: "" };
+      if (!ws[cell].s) ws[cell].s = {};
+      ws[cell].s = { 
+        font: { bold: true },
+        fill: { fgColor: { rgb: "EFEFEF" } },
+        border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
+      };
+    }
+    
     currentRow++;
     
-    // Add headers for student table
-    XLSX.utils.sheet_add_aoa(ws, [
-      ["S.No", "Seat No", "Registration No", "Student Name", "Year"]
-    ], { origin: { r: currentRow, c: 0 } });
-    currentRow++;
-    
-    // Add students
-    students.forEach((student, index) => {
-      XLSX.utils.sheet_add_aoa(ws, [
-        [index + 1, student.seat_no, student.reg_no || 'N/A', student.student_name || 'Unassigned', year || 'N/A']
-      ], { origin: { r: currentRow, c: 0 } });
+    // Add student rows with 4 students per row as in the image
+    for (let i = 0; i < students.length; i += maxColumns) {
+      const rowStudents = students.slice(i, i + maxColumns);
+      const rowData = [];
+      
+      // Add department name for first row only
+      rowData.push(i === 0 ? dept : "");
+      
+      // Add student data
+      rowStudents.forEach(student => {
+        rowData.push(`${student.seat_no}: ${student.reg_no || 'N/A'}`);
+      });
+      
+      // Fill remaining cells if needed
+      while (rowData.length <= maxColumns) {
+        rowData.push("");
+      }
+      
+      XLSX.utils.sheet_add_aoa(ws, [rowData], { origin: { r: currentRow, c: 0 } });
+      
+      // Style the cells
+      for (let j = 0; j <= maxColumns; j++) {
+        const cell = XLSX.utils.encode_cell({ r: currentRow, c: j });
+        if (!ws[cell]) ws[cell] = { v: "" };
+        if (!ws[cell].s) ws[cell].s = {};
+        ws[cell].s = { 
+          border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
+        };
+        
+        // Make department column bold
+        if (j === 0 && rowData[0]) {
+          ws[cell].s.font = { bold: true };
+        }
+      }
+      
       currentRow++;
-    });
+    }
     
     // Add a blank row after each department
-    XLSX.utils.sheet_add_aoa(ws, [
-      ['']
-    ], { origin: { r: currentRow, c: 0 } });
     currentRow++;
   });
   
   // Set column widths
   ws['!cols'] = [
-    { wch: 6 },   // S.No
-    { wch: 10 },  // Seat No
-    { wch: 20 },  // Registration No
-    { wch: 30 },  // Student Name
-    { wch: 12 },  // Year
+    { wch: 30 },  // Department
+    { wch: 25 },  // Student 1
+    { wch: 25 },  // Student 2
+    { wch: 25 },  // Student 3
+    { wch: 25 },  // Student 4
+  ];
+  
+  // Merge cells for the title
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }  // Title row
   ];
   
   return ws;
