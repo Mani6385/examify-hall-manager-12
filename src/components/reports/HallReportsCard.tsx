@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { HallSelect } from "./HallSelect";
 import { ReportButtons } from "./ReportButtons";
@@ -23,6 +22,7 @@ interface HallReportsCardProps {
   onGenerateExcel: () => void;
   onRetry: () => void;
   onRemoveArrangement: (id: string) => void;
+  onPrintHallWise?: () => void;
 }
 
 export function HallReportsCard({
@@ -36,7 +36,8 @@ export function HallReportsCard({
   onGeneratePdf,
   onGenerateExcel,
   onRetry,
-  onRemoveArrangement
+  onRemoveArrangement,
+  onPrintHallWise
 }: HallReportsCardProps) {
   const { toast } = useToast();
   const [arrangementToDelete, setArrangementToDelete] = useState<string | null>(null);
@@ -111,6 +112,7 @@ export function HallReportsCard({
               isLoadingPdf={isLoadingPdf}
               isLoadingExcel={isLoadingExcel}
               disabled={filteredArrangements.length === 0}
+              onPrintHallWise={onPrintHallWise}
             />
           </div>
 
@@ -152,7 +154,6 @@ export function HallReportsCard({
         </div>
       </CardContent>
 
-      {/* Confirmation Dialog */}
       <AlertDialog open={!!arrangementToDelete} onOpenChange={(open) => !open && setArrangementToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
