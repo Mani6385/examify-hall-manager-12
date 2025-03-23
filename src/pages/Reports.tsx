@@ -1,21 +1,22 @@
-
 import { Layout } from "@/components/dashboard/Layout";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { HallReportsCard } from "@/components/reports/HallReportsCard";
 import { ConsolidatedReportsCard } from "@/components/reports/ConsolidatedReportsCard";
 import { generateExcelReport } from "@/components/reports/ExcelExport";
 import { generatePdfReport } from "@/components/reports/PdfExport";
 import { filterArrangementsByHall, SeatingArrangement, getHallNameById } from "@/utils/reportUtils";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ChevronLeft, ChevronRight, PlusCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, Monitor, PlusCircle, RefreshCw } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { HallWiseSeatingPlans } from "@/components/reports/HallWiseSeatingPlans";
+import { getPrintableId } from "@/utils/hallUtils";
 
 const mockArrangements: SeatingArrangement[] = [
   {
@@ -60,6 +61,8 @@ const Reports = () => {
   const [selectedHall, setSelectedHall] = useState<string>("all");
   const [useFallbackData, setUseFallbackData] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const hallWisePlansRef = useRef(getPrintableId());
+  const [showHallWisePlans, setShowHallWisePlans] = useState(false);
 
   const fetchSeatingArrangements = async () => {
     console.log("Fetching seating arrangements...");
@@ -95,19 +98,17 @@ const Reports = () => {
         throw error;
       }
       
-      // Transform the data to ensure it matches our expected structure
       const transformedData = data?.map(arr => ({
         ...arr,
         seating_assignments: arr.seating_assignments || [],
         department_configs: (arr.department_configs || []).map(config => ({
           ...config,
-          // Convert database column names if they differ from our interface
           id: config.id,
           department: config.department,
           start_reg_no: config.start_reg_no,
           end_reg_no: config.end_reg_no,
           prefix: config.prefix,
-          year: config.year || null  // Ensure year is properly handled
+          year: config.year || null
         }))
       })) || [];
       
@@ -154,19 +155,15 @@ const Reports = () => {
 
   const displayData = useFallbackData ? mockArrangements : allSeatingArrangements;
 
-  // Extract unique hall IDs from all arrangements
   const getUniqueHallIds = (): string[] => {
     const hallIds = new Set<string>();
     
-    // Add 'all' as the first option
     hallIds.add('all');
     
-    // Extract hall_id from each arrangement or derive it from room_no
     displayData.forEach(arrangement => {
       if (arrangement.hall_id) {
         hallIds.add(arrangement.hall_id);
       } else {
-        // Map rooms to halls based on the first digit of room_no
         const roomFirstDigit = arrangement.room_no.charAt(0);
         const mappedHallId = roomFirstDigit === '1' ? '1' : 
                             roomFirstDigit === '2' ? '2' : '3';
@@ -179,12 +176,11 @@ const Reports = () => {
   
   const uniqueHallIds = getUniqueHallIds();
   
-  // Handle hall pagination
   const handlePreviousHall = () => {
     const currentIndex = uniqueHallIds.indexOf(selectedHall);
     if (currentIndex > 0) {
       setSelectedHall(uniqueHallIds[currentIndex - 1]);
-      setCurrentPage(1); // Reset to first page when changing halls
+      setCurrentPage(1);
     }
   };
   
@@ -192,17 +188,15 @@ const Reports = () => {
     const currentIndex = uniqueHallIds.indexOf(selectedHall);
     if (currentIndex < uniqueHallIds.length - 1) {
       setSelectedHall(uniqueHallIds[currentIndex + 1]);
-      setCurrentPage(1); // Reset to first page when changing halls
+      setCurrentPage(1);
     }
   };
 
   const filteredArrangements = filterArrangementsByHall(displayData, selectedHall);
   
-  // Calculate pagination for arrangements within the selected hall
-  const itemsPerPage = 1; // Show one arrangement per page
+  const itemsPerPage = 1;
   const totalPages = Math.ceil(filteredArrangements.length / itemsPerPage);
   
-  // Get current page arrangements
   const currentArrangements = filteredArrangements.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -352,7 +346,14 @@ const Reports = () => {
     navigate('/seating');
   };
 
-  // Get the current arrangement for detailed view
+  const printHallWisePlans = () => {
+    setShowHallWisePlans(true);
+    setTimeout(() => {
+      window.print();
+      setShowHallWisePlans(false);
+    }, 500);
+  };
+
   const currentArrangement = currentArrangements.length > 0 ? currentArrangements[0] : null;
 
   if (isError && !useFallbackData) {
@@ -385,7 +386,7 @@ const Reports = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className={showHallWisePlans ? "hidden" : "space-y-6"}>
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Seating Plan Reports</h2>
@@ -398,13 +399,23 @@ const Reports = () => {
               </Badge>
             )}
           </div>
-          <Button onClick={goToSeatingPage} className="bg-gradient-to-r from-blue-600 to-purple-600">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create New Seating Plan
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={printHallWisePlans} 
+              className="bg-white hover:bg-slate-50"
+              disabled={isLoading || filteredArrangements.length === 0}
+            >
+              <Monitor className="mr-2 h-4 w-4 text-purple-600" />
+              Print Hall-Wise Plans
+            </Button>
+            <Button onClick={goToSeatingPage} className="bg-gradient-to-r from-blue-600 to-purple-600">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create New Seating Plan
+            </Button>
+          </div>
         </div>
 
-        {/* Hall Navigation */}
         <div className="flex justify-between items-center bg-white/80 backdrop-blur-sm rounded-lg p-4 shadow-sm border border-gray-100">
           <Button 
             variant="outline" 
@@ -462,7 +473,6 @@ const Reports = () => {
           />
         </div>
 
-        {/* Pagination for arrangements within a hall */}
         {selectedHall !== "all" && filteredArrangements.length > 1 && (
           <Pagination className="my-4">
             <PaginationContent>
@@ -506,6 +516,7 @@ const Reports = () => {
           onGenerateExcel={generateConsolidatedExcel}
           onRetry={handleRetry}
           onRemoveArrangement={handleRemoveArrangement}
+          onPrintHallWise={printHallWisePlans}
         />
 
         <div className="grid gap-6">
@@ -520,6 +531,23 @@ const Reports = () => {
           />
         </div>
       </div>
+
+      {(showHallWisePlans || true) && (
+        <div className={`${!showHallWisePlans ? 'hidden print:block' : ''}`}>
+          <div className="print:hidden mb-4 flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Hall-Wise Seating Plans</h2>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowHallWisePlans(false)}
+            >
+              Back to Reports
+            </Button>
+          </div>
+          <div className="print:m-0">
+            <HallWiseSeatingPlans arrangements={displayData} />
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

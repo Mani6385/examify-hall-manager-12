@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { File, FileText, Loader2, Printer } from "lucide-react";
+import { File, FileText, Loader2, Printer, Monitor } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { getHallNameById } from "@/utils/hallUtils";
@@ -17,6 +17,7 @@ interface ReportButtonsProps {
   hallName?: string;
   availableHalls?: Array<{ id: string; name: string; capacity: number }>;
   disabled?: boolean; // Added disabled prop to the interface
+  onPrintHallWise?: () => void; // Add hall-wise print function
 }
 
 export function ReportButtons({ 
@@ -30,7 +31,8 @@ export function ReportButtons({
   selectedHall,
   hallName,
   availableHalls,
-  disabled = false // Add default value
+  disabled = false, // Add default value
+  onPrintHallWise
 }: ReportButtonsProps) {
   const { toast } = useToast();
 
@@ -103,6 +105,17 @@ export function ReportButtons({
           >
             <Printer className="mr-2 h-4 w-4 text-blue-500" />
             Print
+          </Button>
+        )}
+        {onPrintHallWise && (
+          <Button
+            variant="outline"
+            onClick={onPrintHallWise}
+            disabled={isLoading || disabled}
+            className="bg-white hover:bg-gray-50"
+          >
+            <Monitor className="mr-2 h-4 w-4 text-purple-500" />
+            Print Hall-Wise Plans
           </Button>
         )}
       </div>

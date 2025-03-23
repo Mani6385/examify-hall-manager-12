@@ -1,4 +1,3 @@
-
 export interface Hall {
   id: string;
   name: string;
@@ -51,6 +50,35 @@ export const printElement = (elementId: string) => {
   
   // Reload the page to restore all event listeners
   window.location.reload();
+};
+
+// Function to trigger printing of hall-wise plans
+export const printHallWisePlans = (elementId: string) => {
+  const printContent = document.getElementById(elementId);
+  if (!printContent) return;
+  
+  const originalContents = document.body.innerHTML;
+  const printContents = printContent.innerHTML;
+  
+  document.body.innerHTML = `
+    <div style="padding: 20px">
+      <h1 style="text-align: center; margin-bottom: 20px; font-size: 24px; font-weight: bold">
+        Hall-Wise Seating Plans
+      </h1>
+      ${printContents}
+    </div>
+  `;
+  
+  window.print();
+  document.body.innerHTML = originalContents;
+  
+  // Reload the page to restore all event listeners
+  window.location.reload();
+};
+
+// Generate a unique ID for a component
+export const generateComponentId = (prefix: string): string => {
+  return `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
 // Filter halls and return a new array without the removed hall
