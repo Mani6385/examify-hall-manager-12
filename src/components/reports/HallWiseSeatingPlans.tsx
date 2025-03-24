@@ -1,4 +1,5 @@
 
+import React from "react";
 import { SeatingArrangement, filterArrangementsByHall } from "@/utils/reportUtils";
 import { useState, useEffect } from "react";
 import { Printer } from "lucide-react";
