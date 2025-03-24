@@ -1,3 +1,4 @@
+
 import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils } from './hallUtils';
 
 // Use the halls from hallUtils
@@ -88,6 +89,7 @@ export const getDepartmentsWithYears = (arrangement: SeatingArrangement): {depar
   // Extract unique departments and years from the department configs
   return arrangement.department_configs
     .filter(config => config.department)
+    .sort((a, b) => a.department.localeCompare(b.department)) // Sort alphabetically
     .map(config => ({
       department: config.department,
       year: config.year || null
@@ -103,4 +105,69 @@ export const formatDepartmentsWithYears = (arrangement: SeatingArrangement): str
   return departmentsWithYears
     .map(item => formatDepartmentWithYear(item.department, item.year))
     .join(', ');
+};
+
+// Sort seats alphabetically by seat prefix and then numerically
+export const sortSeats = (assignments: SeatingAssignment[]) => {
+  return [...assignments].sort((a, b) => {
+    const seatA = a.seat_no || '';
+    const seatB = b.seat_no || '';
+    
+    // Extract prefix (first character) and numeric parts
+    const prefixA = seatA.charAt(0);
+    const prefixB = seatB.charAt(0);
+    
+    // First sort by prefix
+    if (prefixA !== prefixB) {
+      return prefixA.localeCompare(prefixB);
+    }
+    
+    // Then sort by numeric part
+    const numA = parseInt(seatA.substring(1)) || 0;
+    const numB = parseInt(seatB.substring(1)) || 0;
+    return numA - numB;
+  });
+};
+
+// Group assignments by department
+export const groupAssignmentsByDepartment = (arrangement: SeatingArrangement) => {
+  // Group students by department with year information
+  const deptGroups = new Map<string, {students: SeatingAssignment[], year: string | null}>();
+  
+  // Sort department configs alphabetically first
+  const sortedDeptConfigs = [...arrangement.department_configs]
+    .sort((a, b) => a.department.localeCompare(b.department));
+  
+  // Initialize groups with sorted departments to maintain alphabetical order
+  sortedDeptConfigs.forEach(config => {
+    if (config.department) {
+      deptGroups.set(config.department, {students: [], year: config.year || null});
+    }
+  });
+  
+  // Add assignments to their respective departments
+  arrangement.seating_assignments.forEach(assignment => {
+    if (!assignment.department) return;
+    
+    // Find matching department config to get year information
+    const deptConfig = arrangement.department_configs.find(
+      config => config.department === assignment.department
+    );
+    
+    const key = assignment.department;
+    const year = deptConfig?.year || null;
+    
+    if (!deptGroups.has(key)) {
+      deptGroups.set(key, {students: [], year});
+    }
+    
+    deptGroups.get(key)?.students.push(assignment);
+  });
+  
+  // Sort students within each department
+  deptGroups.forEach(group => {
+    group.students = sortSeats(group.students);
+  });
+  
+  return deptGroups;
 };

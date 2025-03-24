@@ -15,7 +15,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               <div className="h-6 w-[1px] bg-gray-200 mr-4 hidden sm:block" />
               <h1 className="text-xl font-medium text-gradient hidden sm:block">Exam Hall Management</h1>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100 p-6 print:p-0 print:bg-white print:shadow-none print:border-none">
               {children}
             </div>
           </div>

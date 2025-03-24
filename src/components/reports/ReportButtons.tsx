@@ -33,7 +33,7 @@ export function ReportButtons({
         ) : (
           <>
             <FileText className="mr-2 h-4 w-4" />
-            Download PDF
+            Download PDF (One Hall Per Page)
           </>
         )}
       </Button>
@@ -50,7 +50,7 @@ export function ReportButtons({
         ) : (
           <>
             <File className="mr-2 h-4 w-4" />
-            Download Excel
+            Download Excel (One Hall Per Page)
           </>
         )}
       </Button>
