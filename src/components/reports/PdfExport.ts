@@ -1,3 +1,4 @@
+
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, getDepartmentsWithYears } from '@/utils/reportUtils';
@@ -27,12 +28,22 @@ export const generatePdfReport = (
   // Add cover page
   addCoverPage(doc, hallName);
   
-  // Add consolidated table - this is now the only content page
+  // Add consolidated table in new format
   doc.addPage();
   addConsolidatedTable(doc, arrangements, hallName);
   
-  // Save the file with "consolidated" in the filename
-  doc.save(`consolidated-seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+  // For each arrangement, add a detailed page
+  arrangements.forEach((arrangement, index) => {
+    // If there are more than 5 arrangements, put detailed reports on new pages
+    if (index > 0 && (index % 2 === 0 || arrangements.length > 5)) {
+      doc.addPage();
+    }
+    
+    // Add room-specific detail section with class-wise breakdowns
+    addRoomDetailClassWise(doc, arrangement, index === 0 ? 30 : doc.lastAutoTable.finalY + 15);
+  });
+  
+  doc.save(`seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
 };
 
 function addCoverPage(doc: jsPDF, hallName: string) {
@@ -87,7 +98,7 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
         (index + 1).toString(),      // S.No
         arrangement.room_no,         // Room No
         "Not specified",             // Class
-        "N/A",                       // Year
+        "N/A",                       // Year (added)
         "",                          // Seats (empty when no departments)
         arrangement.seating_assignments.length.toString() // Total
       ];
@@ -96,40 +107,20 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
       // Group students by department and year
       const deptGroups = new Map<string, {students: any[], year: string | null}>();
       
-      // First, collect year information from department_configs
-      arrangement.department_configs.forEach(config => {
-        if (config.department) {
-          const key = config.department;
-          
-          if (!deptGroups.has(key)) {
-            deptGroups.set(key, {
-              students: [], 
-              year: config.year || null
-            });
-          } else {
-            // If the department already exists, update the year
-            const existing = deptGroups.get(key)!;
-            existing.year = config.year || existing.year;
-          }
-        }
-      });
-      
-      // Now gather students for each department
       arrangement.seating_assignments.forEach(assignment => {
         if (!assignment.department) return;
         
-        // Create key with department
-        const key = assignment.department;
+        // Find matching department config
+        const deptConfig = arrangement.department_configs.find(
+          config => config.department === assignment.department
+        );
+        
+        const key = deptConfig ? deptConfig.department : assignment.department;
+        const year = deptConfig?.year || null;
         
         if (!deptGroups.has(key)) {
-          // If we don't have this department from configs, create it
-          deptGroups.set(key, {
-            students: [], 
-            year: null
-          });
+          deptGroups.set(key, {students: [], year});
         }
-        
-        // Add student to the department group
         deptGroups.get(key)?.students.push(assignment);
       });
       
@@ -145,15 +136,47 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
         // Format registration numbers in start-to-end format
         let regNosFormatted = "";
         if (students.length > 0) {
-          // Get only the first and last registration numbers
-          const firstRegNo = students[0].reg_no || '';
-          const lastRegNo = students[students.length - 1].reg_no || '';
+          // Group consecutive registration numbers
+          const groups: {start: string; end: string}[] = [];
+          let currentGroup: {start: string; end: string} | null = null;
           
-          if (firstRegNo === lastRegNo) {
-            regNosFormatted = firstRegNo;
-          } else if (firstRegNo && lastRegNo) {
-            regNosFormatted = `${firstRegNo} - ${lastRegNo}`;
-          }
+          students.forEach((student, idx) => {
+            const currentRegNo = student.reg_no || '';
+            
+            // For the first student or when starting a new group
+            if (currentGroup === null) {
+              currentGroup = { start: currentRegNo, end: currentRegNo };
+              return;
+            }
+            
+            // Check if this reg_no is consecutive with the previous one
+            // Simple check: see if the numbers are sequential
+            const prevNumeric = parseInt(currentGroup.end.replace(/\D/g, ''));
+            const currNumeric = parseInt(currentRegNo.replace(/\D/g, ''));
+            
+            if (currNumeric === prevNumeric + 1 && currentRegNo.replace(/\d/g, '') === currentGroup.end.replace(/\d/g, '')) {
+              // Update the end of the current group
+              currentGroup.end = currentRegNo;
+            } else {
+              // Finish the current group and start a new one
+              groups.push(currentGroup);
+              currentGroup = { start: currentRegNo, end: currentRegNo };
+            }
+            
+            // For the last student, add the current group
+            if (idx === students.length - 1 && currentGroup) {
+              groups.push(currentGroup);
+            }
+          });
+          
+          // Format the groups
+          regNosFormatted = groups.map(group => {
+            if (group.start === group.end) {
+              return group.start;
+            } else {
+              return `${group.start}-${group.end}`;
+            }
+          }).join(', ');
         }
         
         // Create a row for this department
@@ -161,8 +184,8 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
           firstDeptInRoom ? (index + 1).toString() : '',  // S.No
           firstDeptInRoom ? arrangement.room_no : '',     // Room No
           deptKey,                                        // Class (Dept)
-          year || "N/A",                                  // Year
-          regNosFormatted,                                // Registration Numbers (simplified to start-end)
+          year || "N/A",                                  // Year (added)
+          regNosFormatted,                                // Registration Numbers (start-end format)
           firstDeptInRoom ? students.length.toString() : '' // Total for the room
         ];
         
@@ -189,8 +212,8 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
     columnStyles: {
       0: { cellWidth: 10, halign: 'center' },
       1: { cellWidth: 20, halign: 'center' },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 20 },  // Year column
+      2: { cellWidth: 20 },
+      3: { cellWidth: 15 },  // Year column
       4: { cellWidth: 'auto' },
       5: { cellWidth: 15, halign: 'center' },
     },
@@ -220,48 +243,28 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
   });
 }
 
-// The following functions are no longer used but kept for reference
-// They've been commented out since they won't be included in the PDF
-/*
 function addRoomDetailClassWise(doc: jsPDF, arrangement: SeatingArrangement, startY: number) {
   // Get formatted departments and years
   const deptYearsFormatted = formatDepartmentsWithYears(arrangement);
   
   // Group students by department with year information
   const deptGroups = new Map<string, {students: any[], year: string | null}>();
-  
-  // First, collect year information from department_configs
-  arrangement.department_configs.forEach(config => {
-    if (config.department) {
-      const key = config.department;
-      
-      if (!deptGroups.has(key)) {
-        deptGroups.set(key, {
-          students: [], 
-          year: config.year || null
-        });
-      } else {
-        // If the department already exists, update the year
-        const existing = deptGroups.get(key)!;
-        existing.year = config.year || existing.year;
-      }
-    }
-  });
-  
-  // Now gather all students for each department
   arrangement.seating_assignments.forEach(assignment => {
     const dept = assignment.department || 'Unassigned';
     
-    // Create key with department
-    if (!deptGroups.has(dept)) {
-      deptGroups.set(dept, {
-        students: [], 
-        year: null
-      });
-    }
+    // Find matching department config to get year information
+    const deptConfig = arrangement.department_configs.find(
+      config => config.department === dept
+    );
     
-    // Add student to the department group
-    deptGroups.get(dept)?.students.push(assignment);
+    // Create key with department
+    const key = dept;
+    const year = deptConfig?.year || null;
+    
+    if (!deptGroups.has(key)) {
+      deptGroups.set(key, {students: [], year});
+    }
+    deptGroups.get(key)?.students.push(assignment);
   });
   
   // Add header
@@ -288,23 +291,15 @@ function addRoomDetailClassWise(doc: jsPDF, arrangement: SeatingArrangement, sta
       const row = chunk.map(student => `${student.seat_no}: ${student.reg_no}`);
       
       // Add year information for the first row of each department
-      if (i === 0) {
-        tableData.push([
-          dept,                          // Department
-          year || 'N/A',                 // Year
-          ...row.slice(0, 5)             // First 5 students only in first row
-        ]);
-      } else {
-        tableData.push([
-          '',                            // Empty department cell
-          '',                            // Empty year cell
-          ...row                         // Students
-        ]);
-      }
+      tableData.push([
+        i === 0 ? dept : '', 
+        i === 0 ? (year || 'N/A') : '',
+        ...row
+      ]);
     }
     
     // Add an empty row between departments
-    tableData.push(['', '', '', '', '', '', '']);
+    tableData.push(['', '', '', '', '', '']);
   });
   
   // Add the table
@@ -323,7 +318,6 @@ function addRoomDetailClassWise(doc: jsPDF, arrangement: SeatingArrangement, sta
       3: { cellWidth: 'auto' },                 // Student 2
       4: { cellWidth: 'auto' },                 // Student 3
       5: { cellWidth: 'auto' },                 // Student 4
-      6: { cellWidth: 'auto' },                 // Student 5
     },
     // Remove borders for empty rows
     didDrawCell: (data) => {
@@ -526,6 +520,15 @@ function addVisualSeatingGrid(doc: jsPDF, arrangement: SeatingArrangement) {
       const assignment = assignmentMap.get(seatNo);
       
       if (assignment) {
+        // Find department config to get year
+        let yearInfo = '';
+        if (assignment.department) {
+          const deptConfig = arrangement.department_configs.find(
+            config => config.department === assignment.department
+          );
+          yearInfo = deptConfig?.year || '';
+        }
+        
         // Seat number
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
@@ -539,6 +542,12 @@ function addVisualSeatingGrid(doc: jsPDF, arrangement: SeatingArrangement) {
         // Registration number
         doc.setFontSize(8);
         doc.text(assignment.reg_no || 'N/A', x + 5, y + 30);
+        
+        // Year information (added)
+        if (yearInfo) {
+          doc.setFontSize(7);
+          doc.text(`Year: ${yearInfo}`, x + 5, y + 38);
+        }
       } else {
         // Empty seat
         doc.setFontSize(10);
@@ -577,16 +586,30 @@ function addStudentListTable(doc: jsPDF, arrangement: SeatingArrangement) {
       return aPrefix.localeCompare(bPrefix);
     });
   
+  // Get years for each student
+  const studentYears = new Map<string, string>();
+  sortedAssignments.forEach(assignment => {
+    if (assignment.department) {
+      const deptConfig = arrangement.department_configs.find(
+        config => config.department === assignment.department
+      );
+      if (deptConfig?.year) {
+        studentYears.set(assignment.id, deptConfig.year);
+      }
+    }
+  });
+  
   const tableData = sortedAssignments.map((assignment, index) => [
     (index + 1).toString(),
     assignment.seat_no,
     assignment.student_name || 'Unassigned',
     assignment.reg_no || 'N/A',
     assignment.department || 'N/A',
+    studentYears.get(assignment.id) || 'N/A', // Added year column
   ]);
   
   autoTable(doc, {
-    head: [['S.No', 'Seat', 'Student Name', 'Registration No', 'Department']],
+    head: [['S.No', 'Seat', 'Student Name', 'Registration No', 'Department', 'Year']], // Added Year
     body: tableData,
     startY: 30,
     styles: {
@@ -599,6 +622,7 @@ function addStudentListTable(doc: jsPDF, arrangement: SeatingArrangement) {
       2: { cellWidth: 40 },
       3: { cellWidth: 30 },
       4: { cellWidth: 30 },
+      5: { cellWidth: 15 }, // Year column
     },
     headStyles: {
       fillColor: [66, 66, 66],
@@ -618,4 +642,3 @@ function addStudentListTable(doc: jsPDF, arrangement: SeatingArrangement) {
     },
   });
 }
-*/

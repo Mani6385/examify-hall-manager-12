@@ -1,7 +1,7 @@
 import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils } from './hallUtils';
 
-// Use the halls from hallUtils - create a deep copy to prevent modifications
-export const HALLS = JSON.parse(JSON.stringify(DEFAULT_HALLS));
+// Use the halls from hallUtils
+export const HALLS = DEFAULT_HALLS;
 
 export interface SeatingAssignment {
   id: string;
@@ -103,115 +103,4 @@ export const formatDepartmentsWithYears = (arrangement: SeatingArrangement): str
   return departmentsWithYears
     .map(item => formatDepartmentWithYear(item.department, item.year))
     .join(', ');
-};
-
-// Get registration number range for a department
-export const getRegNumberRange = (deptConfig: DepartmentConfig): string => {
-  if (!deptConfig.start_reg_no || !deptConfig.end_reg_no) {
-    return 'Not specified';
-  }
-  return `${deptConfig.start_reg_no} - ${deptConfig.end_reg_no}`;
-};
-
-// Helper for consolidated report data generation
-export const generateConsolidatedReportData = (arrangements: SeatingArrangement[]) => {
-  // Create data structure for consolidated report
-  const consolidatedData = arrangements.map((arrangement, index) => {
-    // Group students by department with year information
-    const deptGroups = new Map<string, {students: any[], year: string | null, regRange: string}>();
-    
-    // First, collect reg number ranges from department_configs
-    const deptConfigMap = new Map<string, string>();
-    arrangement.department_configs.forEach(config => {
-      if (config.department && config.start_reg_no && config.end_reg_no) {
-        deptConfigMap.set(config.department, `${config.start_reg_no} - ${config.end_reg_no}`);
-      }
-    });
-    
-    arrangement.seating_assignments.forEach(assignment => {
-      if (!assignment.department) return;
-      
-      // Find matching department config
-      const deptConfig = arrangement.department_configs.find(
-        config => config.department === assignment.department
-      );
-      
-      const key = assignment.department || 'Unassigned';
-      const year = deptConfig?.year || null;
-      // Get reg number range from the map
-      const regRange = deptConfigMap.get(key) || 'Not specified';
-      
-      if (!deptGroups.has(key)) {
-        deptGroups.set(key, {students: [], year, regRange});
-      }
-      deptGroups.get(key)?.students.push(assignment);
-    });
-    
-    // Convert to array structure for reporting
-    const departmentRows = Array.from(deptGroups.entries()).map(([dept, {students, year, regRange}], deptIndex) => {
-      // Sort students by reg_no
-      students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
-      
-      // Group consecutive registration numbers
-      const regGroups: {start: string; end: string}[] = [];
-      let currentGroup: {start: string; end: string} | null = null;
-      
-      students.forEach((student, idx) => {
-        const currentRegNo = student.reg_no || '';
-        
-        // For the first student or when starting a new group
-        if (currentGroup === null) {
-          currentGroup = { start: currentRegNo, end: currentRegNo };
-          return;
-        }
-        
-        // Simple check for sequential reg numbers
-        const prevNumeric = parseInt(currentGroup.end.replace(/\D/g, ''));
-        const currNumeric = parseInt(currentRegNo.replace(/\D/g, ''));
-        
-        if (currNumeric === prevNumeric + 1 && currentRegNo.replace(/\d/g, '') === currentGroup.end.replace(/\d/g, '')) {
-          // Update the end of the current group
-          currentGroup.end = currentRegNo;
-        } else {
-          // Finish the current group and start a new one
-          regGroups.push(currentGroup);
-          currentGroup = { start: currentRegNo, end: currentRegNo };
-        }
-        
-        // For the last student, add the current group
-        if (idx === students.length - 1 && currentGroup) {
-          regGroups.push(currentGroup);
-        }
-      });
-      
-      // Format the registration number ranges
-      const regRanges = regGroups.map(group => {
-        if (group.start === group.end) {
-          return group.start;
-        } else {
-          return `${group.start}-${group.end}`;
-        }
-      }).join(', ');
-      
-      return {
-        rowIndex: index + 1,
-        roomNo: arrangement.room_no,
-        department: dept,
-        year: year || 'N/A',
-        regNumbers: regRanges,
-        regRange: regRange, // Keep this for reference but we won't display it
-        studentCount: students.length,
-        isFirstDeptInRoom: deptIndex === 0
-      };
-    });
-    
-    return {
-      room: arrangement.room_no,
-      floor: arrangement.floor_no,
-      departmentRows: departmentRows,
-      totalStudents: arrangement.seating_assignments.length
-    };
-  });
-  
-  return consolidatedData;
 };

@@ -18,18 +18,10 @@ export const getHallById = (hallId: string): Hall | undefined => {
 };
 
 // Helper function to get hall name by ID
-export const getHallNameById = (hallId: string, availableHalls?: Hall[]): string => {
+export const getHallNameById = (hallId: string): string => {
   if (!hallId || hallId === "all") return 'All Halls';
-  
-  // First try to find in provided halls (if available)
-  if (availableHalls && availableHalls.length > 0) {
-    const hall = availableHalls.find(h => h.id === hallId);
-    if (hall) return hall.name;
-  }
-  
-  // Then try to find in default halls
   const hall = DEFAULT_HALLS.find(h => h.id === hallId);
-  return hall ? hall.name : `Hall ${hallId}`;  // Return "Hall ID" instead of "Unknown Hall"
+  return hall ? hall.name : 'Unknown Hall';
 };
 
 // Generate a unique ref ID for the printable section
@@ -55,14 +47,12 @@ export const printElement = (elementId: string) => {
 
 // Filter halls and return a new array without the removed hall
 export const removeHall = (halls: Hall[], hallIdToRemove: string): Hall[] => {
-  console.log(`Removing hall with ID: ${hallIdToRemove}`, halls);
-  // Make a deep copy to ensure we don't modify the original array
-  return [...halls].filter(hall => hall.id !== hallIdToRemove);
+  return halls.filter(hall => hall.id !== hallIdToRemove);
 };
 
 // Get available halls (excluding removed ones)
 export const getAvailableHalls = (): Hall[] => {
-  return JSON.parse(JSON.stringify(DEFAULT_HALLS));
+  return [...DEFAULT_HALLS];
 };
 
 // Create a new hall
