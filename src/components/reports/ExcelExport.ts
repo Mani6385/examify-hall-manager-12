@@ -317,8 +317,13 @@ function createDetailedRoomWorksheet(arrangement: SeatingArrangement): XLSX.Work
   // Current row to add data
   let currentRow = 7;
   
+  // Sort departments alphabetically
+  const sortedDeptEntries = Array.from(deptGroups.entries()).sort((a, b) => 
+    a[0].localeCompare(b[0])
+  );
+  
   // Add each department section
-  Array.from(deptGroups.entries()).forEach(([dept, {students, year}]) => {
+  sortedDeptEntries.forEach(([dept, {students, year}]) => {
     // Sort students by reg_no
     students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
     
@@ -432,3 +437,4 @@ function createVisualSeatingGrid(arrangement: SeatingArrangement): XLSX.WorkShee
   
   return ws;
 }
+

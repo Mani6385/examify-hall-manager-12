@@ -32,8 +32,13 @@ export const generatePdfReport = (
   doc.addPage();
   addConsolidatedTable(doc, arrangements, hallName);
   
+  // Sort arrangements by room number for better organization
+  const sortedArrangements = [...arrangements].sort((a, b) => 
+    a.room_no.localeCompare(b.room_no)
+  );
+  
   // For each arrangement, add a detailed page
-  arrangements.forEach((arrangement, index) => {
+  sortedArrangements.forEach((arrangement, index) => {
     // If there are more than 5 arrangements, put detailed reports on new pages
     if (index > 0 && (index % 2 === 0 || arrangements.length > 5)) {
       doc.addPage();
@@ -88,7 +93,12 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
   // Prepare table data in the format shown in the image
   const tableData: string[][] = [];
   
-  arrangements.forEach((arrangement, index) => {
+  // Sort arrangements by room number
+  const sortedArrangements = [...arrangements].sort((a, b) => 
+    a.room_no.localeCompare(b.room_no)
+  );
+  
+  sortedArrangements.forEach((arrangement, index) => {
     // Get departments with years directly from the department_configs
     const deptsWithYears = getDepartmentsWithYears(arrangement);
     
@@ -124,9 +134,14 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
         deptGroups.get(key)?.students.push(assignment);
       });
       
+      // Sort departments alphabetically
+      const sortedDeptEntries = Array.from(deptGroups.entries()).sort((a, b) => 
+        a[0].localeCompare(b[0])
+      );
+      
       // Add a row for each department in this room
       let firstDeptInRoom = true;
-      Array.from(deptGroups.entries()).forEach(([deptKey, {students, year}]) => {
+      sortedDeptEntries.forEach(([deptKey, {students, year}]) => {
         // Skip if no students
         if (students.length === 0) return;
         
@@ -280,15 +295,37 @@ function addRoomDetailClassWise(doc: jsPDF, arrangement: SeatingArrangement, sta
   // Format the data for the table
   const tableData: string[][] = [];
   
-  Array.from(deptGroups.entries()).forEach(([dept, {students, year}]) => {
-    // Sort students by reg_no
-    students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
+  // Sort departments alphabetically
+  const sortedDeptEntries = Array.from(deptGroups.entries()).sort((a, b) => 
+    a[0].localeCompare(b[0])
+  );
+  
+  sortedDeptEntries.forEach(([dept, {students, year}]) => {
+    // Sort students by seat number prefix first (A, B, C) and then by number
+    students.sort((a, b) => {
+      const seatA = a.seat_no || '';
+      const seatB = b.seat_no || '';
+      
+      // Extract prefix (first character) and numeric parts
+      const prefixA = seatA.charAt(0);
+      const prefixB = seatB.charAt(0);
+      
+      // First sort by prefix
+      if (prefixA !== prefixB) {
+        return prefixA.localeCompare(prefixB);
+      }
+      
+      // Then sort by numeric part
+      const numA = parseInt(seatA.substring(1)) || 0;
+      const numB = parseInt(seatB.substring(1)) || 0;
+      return numA - numB;
+    });
     
     // Group students into maximum 4 per row to save space
     const chunkSize = 4;
     for (let i = 0; i < students.length; i += chunkSize) {
       const chunk = students.slice(i, i + chunkSize);
-      const row = chunk.map(student => `${student.seat_no}: ${student.reg_no}`);
+      const row = chunk.map(student => `${student.seat_no}: ${student.reg_no || 'N/A'}`);
       
       // Add year information for the first row of each department
       tableData.push([
@@ -577,13 +614,13 @@ function addStudentListTable(doc: jsPDF, arrangement: SeatingArrangement) {
       const aNum = parseInt(a.seat_no.substring(1));
       const bNum = parseInt(b.seat_no.substring(1));
       
-      // First sort by number
-      if (aNum !== bNum) {
-        return aNum - bNum;
+      // First sort by prefix
+      if (aPrefix !== bPrefix) {
+        return aPrefix.localeCompare(bPrefix);
       }
       
-      // Then sort by prefix
-      return aPrefix.localeCompare(bPrefix);
+      // Then sort by number
+      return aNum - bNum;
     });
   
   // Get years for each student
