@@ -4,6 +4,7 @@ import { SeatingArrangement, filterArrangementsByHall } from "@/utils/reportUtil
 import { useState, useEffect } from "react";
 import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface HallWiseSeatingPlansProps {
   arrangements: SeatingArrangement[];
@@ -61,10 +62,18 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([dept, students]) => {
         students.sort((a, b) => {
-          if (a.student_name && b.student_name) {
-            return a.student_name.localeCompare(b.student_name);
+          // First sort by seat prefix (A, B, C, etc.)
+          const prefixA = a.seat_no.charAt(0);
+          const prefixB = b.seat_no.charAt(0);
+          
+          if (prefixA !== prefixB) {
+            return prefixA.localeCompare(prefixB);
           }
-          return a.seat_no.localeCompare(b.seat_no);
+          
+          // Then sort by seat number
+          const numA = parseInt(a.seat_no.slice(1));
+          const numB = parseInt(b.seat_no.slice(1));
+          return numA - numB;
         });
         return { department: dept, students };
       });
@@ -74,48 +83,46 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
     const departmentsData = getStudentsByDepartment(arrangement);
     
     return (
-      <div className="w-full">
-        <table className="w-full border-collapse">
-          <tbody>
-            {departmentsData.map((deptData) => {
-              const rows = [];
-              for (let i = 0; i < deptData.students.length; i += 4) {
-                rows.push(deptData.students.slice(i, i + 4));
-              }
-              
-              return (
-                <React.Fragment key={`dept-${deptData.department}`}>
-                  {rows.map((rowStudents, rowIndex) => (
-                    <tr key={`${deptData.department}-row-${rowIndex}`}>
-                      {rowIndex === 0 ? (
-                        <td 
-                          className="border border-gray-300 p-2 align-top font-medium"
-                          rowSpan={rows.length}
-                        >
-                          {deptData.department}
-                        </td>
-                      ) : null}
-                      
-                      {rowStudents.map((student) => (
-                        <td key={`${student.seat_no}`} className="border border-gray-300 p-2">
-                          {student.seat_no}: {student.reg_no || (student.student_name ? student.student_name : 'N/A')}
-                        </td>
-                      ))}
-                      
-                      {/* Add empty cells to complete the row if needed */}
-                      {Array.from({ length: 4 - rowStudents.length }).map((_, i) => (
-                        <td key={`empty-${i}`} className="border border-gray-300 p-2">
-                          &nbsp;
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <table className="w-full border-collapse mb-8">
+        <tbody>
+          {departmentsData.map((deptData) => {
+            const rows = [];
+            for (let i = 0; i < deptData.students.length; i += 4) {
+              rows.push(deptData.students.slice(i, i + 4));
+            }
+            
+            return (
+              <React.Fragment key={`dept-${deptData.department}`}>
+                {rows.map((rowStudents, rowIndex) => (
+                  <tr key={`${deptData.department}-row-${rowIndex}`} className="border border-gray-300">
+                    {rowIndex === 0 ? (
+                      <td 
+                        className="border border-gray-300 p-2 font-medium"
+                        rowSpan={rows.length}
+                      >
+                        {deptData.department}
+                      </td>
+                    ) : null}
+                    
+                    {rowStudents.map((student) => (
+                      <td key={`${student.seat_no}`} className="border border-gray-300 p-2 text-center">
+                        {student.seat_no}: {student.reg_no || ''}
+                      </td>
+                    ))}
+                    
+                    {/* Add empty cells to complete the row if needed */}
+                    {Array.from({ length: 4 - rowStudents.length }).map((_, i) => (
+                      <td key={`empty-${i}`} className="border border-gray-300 p-2">
+                        &nbsp;
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </React.Fragment>
+            );
+          })}
+        </tbody>
+      </table>
     );
   };
 
