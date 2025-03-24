@@ -28,18 +28,23 @@ export const generatePdfReport = (
   // Add cover page
   addCoverPage(doc, hallName);
   
-  // Add consolidated table
+  // Add consolidated table in new format
   doc.addPage();
   addConsolidatedTable(doc, arrangements, hallName);
   
-  // Add hall-wise tables (one per room)
+  // For each arrangement, add a detailed page
   arrangements.forEach((arrangement, index) => {
-    doc.addPage();
-    addHallWiseTable(doc, arrangement);
+    // If there are more than 5 arrangements, put detailed reports on new pages
+    if (index > 0 && (index % 2 === 0 || arrangements.length > 5)) {
+      doc.addPage();
+    }
+    
+    // Add room-specific detail section with class-wise breakdowns
+    addRoomDetailClassWise(doc, arrangement, index === 0 ? 30 : doc.lastAutoTable.finalY + 15);
   });
   
-  // Save the file with "hall-wise" in the filename
-  doc.save(`hall-wise-seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+  // Save the file with "consolidated" in the filename
+  doc.save(`consolidated-seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
 };
 
 function addCoverPage(doc: jsPDF, hallName: string) {
@@ -93,31 +98,34 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
       const row = [
         (index + 1).toString(),      // S.No
         arrangement.room_no,         // Room No
-        "Not specified",             // Department
-        "N/A",                       // Year
+        "Not specified",             // Class
+        "N/A",                       // Year (added)
+        "N/A",                       // Registration Range (added)
         "",                          // Seats (empty when no departments)
-        "0",                         // Dept Total 
-        arrangement.seating_assignments.length.toString() // Room Total
+        arrangement.seating_assignments.length.toString() // Total
       ];
       tableData.push(row);
     } else {
       // Group students by department and year
-      const deptGroups = new Map<string, {students: any[], year: string | null}>();
+      const deptGroups = new Map<string, {students: any[], year: string | null, regRange: string}>();
       
-      // First, collect year information from department_configs
+      // First, collect registration number ranges from department_configs
       arrangement.department_configs.forEach(config => {
-        if (config.department) {
+        if (config.department && config.start_reg_no && config.end_reg_no) {
           const key = config.department;
+          const regRange = `${config.start_reg_no} - ${config.end_reg_no}`;
           
           if (!deptGroups.has(key)) {
             deptGroups.set(key, {
               students: [], 
-              year: config.year || null
+              year: config.year || null,
+              regRange: regRange
             });
           } else {
-            // If the department already exists, update the year
+            // If the department already exists, update the year and regRange
             const existing = deptGroups.get(key)!;
             existing.year = config.year || existing.year;
+            existing.regRange = regRange;
           }
         }
       });
@@ -133,7 +141,8 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
           // If we don't have this department from configs, create it
           deptGroups.set(key, {
             students: [], 
-            year: null
+            year: null,
+            regRange: 'Not specified'
           });
         }
         
@@ -143,7 +152,7 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
       
       // Add a row for each department in this room
       let firstDeptInRoom = true;
-      Array.from(deptGroups.entries()).forEach(([deptKey, {students, year}]) => {
+      Array.from(deptGroups.entries()).forEach(([deptKey, {students, year, regRange}]) => {
         // Skip if no students
         if (students.length === 0) return;
         
@@ -153,26 +162,58 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
         // Format registration numbers in start-to-end format
         let regNosFormatted = "";
         if (students.length > 0) {
-          // Get only the first and last registration numbers
-          const firstRegNo = students[0].reg_no || '';
-          const lastRegNo = students[students.length - 1].reg_no || '';
+          // Group consecutive registration numbers
+          const groups: {start: string; end: string}[] = [];
+          let currentGroup: {start: string; end: string} | null = null;
           
-          if (firstRegNo === lastRegNo) {
-            regNosFormatted = firstRegNo;
-          } else if (firstRegNo && lastRegNo) {
-            regNosFormatted = `${firstRegNo} - ${lastRegNo}`;
-          }
+          students.forEach((student, idx) => {
+            const currentRegNo = student.reg_no || '';
+            
+            // For the first student or when starting a new group
+            if (currentGroup === null) {
+              currentGroup = { start: currentRegNo, end: currentRegNo };
+              return;
+            }
+            
+            // Check if this reg_no is consecutive with the previous one
+            // Simple check: see if the numbers are sequential
+            const prevNumeric = parseInt(currentGroup.end.replace(/\D/g, ''));
+            const currNumeric = parseInt(currentRegNo.replace(/\d/g, ''));
+            
+            if (currNumeric === prevNumeric + 1 && currentRegNo.replace(/\d/g, '') === currentGroup.end.replace(/\d/g, '')) {
+              // Update the end of the current group
+              currentGroup.end = currentRegNo;
+            } else {
+              // Finish the current group and start a new one
+              groups.push(currentGroup);
+              currentGroup = { start: currentRegNo, end: currentRegNo };
+            }
+            
+            // For the last student, add the current group
+            if (idx === students.length - 1 && currentGroup) {
+              groups.push(currentGroup);
+            }
+          });
+          
+          // Format the groups
+          regNosFormatted = groups.map(group => {
+            if (group.start === group.end) {
+              return group.start;
+            } else {
+              return `${group.start}-${group.end}`;
+            }
+          }).join(', ');
         }
         
         // Create a row for this department
         const row = [
           firstDeptInRoom ? (index + 1).toString() : '',  // S.No
           firstDeptInRoom ? arrangement.room_no : '',     // Room No
-          deptKey,                                        // Department
-          year || "N/A",                                  // Year
-          regNosFormatted,                                // Registration Numbers (simplified to start-end)
-          students.length.toString(),                     // Department Total
-          firstDeptInRoom ? students.length.toString() : '' // Room Total (only for first dept)
+          deptKey,                                        // Class (Dept)
+          year || "N/A",                                  // Year (added)
+          regRange,                                       // Registration Range from config
+          regNosFormatted,                                // Registration Numbers (assigned)
+          firstDeptInRoom ? students.length.toString() : '' // Total for the room
         ];
         
         tableData.push(row);
@@ -188,7 +229,7 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
   
   // Add the consolidated table
   autoTable(doc, {
-    head: [['S.NO', 'ROOM NO', 'DEPARTMENT', 'YEAR', 'SEATS', 'DEPT TOTAL', 'ROOM TOTAL']],
+    head: [['S.NO', 'ROOM NO', 'CLASS', 'YEAR', 'REG. RANGE', 'SEATS', 'TOTAL']],
     body: tableData,
     startY: 40,
     styles: {
@@ -198,11 +239,11 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
     columnStyles: {
       0: { cellWidth: 10, halign: 'center' },
       1: { cellWidth: 20, halign: 'center' },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 20 },  // Year column
-      4: { cellWidth: 'auto' },
-      5: { cellWidth: 20, halign: 'right' },  // Department total
-      6: { cellWidth: 20, halign: 'right' },  // Room total
+      2: { cellWidth: 20 },
+      3: { cellWidth: 15 },  // Year column
+      4: { cellWidth: 25 },  // Registration Range column - increased width
+      5: { cellWidth: 'auto' },
+      6: { cellWidth: 15, halign: 'center' },
     },
     headStyles: {
       fillColor: [80, 80, 80],
@@ -230,113 +271,434 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
   });
 }
 
-function addHallWiseTable(doc: jsPDF, arrangement: SeatingArrangement) {
-  const pageWidth = doc.internal.pageSize.width;
+function addRoomDetailClassWise(doc: jsPDF, arrangement: SeatingArrangement, startY: number) {
+  // Get formatted departments and years
+  const deptYearsFormatted = formatDepartmentsWithYears(arrangement);
   
-  // Add title
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Room ${arrangement.room_no} - Student Assignments by Department`, pageWidth / 2, 20, { align: "center" });
+  // Group students by department with year information
+  const deptGroups = new Map<string, {students: any[], year: string | null, regRange: string}>();
   
-  // Group students by department
-  const deptGroups = new Map<string, any[]>();
+  // First, collect registration number ranges from department_configs
+  arrangement.department_configs.forEach(config => {
+    if (config.department && config.start_reg_no && config.end_reg_no) {
+      const key = config.department;
+      const regRange = `${config.start_reg_no} - ${config.end_reg_no}`;
+      
+      if (!deptGroups.has(key)) {
+        deptGroups.set(key, {
+          students: [], 
+          year: config.year || null,
+          regRange: regRange
+        });
+      } else {
+        // If the department already exists, update the year and regRange
+        const existing = deptGroups.get(key)!;
+        existing.year = config.year || existing.year;
+        existing.regRange = regRange;
+      }
+    }
+  });
   
+  // Now gather all students for each department
   arrangement.seating_assignments.forEach(assignment => {
     const dept = assignment.department || 'Unassigned';
     
+    // Create key with department
     if (!deptGroups.has(dept)) {
-      deptGroups.set(dept, []);
+      deptGroups.set(dept, {
+        students: [], 
+        year: null,
+        regRange: 'Not specified'
+      });
     }
     
-    deptGroups.get(dept)?.push(assignment);
+    // Add student to the department group
+    deptGroups.get(dept)?.students.push(assignment);
   });
   
-  let startY = 30;
-  const maxColumns = 4; // Number of columns for the grid
+  // Add header
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Room ${arrangement.room_no} - Student Assignments by Department and Year`, 14, startY - 5);
   
-  // Process each department
-  Array.from(deptGroups.entries()).forEach(([dept, students]) => {
-    // Sort students by seat_no for consistency
-    students.sort((a, b) => a.seat_no.localeCompare(b.seat_no));
+  // Add department and year information
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Departments & Years: ${deptYearsFormatted}`, 14, startY);
+  
+  // Format the data for the table
+  const tableData: string[][] = [];
+  
+  Array.from(deptGroups.entries()).forEach(([dept, {students, year, regRange}]) => {
+    // Sort students by reg_no
+    students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
     
-    // Create chunks of students for rows
-    const rows = [];
-    for (let i = 0; i < students.length; i += maxColumns) {
-      rows.push(students.slice(i, i + maxColumns));
-    }
-    
-    // Create department header
-    const headerData = [dept];
-    // Add first row students to header
-    if (rows.length > 0) {
-      rows[0].forEach(student => {
-        headerData.push(`${student.seat_no}: ${student.reg_no || 'N/A'}`);
-      });
+    // Group students into maximum 4 per row to save space
+    const chunkSize = 4;
+    for (let i = 0; i < students.length; i += chunkSize) {
+      const chunk = students.slice(i, i + chunkSize);
+      const row = chunk.map(student => `${student.seat_no}: ${student.reg_no}`);
       
-      // Fill header with empty cells if needed
-      while (headerData.length <= maxColumns) {
-        headerData.push('');
+      // Add year information and reg range for the first row of each department
+      if (i === 0) {
+        tableData.push([
+          dept,                          // Department
+          year || 'N/A',                 // Year
+          `Reg Range: ${regRange}`,      // Registration range from config - added
+          ...row.slice(0, 3)             // First 3 students only in first row
+        ]);
+      } else {
+        tableData.push([
+          '',                            // Empty department cell
+          '',                            // Empty year cell
+          '',                            // Empty reg range cell
+          ...row                         // Students
+        ]);
       }
     }
     
-    // Create table for this department
-    const tableData = [];
-    // Add header row
-    tableData.push(headerData);
-    
-    // Add data rows (excluding first row which is in the header)
-    for (let i = 1; i < rows.length; i++) {
-      const rowData = [''];  // Empty first cell
-      
-      rows[i].forEach(student => {
-        rowData.push(`${student.seat_no}: ${student.reg_no || 'N/A'}`);
-      });
-      
-      // Fill with empty cells if needed
-      while (rowData.length <= maxColumns) {
-        rowData.push('');
+    // Add an empty row between departments
+    tableData.push(['', '', '', '', '', '', '']);
+  });
+  
+  // Add the table
+  autoTable(doc, {
+    body: tableData,
+    startY: startY + 5,
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+    },
+    columnStyles: {
+      0: { cellWidth: 30, fontStyle: 'bold' },  // Department
+      1: { cellWidth: 15 },                     // Year
+      2: { cellWidth: 30 },                     // Reg Range
+      3: { cellWidth: 'auto' },                 // Student 1
+      4: { cellWidth: 'auto' },                 // Student 2
+      5: { cellWidth: 'auto' },                 // Student 3
+      6: { cellWidth: 'auto' },                 // Student 4
+    },
+    // Remove borders for empty rows
+    didDrawCell: (data) => {
+      const row = data.row.index;
+      const isEmptyRow = tableData[row] && tableData[row].every(cell => cell === '');
+      if (isEmptyRow && data.column.index === 0) {
+        // Remove the border for empty rows
+        const x = data.cell.x;
+        const y = data.cell.y;
+        // Fixed: Use pageWidth from the document instead of data.table.width
+        const w = doc.internal.pageSize.width - 2 * data.cell.padding('left');
+        doc.setDrawColor(255, 255, 255);
+        doc.line(x, y, x + w, y);
       }
-      
-      tableData.push(rowData);
     }
-    
-    // Create the table
-    autoTable(doc, {
-      startY: startY,
-      body: tableData,
-      theme: 'grid',
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-        lineWidth: 0.1,
-      },
-      headStyles: {
-        fontStyle: 'bold',
-      },
-      columnStyles: {
-        0: { fontStyle: 'bold', fillColor: [240, 240, 240] },
-      },
-      // Style the header row (first row)
-      didDrawCell: (data) => {
-        if (data.row.index === 0) {
-          const cell = data.cell;
-          // Make the entire first row stand out with background color
-          doc.setFillColor(240, 240, 240);
-          doc.rect(cell.x, cell.y, cell.width, cell.height, 'F');
-          // Draw the text again to ensure it's visible on the background
-          doc.setTextColor(0, 0, 0);
-          doc.text(String(cell.text), cell.x + cell.padding('left'), cell.y + cell.padding('top') + 5);
-        }
-      }
+  });
+}
+
+function addSummaryTable(doc: jsPDF, arrangements: SeatingArrangement[]) {
+  doc.addPage();
+  
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text("Summary of Seating Arrangements", doc.internal.pageSize.width / 2, 20, { align: "center" });
+  
+  const tableData = arrangements.map((arrangement, index) => {
+    // Count students by department
+    const deptCounts: Record<string, number> = {};
+    arrangement.seating_assignments.forEach(assignment => {
+      const dept = assignment.department || 'Unassigned';
+      deptCounts[dept] = (deptCounts[dept] || 0) + 1;
     });
     
-    // Update the starting position for the next table
-    startY = doc.lastAutoTable.finalY + 10;
+    // Format department counts
+    const deptCountStr = Object.entries(deptCounts)
+      .map(([dept, count]) => `${dept}: ${count}`)
+      .join('\n');
     
-    // If too close to the bottom, start a new page
-    if (startY > doc.internal.pageSize.height - 40) {
-      doc.addPage();
-      startY = 30;
+    const capacity = arrangement.rows * arrangement.columns;
+    const assigned = arrangement.seating_assignments.length;
+    const occupancy = Math.round((assigned / capacity) * 100);
+    
+    return [
+      (index + 1).toString(),
+      arrangement.room_no,
+      arrangement.floor_no,
+      `${arrangement.rows} × ${arrangement.columns}`,
+      capacity.toString(),
+      assigned.toString(),
+      `${occupancy}%`,
+      deptCountStr
+    ];
+  });
+  
+  autoTable(doc, {
+    head: [['S.No', 'Room', 'Floor', 'Dimensions', 'Capacity', 'Assigned', 'Occupancy', 'Departments']],
+    body: tableData,
+    startY: 30,
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+    },
+    columnStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 15 },
+      2: { cellWidth: 15 },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 20 },
+      5: { cellWidth: 20 },
+      6: { cellWidth: 20 },
+      7: { cellWidth: 'auto' },
+    },
+    headStyles: {
+      fillColor: [66, 66, 66],
+      textColor: 255,
+      fontStyle: 'bold',
+    },
+    alternateRowStyles: {
+      fillColor: [245, 245, 245],
+    },
+  });
+}
+
+function addRoomDetailPage(doc: jsPDF, arrangement: SeatingArrangement) {
+  const pageWidth = doc.internal.pageSize.width;
+  const centerX = pageWidth / 2;
+  
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Room ${arrangement.room_no} (Floor ${arrangement.floor_no})`, centerX, 20, { align: "center" });
+  
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  
+  const capacity = arrangement.rows * arrangement.columns;
+  const assigned = arrangement.seating_assignments.length;
+  const occupancy = Math.round((assigned / capacity) * 100);
+  
+  // Count students by department
+  const deptCounts: Record<string, number> = {};
+  arrangement.seating_assignments.forEach(assignment => {
+    const dept = assignment.department || 'Unassigned';
+    deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+  });
+  
+  // Create department statistics table
+  const deptData = Object.entries(deptCounts).map(([dept, count]) => [
+    dept,
+    count.toString(),
+    `${Math.round((count / assigned) * 100)}%`
+  ]);
+  
+  // Room statistics
+  autoTable(doc, {
+    head: [['Property', 'Value']],
+    body: [
+      ['Dimensions', `${arrangement.rows} × ${arrangement.columns}`],
+      ['Total Capacity', capacity.toString()],
+      ['Assigned Seats', assigned.toString()],
+      ['Occupancy', `${occupancy}%`],
+      ['Departments', Object.keys(deptCounts).join(', ')],
+    ],
+    startY: 30,
+    theme: 'grid',
+    styles: {
+      fontSize: 10,
+    },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 60 },
+      1: { cellWidth: 'auto' },
+    },
+  });
+  
+  // Department breakdown
+  if (deptData.length > 0) {
+    const tableEnd = doc.lastAutoTable ? doc.lastAutoTable.finalY : 100;
+    autoTable(doc, {
+      head: [['Department', 'Students', 'Percentage']],
+      body: deptData,
+      startY: tableEnd + 15,
+      theme: 'grid',
+      styles: {
+        fontSize: 10,
+      },
+      headStyles: {
+        fillColor: [66, 66, 66],
+      },
+    });
+  }
+}
+
+function addVisualSeatingGrid(doc: jsPDF, arrangement: SeatingArrangement) {
+  const pageWidth = doc.internal.pageSize.width;
+  const centerX = pageWidth / 2;
+  
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Room ${arrangement.room_no} - Visual Seating Plan`, centerX, 20, { align: "center" });
+  
+  const rows = arrangement.rows;
+  const columns = arrangement.columns;
+  
+  // Calculate grid dimensions
+  const margin = 20;
+  const availableWidth = pageWidth - (2 * margin);
+  const availableHeight = doc.internal.pageSize.height - 60;
+  
+  const cellWidth = Math.min(availableWidth / columns, 70);
+  const cellHeight = Math.min(availableHeight / rows, 50);
+  
+  const gridWidth = cellWidth * columns;
+  const startX = (pageWidth - gridWidth) / 2;
+  let startY = 40;
+  
+  // Find all assignments
+  const assignmentMap = new Map();
+  arrangement.seating_assignments.forEach(assignment => {
+    if (assignment.seat_no && assignment.seat_no.trim() !== '') {
+      assignmentMap.set(assignment.seat_no, assignment);
     }
+  });
+  
+  // Draw the seating grid
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < columns; col++) {
+      const x = startX + (col * cellWidth);
+      const y = startY + (row * cellHeight);
+      
+      // Draw cell border
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.5);
+      doc.rect(x, y, cellWidth, cellHeight);
+      
+      // Calculate seat number (based on common patterns)
+      const rowLabel = String.fromCharCode(65 + row); // A, B, C, ...
+      const colLabel = col + 1;
+      const seatNo = `${rowLabel}${colLabel}`;
+      
+      // Get assignment details for this seat
+      const assignment = assignmentMap.get(seatNo);
+      
+      if (assignment) {
+        // Find department config to get year
+        let yearInfo = '';
+        if (assignment.department) {
+          const deptConfig = arrangement.department_configs.find(
+            config => config.department === assignment.department
+          );
+          yearInfo = deptConfig?.year || '';
+        }
+        
+        // Seat number
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(seatNo, x + 5, y + 10);
+        
+        // Department
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(assignment.department || 'N/A', x + 5, y + 20);
+        
+        // Registration number
+        doc.setFontSize(8);
+        doc.text(assignment.reg_no || 'N/A', x + 5, y + 30);
+        
+        // Year information (added)
+        if (yearInfo) {
+          doc.setFontSize(7);
+          doc.text(`Year: ${yearInfo}`, x + 5, y + 38);
+        }
+      } else {
+        // Empty seat
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(seatNo, x + 5, y + 10);
+        
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text("Empty", x + 5, y + 20);
+      }
+    }
+  }
+}
+
+function addStudentListTable(doc: jsPDF, arrangement: SeatingArrangement) {
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Room ${arrangement.room_no} - Student Assignments`, doc.internal.pageSize.width / 2, 20, { align: "center" });
+  
+  const sortedAssignments = [...arrangement.seating_assignments]
+    .sort((a, b) => {
+      // Extract the prefix and number
+      const aPrefix = a.seat_no.charAt(0);
+      const bPrefix = b.seat_no.charAt(0);
+      
+      // Extract numeric part
+      const aNum = parseInt(a.seat_no.substring(1));
+      const bNum = parseInt(b.seat_no.substring(1));
+      
+      // First sort by number
+      if (aNum !== bNum) {
+        return aNum - bNum;
+      }
+      
+      // Then sort by prefix
+      return aPrefix.localeCompare(bPrefix);
+    });
+  
+  // Get years for each student
+  const studentYears = new Map<string, string>();
+  sortedAssignments.forEach(assignment => {
+    if (assignment.department) {
+      const deptConfig = arrangement.department_configs.find(
+        config => config.department === assignment.department
+      );
+      if (deptConfig?.year) {
+        studentYears.set(assignment.id, deptConfig.year);
+      }
+    }
+  });
+  
+  const tableData = sortedAssignments.map((assignment, index) => [
+    (index + 1).toString(),
+    assignment.seat_no,
+    assignment.student_name || 'Unassigned',
+    assignment.reg_no || 'N/A',
+    assignment.department || 'N/A',
+    studentYears.get(assignment.id) || 'N/A', // Added year column
+  ]);
+  
+  autoTable(doc, {
+    head: [['S.No', 'Seat', 'Student Name', 'Registration No', 'Department', 'Year']], // Added Year
+    body: tableData,
+    startY: 30,
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+    },
+    columnStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 15 },
+      2: { cellWidth: 40 },
+      3: { cellWidth: 30 },
+      4: { cellWidth: 30 },
+      5: { cellWidth: 15 }, // Year column
+    },
+    headStyles: {
+      fillColor: [66, 66, 66],
+      textColor: 255,
+      fontStyle: 'bold',
+    },
+    alternateRowStyles: {
+      fillColor: [245, 245, 245],
+    },
+    didDrawPage: (data) => {
+      // Add header to each page
+      if (data.pageNumber > 1) {
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Room ${arrangement.room_no} - Student Assignments (continued)`, doc.internal.pageSize.width / 2, 20, { align: "center" });
+      }
+    },
   });
 }

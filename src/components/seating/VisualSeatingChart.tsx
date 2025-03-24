@@ -6,24 +6,19 @@ import { Seat } from "@/utils/studentUtils";
 import { DepartmentConfig } from "@/utils/departmentUtils";
 import { getPrintableId, printElement } from '@/utils/hallUtils';
 import { useToast } from "@/hooks/use-toast";
-import { AlertCircle } from 'lucide-react';
 
 interface VisualSeatingChartProps {
   seats: Seat[];
   rows: number;
   cols: number;
   departments: DepartmentConfig[];
-  hallId?: string;
-  hallName?: string;
 }
 
 export const VisualSeatingChart = ({
   seats,
   rows,
   cols,
-  departments,
-  hallId,
-  hallName
+  departments
 }: VisualSeatingChartProps) => {
   const printableId = useRef(getPrintableId());
   const { toast } = useToast();
@@ -51,55 +46,8 @@ export const VisualSeatingChart = ({
     }, 1000);
   };
 
-  // Empty state display
   if (seats.length === 0) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-xl font-semibold">Visual Seating Arrangement</h3>
-          <div className="flex gap-2">
-            <Button 
-              onClick={handleExport}
-              variant="outline"
-              className="hover:bg-blue-50 transition-colors"
-              disabled
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-            <Button 
-              onClick={handlePrint}
-              variant="outline"
-              className="hover:bg-blue-50 transition-colors"
-              disabled
-            >
-              <Printer className="mr-2 h-4 w-4" />
-              Print Seating Chart
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-lg bg-gray-50">
-          <AlertCircle className="w-12 h-12 text-amber-500 mb-4" />
-          <h3 className="text-lg font-medium mb-2">No seating arrangements found</h3>
-          {hallId && (
-            <>
-              <p className="text-gray-500 text-center max-w-md mb-2">
-                There are no seating plans created for {hallName || `Hall ${hallId}`} yet.
-              </p>
-              <p className="text-gray-500 text-center">
-                Please select a different hall or create a new seating plan.
-              </p>
-            </>
-          )}
-          {!hallId && (
-            <p className="text-gray-500 text-center max-w-md">
-              Generate a seating plan using the controls above to visualize your exam hall layout.
-            </p>
-          )}
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // Create a grid layout for the seats
@@ -159,9 +107,6 @@ export const VisualSeatingChart = ({
       >
         <div className="mb-4 print:mb-8">
           <h2 className="text-2xl font-bold text-center">Exam Hall Seating Chart</h2>
-          {hallName && (
-            <p className="text-center text-gray-700 font-medium">{hallName}</p>
-          )}
           <p className="text-center text-gray-500">Total seats: {seats.length} ({rows} rows × {cols} columns)</p>
         </div>
 
@@ -170,7 +115,7 @@ export const VisualSeatingChart = ({
           {departments.filter(d => d.department).map((dept, i) => (
             <div key={dept.id} className="flex items-center">
               <div className={`w-4 h-4 mr-2 ${getDepartmentColor(dept.department)}`}></div>
-              <span className="text-sm">{dept.department} {dept.year ? `(${dept.year})` : ''}</span>
+              <span className="text-sm">{dept.department}</span>
             </div>
           ))}
         </div>
