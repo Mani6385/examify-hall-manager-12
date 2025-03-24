@@ -1,10 +1,9 @@
+
 import React from "react";
 import { SeatingArrangement, filterArrangementsByHall } from "@/utils/reportUtils";
 import { useState, useEffect } from "react";
 import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface HallWiseSeatingPlansProps {
   arrangements: SeatingArrangement[];
@@ -73,55 +72,49 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
   
   const renderRoomTable = (arrangement: SeatingArrangement) => {
     const departmentsData = getStudentsByDepartment(arrangement);
-    const maxCols = 4;
     
     return (
-      <div className="border border-gray-300 w-full">
-        <Table className="border-collapse">
-          <TableBody>
-            {departmentsData.map((deptData, deptIndex) => {
+      <div className="w-full">
+        <table className="w-full border-collapse">
+          <tbody>
+            {departmentsData.map((deptData) => {
               const rows = [];
-              for (let i = 0; i < deptData.students.length; i += maxCols) {
-                rows.push(deptData.students.slice(i, i + maxCols));
+              for (let i = 0; i < deptData.students.length; i += 4) {
+                rows.push(deptData.students.slice(i, i + 4));
               }
               
               return (
                 <React.Fragment key={`dept-${deptData.department}`}>
                   {rows.map((rowStudents, rowIndex) => (
-                    <TableRow key={`${deptData.department}-row-${rowIndex}`} className="border-b border-gray-300">
+                    <tr key={`${deptData.department}-row-${rowIndex}`}>
                       {rowIndex === 0 ? (
-                        <TableCell 
-                          className="border-r border-gray-300 font-medium p-3 align-top"
+                        <td 
+                          className="border border-gray-300 p-2 align-top font-medium"
                           rowSpan={rows.length}
                         >
                           {deptData.department}
-                        </TableCell>
+                        </td>
                       ) : null}
                       
                       {rowStudents.map((student) => (
-                        <TableCell key={`${student.seat_no}`} className="border-r border-gray-300 p-3">
-                          {student.seat_no}: {student.student_name || student.reg_no || 'N/A'}
-                        </TableCell>
+                        <td key={`${student.seat_no}`} className="border border-gray-300 p-2">
+                          {student.seat_no}: {student.reg_no || (student.student_name ? student.student_name : 'N/A')}
+                        </td>
                       ))}
                       
-                      {Array.from({ length: maxCols - rowStudents.length }).map((_, i) => (
-                        <TableCell key={`empty-${i}`} className="border-r border-gray-300 p-3">
+                      {/* Add empty cells to complete the row if needed */}
+                      {Array.from({ length: 4 - rowStudents.length }).map((_, i) => (
+                        <td key={`empty-${i}`} className="border border-gray-300 p-2">
                           &nbsp;
-                        </TableCell>
+                        </td>
                       ))}
-                    </TableRow>
+                    </tr>
                   ))}
-                  
-                  {deptIndex < departmentsData.length - 1 && (
-                    <TableRow className="h-0">
-                      <TableCell colSpan={maxCols + 1} className="p-0 border-b-2 border-gray-300"></TableCell>
-                    </TableRow>
-                  )}
                 </React.Fragment>
               );
             })}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
     );
   };
@@ -140,16 +133,12 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
           <h2 className="text-xl font-bold mb-4 print:text-center">{hall.name} - Seating Plans</h2>
           
           {hall.arrangements.map(arrangement => (
-            <Card key={arrangement.id} className="mb-8 overflow-hidden print:shadow-none print:border-0">
-              <CardHeader className="bg-muted/50 py-3">
-                <CardTitle className="text-lg">
-                  Room {arrangement.room_no} - Student Assignments by Department
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
-                {renderRoomTable(arrangement)}
-              </CardContent>
-            </Card>
+            <div key={arrangement.id} className="mb-8">
+              <h3 className="text-lg font-semibold mb-3">
+                Room {arrangement.room_no} - Student Assignments by Department
+              </h3>
+              {renderRoomTable(arrangement)}
+            </div>
           ))}
         </div>
       ))}
