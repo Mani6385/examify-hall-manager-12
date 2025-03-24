@@ -1,4 +1,3 @@
-
 import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils } from './hallUtils';
 
 // Use the halls from hallUtils - create a deep copy to prevent modifications
@@ -168,7 +167,7 @@ export const generateConsolidatedReportData = (arrangements: SeatingArrangement[
         
         // Simple check for sequential reg numbers
         const prevNumeric = parseInt(currentGroup.end.replace(/\D/g, ''));
-        const currNumeric = parseInt(currentRegNo.replace(/\d/g, ''));
+        const currNumeric = parseInt(currentRegNo.replace(/\D/g, ''));
         
         if (currNumeric === prevNumeric + 1 && currentRegNo.replace(/\d/g, '') === currentGroup.end.replace(/\d/g, '')) {
           // Update the end of the current group
@@ -200,7 +199,7 @@ export const generateConsolidatedReportData = (arrangements: SeatingArrangement[
         department: dept,
         year: year || 'N/A',
         regNumbers: regRanges,
-        regRange: regRange, // Add the configured reg number range
+        regRange: regRange, // Keep this for reference but we won't display it
         studentCount: students.length,
         isFirstDeptInRoom: deptIndex === 0
       };

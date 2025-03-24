@@ -122,7 +122,7 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
     ["DEPARTMENT OF COMPUTER SCIENCE AND BCA"],
     [`SEATING PLAN(${new Date().toLocaleDateString()})`],
     [],
-    ["S.NO", "ROOM NO", "CLASS", "YEAR", "REG. RANGE", "SEATS", "TOTAL"]
+    ["S.NO", "ROOM NO", "CLASS", "YEAR", "SEATS", "TOTAL"]
   ], { origin: "A1" });
   
   // Use the new consolidated report data generator
@@ -140,20 +140,35 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
         roomData.room,                    // Room No
         "Not specified",                  // Class
         "N/A",                           // Year
-        "N/A",                           // Reg. Range
         "",                               // Seats
         "0"                               // Total
       ]);
     } else {
       // Add rows for each department in this room
       roomData.departmentRows.forEach((deptRow) => {
+        // Simplify the Seats column to only show first and last reg numbers
+        let simplifiedRegNumbers = "N/A";
+        if (deptRow.regNumbers && deptRow.regNumbers.trim() !== '') {
+          const allRegNumbers = deptRow.regNumbers.split(', ');
+          if (allRegNumbers.length > 0) {
+            // Get the first and last registration number
+            const firstReg = allRegNumbers[0];
+            const lastReg = allRegNumbers[allRegNumbers.length - 1];
+            
+            if (firstReg === lastReg) {
+              simplifiedRegNumbers = firstReg;
+            } else {
+              simplifiedRegNumbers = `${firstReg} - ${lastReg}`;
+            }
+          }
+        }
+        
         tableData.push([
           deptRow.isFirstDeptInRoom ? deptRow.rowIndex.toString() : '',  // S.No
           deptRow.isFirstDeptInRoom ? roomData.room : '',               // Room No
           deptRow.department,                                           // Class
           deptRow.year,                                                 // Year
-          deptRow.regRange,                                             // Reg. Range (explicit start-end from config)
-          deptRow.regNumbers,                                           // Seats (assigned reg numbers)
+          simplifiedRegNumbers,                                         // Seats (simplified to first-last)
           deptRow.isFirstDeptInRoom ? roomData.totalStudents.toString() : '' // Total
         ]);
       });
@@ -161,7 +176,7 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
     
     // Add an empty row between rooms for better readability
     if (roomIndex < consolidatedData.length - 1) {
-      tableData.push(['', '', '', '', '', '', '']);
+      tableData.push(['', '', '', '', '', '']);
     }
   });
   
@@ -174,8 +189,7 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
     { wch: 10 },   // Room No
     { wch: 20 },   // Class (Department)
     { wch: 12 },   // Year
-    { wch: 25 },   // Reg. Range - Increased width for better visibility
-    { wch: 50 },   // Seats (registration numbers)
+    { wch: 25 },   // Seats (simplified reg numbers)
     { wch: 10 },   // Total
   ];
   
@@ -189,9 +203,9 @@ function createConsolidatedWorksheet(arrangements: SeatingArrangement[], hallNam
   
   // Merge cells for titles
   ws['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },  // Title row
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },  // Department row
-    { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } },  // Seating plan row
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },  // Title row
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },  // Department row
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } },  // Seating plan row
   ];
   
   return ws;
