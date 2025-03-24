@@ -1,4 +1,3 @@
-
 import React from "react";
 import { SeatingArrangement, filterArrangementsByHall } from "@/utils/reportUtils";
 import { useState, useEffect } from "react";
@@ -15,7 +14,6 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
   const [hallsWithArrangements, setHallsWithArrangements] = useState<Array<{ id: string; name: string; arrangements: SeatingArrangement[] }>>([]);
 
   useEffect(() => {
-    // Identify unique hall IDs
     const hallIds = new Set<string>();
     
     arrangements.forEach(arrangement => {
@@ -29,7 +27,6 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
       }
     });
     
-    // Create hall data with arrangements
     const hallsData = Array.from(hallIds).map(hallId => {
       const hallArrangements = filterArrangementsByHall(arrangements, hallId);
       return {
@@ -48,7 +45,6 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
     window.print();
   };
 
-  // Function to organize students by department
   const getStudentsByDepartment = (arrangement: SeatingArrangement) => {
     const departmentStudents = new Map<string, any[]>();
     
@@ -62,23 +58,28 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
       departmentStudents.get(dept)?.push(assignment);
     });
     
-    return Array.from(departmentStudents.entries()).map(([dept, students]) => {
-      students.sort((a, b) => a.seat_no.localeCompare(b.seat_no));
-      return { department: dept, students };
-    });
+    return Array.from(departmentStudents.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([dept, students]) => {
+        students.sort((a, b) => {
+          if (a.student_name && b.student_name) {
+            return a.student_name.localeCompare(b.student_name);
+          }
+          return a.seat_no.localeCompare(b.seat_no);
+        });
+        return { department: dept, students };
+      });
   };
   
-  // Function to render a room table in the exact format shown in the image
   const renderRoomTable = (arrangement: SeatingArrangement) => {
     const departmentsData = getStudentsByDepartment(arrangement);
-    const maxCols = 4; // Number of columns in the grid (from the image)
+    const maxCols = 4;
     
     return (
       <div className="border border-gray-300 w-full">
         <Table className="border-collapse">
           <TableBody>
             {departmentsData.map((deptData, deptIndex) => {
-              // Organize students into rows of four
               const rows = [];
               for (let i = 0; i < deptData.students.length; i += maxCols) {
                 rows.push(deptData.students.slice(i, i + maxCols));
@@ -88,7 +89,6 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
                 <React.Fragment key={`dept-${deptData.department}`}>
                   {rows.map((rowStudents, rowIndex) => (
                     <TableRow key={`${deptData.department}-row-${rowIndex}`} className="border-b border-gray-300">
-                      {/* Department name cell - only show in first row of each department */}
                       {rowIndex === 0 ? (
                         <TableCell 
                           className="border-r border-gray-300 font-medium p-3 align-top"
@@ -98,14 +98,12 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
                         </TableCell>
                       ) : null}
                       
-                      {/* Student cells */}
                       {rowStudents.map((student) => (
                         <TableCell key={`${student.seat_no}`} className="border-r border-gray-300 p-3">
-                          {student.seat_no}: {student.reg_no || 'N/A'}
+                          {student.seat_no}: {student.student_name || student.reg_no || 'N/A'}
                         </TableCell>
                       ))}
                       
-                      {/* Empty cells to fill the row */}
                       {Array.from({ length: maxCols - rowStudents.length }).map((_, i) => (
                         <TableCell key={`empty-${i}`} className="border-r border-gray-300 p-3">
                           &nbsp;
@@ -114,7 +112,6 @@ export function HallWiseSeatingPlans({ arrangements }: HallWiseSeatingPlansProps
                     </TableRow>
                   ))}
                   
-                  {/* Add a visual separator between departments except for the last department */}
                   {deptIndex < departmentsData.length - 1 && (
                     <TableRow className="h-0">
                       <TableCell colSpan={maxCols + 1} className="p-0 border-b-2 border-gray-300"></TableCell>
