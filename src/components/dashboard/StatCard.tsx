@@ -12,7 +12,7 @@ interface StatCardProps {
 
 export const StatCard = ({ title, value, icon: Icon, description, className }: StatCardProps) => {
   return (
-    <Card className={`p-6 transition-all duration-200 hover:shadow-lg animate-slideIn ${className} overflow-hidden relative`}>
+    <Card className={`p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg animate-slideIn ${className} overflow-hidden relative`}>
       <div className="absolute inset-0 opacity-5">
         <div className="absolute -bottom-10 -right-10 w-32 h-32 rounded-full filter blur-xl bg-current"></div>
       </div>

@@ -237,13 +237,13 @@ const Reports = () => {
       
       toast({
         title: "Success",
-        description: `Seating plan Excel file generated successfully for ${getHallNameById(selectedHall)}`,
+        description: `Consolidated seating plan Excel file generated successfully for ${getHallNameById(selectedHall)}`,
       });
     } catch (error) {
       console.error('Error generating Excel:', error);
       toast({
         title: "Error",
-        description: "Failed to generate seating plan Excel file",
+        description: "Failed to generate consolidated seating plan Excel file",
         variant: "destructive",
       });
     } finally {
@@ -267,13 +267,13 @@ const Reports = () => {
       
       toast({
         title: "Success",
-        description: `Seating plan PDF file generated successfully for ${getHallNameById(selectedHall)}`,
+        description: `Consolidated seating plan PDF file generated successfully for ${getHallNameById(selectedHall)}`,
       });
     } catch (error) {
       console.error('Error generating PDF:', error);
       toast({
         title: "Error",
-        description: "Failed to generate seating plan PDF file",
+        description: "Failed to generate consolidated seating plan PDF file",
         variant: "destructive",
       });
     } finally {
