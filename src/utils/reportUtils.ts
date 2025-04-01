@@ -1,3 +1,4 @@
+
 import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils } from './hallUtils';
 
 // Use the halls from hallUtils
@@ -46,7 +47,7 @@ export interface SeatingArrangement {
 }
 
 // Helper function to map room number to hall ID
-const mapRoomToHallId = (roomNo: string): string => {
+export const mapRoomToHallId = (roomNo: string): string => {
   // For room numbers that start with 'G' like G13, G14, etc.
   if (roomNo.startsWith('G')) {
     return '1'; // Map to Hall A

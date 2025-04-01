@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,19 +94,17 @@ const Reports = () => {
         throw error;
       }
       
-      // Transform the data to ensure it matches our expected structure
       const transformedData = data?.map(arr => ({
         ...arr,
         seating_assignments: arr.seating_assignments || [],
         department_configs: (arr.department_configs || []).map(config => ({
           ...config,
-          // Convert database column names if they differ from our interface
           id: config.id,
           department: config.department,
           start_reg_no: config.start_reg_no,
           end_reg_no: config.end_reg_no,
           prefix: config.prefix,
-          year: config.year || null  // Ensure year is properly handled
+          year: config.year || null
         }))
       })) || [];
       
@@ -154,24 +151,21 @@ const Reports = () => {
 
   const displayData = useFallbackData ? mockArrangements : allSeatingArrangements;
 
-  // Extract unique hall IDs from all arrangements
   const getUniqueHallIds = (): string[] => {
     const hallIds = new Set<string>();
     
-    // Add 'all' as the first option
     hallIds.add('all');
     
-    // Extract hall_id from each arrangement or derive it from room_no
     displayData.forEach(arrangement => {
-      if (arrangement.hall_id) {
-        hallIds.add(arrangement.hall_id);
-      } else {
-        // Map rooms to halls based on the first digit of room_no
-        const roomFirstDigit = arrangement.room_no.charAt(0);
-        const mappedHallId = roomFirstDigit === '1' ? '1' : 
-                            roomFirstDigit === '2' ? '2' : '3';
-        hallIds.add(mappedHallId);
+      let hallId = arrangement.hall_id;
+      
+      if (!hallId) {
+        hallId = mapRoomToHallId(arrangement.room_no);
+        arrangement.hall_id = hallId;
+        arrangement.hall_name = getHallNameById(hallId);
       }
+      
+      hallIds.add(hallId);
     });
     
     return Array.from(hallIds);
@@ -179,12 +173,11 @@ const Reports = () => {
   
   const uniqueHallIds = getUniqueHallIds();
   
-  // Handle hall pagination
   const handlePreviousHall = () => {
     const currentIndex = uniqueHallIds.indexOf(selectedHall);
     if (currentIndex > 0) {
       setSelectedHall(uniqueHallIds[currentIndex - 1]);
-      setCurrentPage(1); // Reset to first page when changing halls
+      setCurrentPage(1);
     }
   };
   
@@ -192,17 +185,15 @@ const Reports = () => {
     const currentIndex = uniqueHallIds.indexOf(selectedHall);
     if (currentIndex < uniqueHallIds.length - 1) {
       setSelectedHall(uniqueHallIds[currentIndex + 1]);
-      setCurrentPage(1); // Reset to first page when changing halls
+      setCurrentPage(1);
     }
   };
 
   const filteredArrangements = filterArrangementsByHall(displayData, selectedHall);
   
-  // Calculate pagination for arrangements within the selected hall
-  const itemsPerPage = 1; // Show one arrangement per page
+  const itemsPerPage = 1;
   const totalPages = Math.ceil(filteredArrangements.length / itemsPerPage);
   
-  // Get current page arrangements
   const currentArrangements = filteredArrangements.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -352,7 +343,6 @@ const Reports = () => {
     navigate('/seating');
   };
 
-  // Get the current arrangement for detailed view
   const currentArrangement = currentArrangements.length > 0 ? currentArrangements[0] : null;
 
   if (isError && !useFallbackData) {
@@ -404,7 +394,6 @@ const Reports = () => {
           </Button>
         </div>
 
-        {/* Hall Navigation */}
         <div className="flex justify-between items-center bg-white/80 backdrop-blur-sm rounded-lg p-4 shadow-sm border border-gray-100">
           <Button 
             variant="outline" 
@@ -462,7 +451,6 @@ const Reports = () => {
           />
         </div>
 
-        {/* Pagination for arrangements within a hall */}
         {selectedHall !== "all" && filteredArrangements.length > 1 && (
           <Pagination className="my-4">
             <PaginationContent>

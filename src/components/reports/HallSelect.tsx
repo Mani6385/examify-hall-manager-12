@@ -46,7 +46,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
         } else if (data && data.length > 0) {
           // Map classes data to Hall interface
           const mappedHalls: Hall[] = data.map((item, index) => ({
-            id: item.id,
+            id: item.id || String(index + 1),
             name: item.name || `Hall ${index + 1}`,
             capacity: parseInt(item.capacity) || 30
           }));

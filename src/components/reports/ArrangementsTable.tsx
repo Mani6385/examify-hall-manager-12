@@ -1,4 +1,3 @@
-
 import { 
   Table, 
   TableBody, 
@@ -9,7 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Edit, Loader2, PlusCircle, Trash2 } from "lucide-react";
-import { SeatingArrangement, formatDepartmentsWithYears } from "@/utils/reportUtils";
+import { SeatingArrangement, formatDepartmentsWithYears, mapRoomToHallId } from "@/utils/reportUtils";
 import { DetailedReportView } from "./DetailedReportView";
 import { SeatingGridPreview } from "./SeatingGridPreview";
 import { useNavigate } from "react-router-dom";
@@ -30,12 +29,10 @@ export function ArrangementsTable({
 }: ArrangementsTableProps) {
   const navigate = useNavigate();
   
-  // Navigate to Seating page
   const goToSeatingPage = () => {
     navigate('/seating');
   };
 
-  // Navigate to edit a specific seating plan
   const editSeatingPlan = (arrangementId: string) => {
     navigate(`/seating?edit=${arrangementId}`);
   };
@@ -68,7 +65,6 @@ export function ArrangementsTable({
     );
   }
 
-  // Group arrangements by department and year using the new utility function
   const groupedArrangements = arrangements.reduce((acc, arrangement) => {
     return {
       ...acc,
@@ -91,24 +87,11 @@ export function ArrangementsTable({
       </TableHeader>
       <TableBody>
         {arrangements.map((arrangement) => {
-          // Get the hall name either from arrangement.hall_name or derive it from room number
           const hallName = arrangement.hall_name || (() => {
-            // Use the updated mapping function logic
-            const roomNo = arrangement.room_no;
-            let mappedHallId;
-            
-            if (roomNo.startsWith('G')) {
-              mappedHallId = '1'; // Map to Hall A
-            } else {
-              const firstDigit = roomNo.charAt(0);
-              if (/^\d+$/.test(firstDigit)) {
-                mappedHallId = firstDigit === '1' ? '1' : 
-                              firstDigit === '2' ? '2' : '3';
-              } else {
-                mappedHallId = '3'; // Default
-              }
+            const mappedHallId = mapRoomToHallId(arrangement.room_no);
+            if (!arrangement.hall_id) {
+              arrangement.hall_id = mappedHallId;
             }
-            
             return getHallNameById(mappedHallId);
           })();
           
