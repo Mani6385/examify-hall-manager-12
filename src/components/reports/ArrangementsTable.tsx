@@ -93,9 +93,22 @@ export function ArrangementsTable({
         {arrangements.map((arrangement) => {
           // Get the hall name either from arrangement.hall_name or derive it from room number
           const hallName = arrangement.hall_name || (() => {
-            const roomFirstDigit = arrangement.room_no.charAt(0);
-            const mappedHallId = roomFirstDigit === '1' ? '1' : 
-                                roomFirstDigit === '2' ? '2' : '3';
+            // Use the updated mapping function logic
+            const roomNo = arrangement.room_no;
+            let mappedHallId;
+            
+            if (roomNo.startsWith('G')) {
+              mappedHallId = '1'; // Map to Hall A
+            } else {
+              const firstDigit = roomNo.charAt(0);
+              if (/^\d+$/.test(firstDigit)) {
+                mappedHallId = firstDigit === '1' ? '1' : 
+                              firstDigit === '2' ? '2' : '3';
+              } else {
+                mappedHallId = '3'; // Default
+              }
+            }
+            
             return getHallNameById(mappedHallId);
           })();
           

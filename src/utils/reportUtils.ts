@@ -1,4 +1,3 @@
-
 import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils } from './hallUtils';
 
 // Use the halls from hallUtils
@@ -46,6 +45,27 @@ export interface SeatingArrangement {
   department_configs: DepartmentConfig[];
 }
 
+// Helper function to map room number to hall ID
+const mapRoomToHallId = (roomNo: string): string => {
+  // For room numbers that start with 'G' like G13, G14, etc.
+  if (roomNo.startsWith('G')) {
+    return '1'; // Map to Hall A
+  }
+  
+  // For numerical room numbers, use the first digit
+  const firstDigit = roomNo.charAt(0);
+  if (/^\d+$/.test(firstDigit)) {
+    // For rooms starting with 1, map to Hall A
+    // For rooms starting with 2, map to Hall B
+    // For all others, map to Hall C
+    return firstDigit === '1' ? '1' : 
+           firstDigit === '2' ? '2' : '3';
+  }
+  
+  // Default to Hall C for any other format
+  return '3';
+};
+
 // Helper function to filter arrangements by hall
 export const filterArrangementsByHall = (
   arrangements: SeatingArrangement[],
@@ -60,11 +80,9 @@ export const filterArrangementsByHall = (
     }
     
     // Otherwise map rooms to halls based on logic
-    const roomFirstDigit = arrangement.room_no.charAt(0);
-    const mappedHallId = roomFirstDigit === '1' ? '1' : 
-                         roomFirstDigit === '2' ? '2' : '3';
+    const mappedHallId = mapRoomToHallId(arrangement.room_no);
     
-    // Assign hall_name to the arrangement if it's not already set
+    // Assign hall_name and hall_id to the arrangement if they're not already set
     arrangement.hall_id = mappedHallId;
     arrangement.hall_name = getHallNameById(mappedHallId);
     
