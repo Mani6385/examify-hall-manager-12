@@ -18,20 +18,21 @@ export function ReportButtons({
   isLoadingExcel 
 }: ReportButtonsProps) {
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-3">
       <Button
         variant="outline"
         onClick={onGeneratePdf}
         disabled={isLoading || isLoadingPdf}
+        className="border-blue-200 hover:bg-blue-50"
       >
         {isLoadingPdf ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Generating...
+            Generating PDF...
           </>
         ) : (
           <>
-            <FileText className="mr-2 h-4 w-4" />
+            <FileText className="mr-2 h-4 w-4 text-blue-600" />
             Download PDF
           </>
         )}
@@ -40,15 +41,16 @@ export function ReportButtons({
         variant="outline"
         onClick={onGenerateExcel}
         disabled={isLoading || isLoadingExcel}
+        className="border-green-200 hover:bg-green-50"
       >
         {isLoadingExcel ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Generating...
+            Generating Excel...
           </>
         ) : (
           <>
-            <File className="mr-2 h-4 w-4" />
+            <File className="mr-2 h-4 w-4 text-green-600" />
             Download Excel
           </>
         )}

@@ -1,3 +1,4 @@
+
 import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils } from './hallUtils';
 
 // Use the halls from hallUtils
@@ -9,7 +10,7 @@ export interface SeatingAssignment {
   reg_no: string | null;
   department: string | null;
   student_name?: string | null;
-  subject: string | null;
+  subject?: string | null;
   seating_arrangements?: {
     id: string;
     room_no: string;
