@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/dashboard/Layout";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +8,7 @@ import { HallReportsCard } from "@/components/reports/HallReportsCard";
 import { ConsolidatedReportsCard } from "@/components/reports/ConsolidatedReportsCard";
 import { generateExcelReport } from "@/components/reports/ExcelExport";
 import { generatePdfReport } from "@/components/reports/PdfExport";
-import { filterArrangementsByHall, SeatingArrangement, getHallNameById } from "@/utils/reportUtils";
+import { filterArrangementsByHall, SeatingArrangement, getHallNameById, mapRoomToHallId } from "@/utils/reportUtils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
