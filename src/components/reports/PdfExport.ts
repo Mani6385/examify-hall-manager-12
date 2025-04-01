@@ -1,4 +1,3 @@
-
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, getDepartmentsWithYears } from '@/utils/reportUtils';
@@ -34,13 +33,11 @@ export const generatePdfReport = (
   
   // For each arrangement, add a detailed page
   arrangements.forEach((arrangement, index) => {
-    // If there are more than 5 arrangements, put detailed reports on new pages
-    if (index > 0 && (index % 2 === 0 || arrangements.length > 5)) {
-      doc.addPage();
-    }
+    // Always start each arrangement on a new page
+    doc.addPage();
     
     // Add room-specific detail section with class-wise breakdowns
-    addRoomDetailClassWise(doc, arrangement, index === 0 ? 30 : doc.lastAutoTable.finalY + 15);
+    addRoomDetailClassWise(doc, arrangement, 30);
   });
   
   doc.save(`seating-plan-${hallName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
@@ -267,10 +264,15 @@ function addRoomDetailClassWise(doc: jsPDF, arrangement: SeatingArrangement, sta
     deptGroups.get(key)?.students.push(assignment);
   });
   
+  // Add header with room number prominently displayed
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Room ${arrangement.room_no} - Seating Plan`, doc.internal.pageSize.width / 2, startY - 15, { align: "center" });
+  
   // Add header
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Room ${arrangement.room_no} - Student Assignments by Department and Year`, 14, startY - 5);
+  doc.text(`Student Assignments by Department and Year`, 14, startY - 5);
   
   // Add department and year information
   doc.setFontSize(8);
@@ -334,6 +336,81 @@ function addRoomDetailClassWise(doc: jsPDF, arrangement: SeatingArrangement, sta
       }
     }
   });
+  
+  // Add visual seating chart below the student list
+  if (arrangement.rows && arrangement.columns) {
+    addVisualSeatingGrid(doc, arrangement, doc.lastAutoTable.finalY + 15);
+  }
+}
+
+function addVisualSeatingGrid(doc: jsPDF, arrangement: SeatingArrangement, startY: number) {
+  const pageWidth = doc.internal.pageSize.width;
+  const centerX = pageWidth / 2;
+  
+  // Add header
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Visual Seating Arrangement`, centerX, startY, { align: "center" });
+  
+  const rows = arrangement.rows;
+  const columns = arrangement.columns;
+  
+  // Calculate grid dimensions
+  const margin = 20;
+  const availableWidth = pageWidth - (2 * margin);
+  const maxHeight = doc.internal.pageSize.height - startY - 20;
+  
+  const cellWidth = Math.min(availableWidth / columns, 25);
+  const cellHeight = Math.min(maxHeight / rows, 15);
+  
+  const gridWidth = cellWidth * columns;
+  const startX = (pageWidth - gridWidth) / 2;
+  
+  // Find all assignments
+  const assignmentMap = new Map();
+  arrangement.seating_assignments.forEach(assignment => {
+    if (assignment.seat_no && assignment.seat_no.trim() !== '') {
+      assignmentMap.set(assignment.seat_no, assignment);
+    }
+  });
+  
+  // Draw the seating grid
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < columns; col++) {
+      const x = startX + (col * cellWidth);
+      const y = startY + 5 + (row * cellHeight);
+      
+      // Draw cell border
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.2);
+      doc.rect(x, y, cellWidth, cellHeight);
+      
+      // Calculate seat number
+      const rowLabel = String.fromCharCode(65 + row); // A, B, C, ...
+      const colLabel = col + 1;
+      const seatNo = `${rowLabel}${colLabel}`;
+      
+      // Get assignment details for this seat
+      const assignment = assignmentMap.get(seatNo);
+      
+      if (assignment) {
+        // Seat number
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'bold');
+        doc.text(seatNo, x + 2, y + 4);
+        
+        // Registration number
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'normal');
+        doc.text(assignment.reg_no || 'N/A', x + 2, y + 8);
+      } else {
+        // Empty seat
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'bold');
+        doc.text(seatNo, x + 2, y + 4);
+      }
+    }
+  }
 }
 
 function addSummaryTable(doc: jsPDF, arrangements: SeatingArrangement[]) {
@@ -466,99 +543,6 @@ function addRoomDetailPage(doc: jsPDF, arrangement: SeatingArrangement) {
         fillColor: [66, 66, 66],
       },
     });
-  }
-}
-
-function addVisualSeatingGrid(doc: jsPDF, arrangement: SeatingArrangement) {
-  const pageWidth = doc.internal.pageSize.width;
-  const centerX = pageWidth / 2;
-  
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Room ${arrangement.room_no} - Visual Seating Plan`, centerX, 20, { align: "center" });
-  
-  const rows = arrangement.rows;
-  const columns = arrangement.columns;
-  
-  // Calculate grid dimensions
-  const margin = 20;
-  const availableWidth = pageWidth - (2 * margin);
-  const availableHeight = doc.internal.pageSize.height - 60;
-  
-  const cellWidth = Math.min(availableWidth / columns, 70);
-  const cellHeight = Math.min(availableHeight / rows, 50);
-  
-  const gridWidth = cellWidth * columns;
-  const startX = (pageWidth - gridWidth) / 2;
-  let startY = 40;
-  
-  // Find all assignments
-  const assignmentMap = new Map();
-  arrangement.seating_assignments.forEach(assignment => {
-    if (assignment.seat_no && assignment.seat_no.trim() !== '') {
-      assignmentMap.set(assignment.seat_no, assignment);
-    }
-  });
-  
-  // Draw the seating grid
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < columns; col++) {
-      const x = startX + (col * cellWidth);
-      const y = startY + (row * cellHeight);
-      
-      // Draw cell border
-      doc.setDrawColor(0);
-      doc.setLineWidth(0.5);
-      doc.rect(x, y, cellWidth, cellHeight);
-      
-      // Calculate seat number (based on common patterns)
-      const rowLabel = String.fromCharCode(65 + row); // A, B, C, ...
-      const colLabel = col + 1;
-      const seatNo = `${rowLabel}${colLabel}`;
-      
-      // Get assignment details for this seat
-      const assignment = assignmentMap.get(seatNo);
-      
-      if (assignment) {
-        // Find department config to get year
-        let yearInfo = '';
-        if (assignment.department) {
-          const deptConfig = arrangement.department_configs.find(
-            config => config.department === assignment.department
-          );
-          yearInfo = deptConfig?.year || '';
-        }
-        
-        // Seat number
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text(seatNo, x + 5, y + 10);
-        
-        // Department
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text(assignment.department || 'N/A', x + 5, y + 20);
-        
-        // Registration number
-        doc.setFontSize(8);
-        doc.text(assignment.reg_no || 'N/A', x + 5, y + 30);
-        
-        // Year information (added)
-        if (yearInfo) {
-          doc.setFontSize(7);
-          doc.text(`Year: ${yearInfo}`, x + 5, y + 38);
-        }
-      } else {
-        // Empty seat
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text(seatNo, x + 5, y + 10);
-        
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text("Empty", x + 5, y + 20);
-      }
-    }
   }
 }
 
