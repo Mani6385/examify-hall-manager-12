@@ -55,12 +55,19 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
         } else if (data && data.length > 0) {
           // Map classes data to Hall interface
           const mappedHalls: Hall[] = data.map((item, index) => {
-            const roomNums = item.room_numbers?.split(',') || [];
+            // Create roomNumbers array from the name property (as a fallback)
+            // If a class is called G13, we'll create a room number like "G13-Room1"
+            const defaultRoomNumbers = [
+              `${item.name}-Room1`,
+              `${item.name}-Room2`,
+              `${item.name}-Room3`
+            ];
+            
             return {
               id: item.id || String(index + 1),
               name: item.name || `Hall ${index + 1}`,
               capacity: parseInt(item.capacity) || 30,
-              roomNumbers: roomNums
+              roomNumbers: defaultRoomNumbers
             };
           });
           

@@ -65,12 +65,21 @@ export const CenterDetails = ({
           setAvailableHalls(initialHalls);
         } else if (data && data.length > 0) {
           // Map classes data to Hall interface
-          const mappedHalls: Hall[] = data.map((item, index) => ({
-            id: item.id,
-            name: item.name || `Hall ${index + 1}`,
-            capacity: parseInt(item.capacity) || 30,
-            roomNumbers: item.room_numbers?.split(',') || []
-          }));
+          const mappedHalls: Hall[] = data.map((item) => {
+            // Create a few default room numbers based on the hall name
+            const defaultRoomNumbers = [
+              `${item.name}-Room1`,
+              `${item.name}-Room2`,
+              `${item.name}-Room3`
+            ];
+            
+            return {
+              id: item.id,
+              name: item.name || 'Unnamed Hall',
+              capacity: parseInt(item.capacity) || 30,
+              roomNumbers: defaultRoomNumbers
+            };
+          });
           setAvailableHalls(mappedHalls);
         } else {
           // If no data, use provided halls
