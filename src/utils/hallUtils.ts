@@ -3,29 +3,13 @@ export interface Hall {
   id: string;
   name: string;
   capacity: number;
-  roomNumbers?: string[]; // Adding roomNumbers as an optional property
 }
 
-// Define some default halls with associated room numbers
+// Define some default halls since we don't have a halls table in the database
 export const DEFAULT_HALLS: Hall[] = [
-  { 
-    id: '1', 
-    name: 'Hall A', 
-    capacity: 30,
-    roomNumbers: ['A101', 'A102', 'A103', 'A104', 'A105']
-  },
-  { 
-    id: '2', 
-    name: 'Hall B', 
-    capacity: 40,
-    roomNumbers: ['B201', 'B202', 'B203', 'B204', 'B205']
-  },
-  { 
-    id: '3', 
-    name: 'Hall C', 
-    capacity: 50,
-    roomNumbers: ['C301', 'C302', 'C303', 'C304', 'C305']
-  }
+  { id: '1', name: 'Hall A', capacity: 30 },
+  { id: '2', name: 'Hall B', capacity: 40 },
+  { id: '3', name: 'Hall C', capacity: 50 }
 ];
 
 // Helper function to get hall by ID
@@ -72,9 +56,9 @@ export const getAvailableHalls = (): Hall[] => {
 };
 
 // Create a new hall
-export const createHall = (halls: Hall[], name: string, capacity: number, roomNumbers?: string[]): Hall[] => {
+export const createHall = (halls: Hall[], name: string, capacity: number): Hall[] => {
   const newId = (Math.max(...halls.map(h => parseInt(h.id))) + 1).toString();
-  const newHall: Hall = { id: newId, name, capacity, roomNumbers };
+  const newHall: Hall = { id: newId, name, capacity };
   return [...halls, newHall];
 };
 
@@ -83,20 +67,4 @@ export const updateHall = (halls: Hall[], id: string, updates: Partial<Hall>): H
   return halls.map(hall => 
     hall.id === id ? { ...hall, ...updates } : hall
   );
-};
-
-// Get room numbers for a specific hall
-export const getRoomNumbersByHallId = (hallId: string): string[] => {
-  const hall = getHallById(hallId);
-  return hall?.roomNumbers || [];
-};
-
-// Find hall ID by room number
-export const getHallIdByRoomNumber = (roomNumber: string): string | undefined => {
-  for (const hall of DEFAULT_HALLS) {
-    if (hall.roomNumbers?.includes(roomNumber)) {
-      return hall.id;
-    }
-  }
-  return undefined;
 };
