@@ -3,9 +3,16 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { SeatingArrangement, getHallNameById, formatDepartmentWithYear, getDepartmentsWithYears } from '@/utils/reportUtils';
 
+// Extend the jsPDF type to include lastAutoTable
+interface ExtendedJsPDF extends jsPDF {
+  lastAutoTable?: {
+    finalY: number;
+  };
+}
+
 export const generatePdfReport = (arrangements: SeatingArrangement[], hallId: string) => {
   try {
-    const doc = new jsPDF();
+    const doc = new jsPDF() as ExtendedJsPDF;
     const hallName = getHallNameById(hallId);
     
     // Add title
@@ -39,7 +46,7 @@ export const generatePdfReport = (arrangements: SeatingArrangement[], hallId: st
   }
 };
 
-function addSummaryTable(doc: jsPDF, arrangements: SeatingArrangement[]) {
+function addSummaryTable(doc: ExtendedJsPDF, arrangements: SeatingArrangement[]) {
   const totalStudents = arrangements.reduce(
     (total, arr) => total + arr.seating_assignments.length, 
     0
@@ -95,7 +102,7 @@ function addSummaryTable(doc: jsPDF, arrangements: SeatingArrangement[]) {
   });
 }
 
-function addDetailedArrangement(doc: jsPDF, arrangement: SeatingArrangement) {
+function addDetailedArrangement(doc: ExtendedJsPDF, arrangement: SeatingArrangement) {
   // Room title
   const startY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : 50;
   doc.setFontSize(14);
@@ -150,7 +157,7 @@ function addDetailedArrangement(doc: jsPDF, arrangement: SeatingArrangement) {
     });
     
     // Create student table header
-    const tableStartY = prefixIndex === 0 ? startY + 40 : doc.lastAutoTable.finalY + 15;
+    const tableStartY = prefixIndex === 0 ? startY + 40 : (doc.lastAutoTable?.finalY || 0) + 15;
     
     // Add title for the group
     const departmentConfig = arrangement.department_configs.find(
