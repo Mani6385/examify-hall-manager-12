@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { X, Info } from "lucide-react";
+import { X, Info, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Hall, DEFAULT_HALLS, removeHall, getHallNameById } from "@/utils/hallUtils";
 import { 
@@ -28,6 +28,8 @@ interface HallSelectProps {
 export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
   const [availableHalls, setAvailableHalls] = useState<Hall[]>(DEFAULT_HALLS);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedRoomNumber, setSelectedRoomNumber] = useState<string>("");
+  const [roomNumbers, setRoomNumbers] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     const fetchHalls = async () => {
@@ -43,17 +45,43 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
           console.error("Error fetching classes:", error);
           // If there's an error, use default halls
           setAvailableHalls(DEFAULT_HALLS);
+          
+          // Also set room numbers from default halls
+          const defaultRoomNumbers: Record<string, string[]> = {};
+          DEFAULT_HALLS.forEach(hall => {
+            defaultRoomNumbers[hall.id] = hall.roomNumbers || [];
+          });
+          setRoomNumbers(defaultRoomNumbers);
         } else if (data && data.length > 0) {
           // Map classes data to Hall interface
-          const mappedHalls: Hall[] = data.map((item, index) => ({
-            id: item.id || String(index + 1),
-            name: item.name || `Hall ${index + 1}`,
-            capacity: parseInt(item.capacity) || 30
-          }));
+          const mappedHalls: Hall[] = data.map((item, index) => {
+            const roomNums = item.room_numbers?.split(',') || [];
+            return {
+              id: item.id || String(index + 1),
+              name: item.name || `Hall ${index + 1}`,
+              capacity: parseInt(item.capacity) || 30,
+              roomNumbers: roomNums
+            };
+          });
+          
           setAvailableHalls(mappedHalls);
+          
+          // Set room numbers
+          const mappedRoomNumbers: Record<string, string[]> = {};
+          mappedHalls.forEach(hall => {
+            mappedRoomNumbers[hall.id] = hall.roomNumbers || [];
+          });
+          setRoomNumbers(mappedRoomNumbers);
         } else {
           // If no data, use default halls
           setAvailableHalls(DEFAULT_HALLS);
+          
+          // Also set room numbers from default halls
+          const defaultRoomNumbers: Record<string, string[]> = {};
+          DEFAULT_HALLS.forEach(hall => {
+            defaultRoomNumbers[hall.id] = hall.roomNumbers || [];
+          });
+          setRoomNumbers(defaultRoomNumbers);
         }
       } catch (error) {
         console.error("Failed to fetch classes:", error);
@@ -72,11 +100,18 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
     // If the hall being removed is currently selected, switch to "all"
     if (selectedHall === id) {
       setSelectedHall("all");
+      setSelectedRoomNumber("");
     }
     
     // Remove the hall from available halls
     const updatedHalls = removeHall(availableHalls, id);
     setAvailableHalls(updatedHalls);
+  };
+
+  // Handle hall selection change
+  const handleHallChange = (value: string) => {
+    setSelectedHall(value);
+    setSelectedRoomNumber(""); // Reset room selection when hall changes
   };
 
   return (
@@ -85,7 +120,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
         <CardTitle className="text-lg font-medium">Hall Selection</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Select value={selectedHall} onValueChange={setSelectedHall}>
+        <Select value={selectedHall} onValueChange={handleHallChange}>
           <SelectTrigger className="w-full bg-white">
             <SelectValue placeholder="Select Hall" />
           </SelectTrigger>
@@ -115,6 +150,25 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
           </SelectContent>
         </Select>
         
+        {selectedHall && selectedHall !== "all" && roomNumbers[selectedHall]?.length > 0 && (
+          <Select 
+            value={selectedRoomNumber} 
+            onValueChange={setSelectedRoomNumber}
+          >
+            <SelectTrigger className="w-full bg-white">
+              <SelectValue placeholder="Select Room Number (Optional)" />
+            </SelectTrigger>
+            <SelectContent className="bg-white">
+              <SelectItem value="">All Rooms</SelectItem>
+              {roomNumbers[selectedHall].map((room) => (
+                <SelectItem key={room} value={room}>
+                  {room}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        
         <div className="flex flex-wrap gap-2">
           {availableHalls.map((hall) => (
             <TooltipProvider key={hall.id}>
@@ -123,7 +177,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
                   <Badge 
                     variant="outline" 
                     className={`${selectedHall === hall.id ? 'bg-primary/10 border-primary' : 'bg-background'} cursor-pointer`}
-                    onClick={() => setSelectedHall(hall.id)}
+                    onClick={() => handleHallChange(hall.id)}
                   >
                     {hall.name}
                     <Button 
@@ -140,6 +194,9 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
                   <div className="text-xs">
                     <p className="font-semibold">{hall.name}</p>
                     <p>Capacity: {hall.capacity} seats</p>
+                    {hall.roomNumbers && hall.roomNumbers.length > 0 && (
+                      <p>Rooms: {hall.roomNumbers.join(', ')}</p>
+                    )}
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -149,7 +206,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
         
         {availableHalls.length === 0 && (
           <div className="flex items-center justify-center py-2 text-amber-600 text-sm">
-            <Info className="h-4 w-4 mr-2" />
+            <RefreshCw className="h-4 w-4 mr-2" />
             <span>All halls have been removed. Refresh the page to reset.</span>
           </div>
         )}

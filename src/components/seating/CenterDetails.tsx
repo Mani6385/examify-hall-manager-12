@@ -1,10 +1,11 @@
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Hall, removeHall } from "@/utils/hallUtils";
+import { Hall, removeHall, getRoomNumbersByHallId } from "@/utils/hallUtils";
 import { supabase } from "@/integrations/supabase/client";
 
 interface CenterDetailsProps {
@@ -46,7 +47,8 @@ export const CenterDetails = ({
 }: CenterDetailsProps) => {
   const [availableHalls, setAvailableHalls] = useState<Hall[]>(initialHalls);
   const [isLoadingHalls, setIsLoadingHalls] = useState(false);
-
+  const [availableRoomNumbers, setAvailableRoomNumbers] = useState<string[]>([]);
+  
   useEffect(() => {
     const fetchHalls = async () => {
       setIsLoadingHalls(true);
@@ -66,7 +68,8 @@ export const CenterDetails = ({
           const mappedHalls: Hall[] = data.map((item, index) => ({
             id: item.id,
             name: item.name || `Hall ${index + 1}`,
-            capacity: parseInt(item.capacity) || 30
+            capacity: parseInt(item.capacity) || 30,
+            roomNumbers: item.room_numbers?.split(',') || []
           }));
           setAvailableHalls(mappedHalls);
         } else {
@@ -84,17 +87,46 @@ export const CenterDetails = ({
     fetchHalls();
   }, [initialHalls]);
 
+  // Update available room numbers when selected hall changes
+  useEffect(() => {
+    if (selectedHall) {
+      const roomNumbers = getRoomNumbersByHallId(selectedHall);
+      setAvailableRoomNumbers(roomNumbers);
+      
+      // If there are room numbers and current room is not in the list, reset it
+      if (roomNumbers.length > 0 && !roomNumbers.includes(roomNo)) {
+        setRoomNo(roomNumbers[0] || '');
+      }
+    } else {
+      setAvailableRoomNumbers([]);
+    }
+  }, [selectedHall, roomNo, setRoomNo]);
+
   const handleRemoveHall = (hallId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
     // If the hall being removed is currently selected, reset selection
     if (selectedHall === hallId) {
       handleHallSelect("");
+      setRoomNo("");
     }
     
     // Remove the hall from available halls
     const updatedHalls = removeHall(availableHalls, hallId);
     setAvailableHalls(updatedHalls);
+  };
+
+  const handleCenterChange = (value: string) => {
+    setCenterName(value);
+    const center = examCenters.find(c => c.name === value);
+    if (center) {
+      setCenterCode(center.code);
+      
+      // Reset hall and room selection when center changes
+      handleHallSelect("");
+      setRoomNo("");
+      setFloorNo("");
+    }
   };
 
   return (
@@ -103,13 +135,7 @@ export const CenterDetails = ({
       <div className="grid grid-cols-2 gap-4">
         <Select 
           value={centerName} 
-          onValueChange={(value) => {
-            setCenterName(value);
-            const center = examCenters.find(c => c.name === value);
-            if (center) {
-              setCenterCode(center.code);
-            }
-          }}
+          onValueChange={handleCenterChange}
         >
           <SelectTrigger className="border-blue-200 focus:border-blue-400">
             <SelectValue placeholder="Select Center" />
@@ -153,21 +179,35 @@ export const CenterDetails = ({
           </SelectContent>
         </Select>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            placeholder="Room Number"
-            value={roomNo}
-            onChange={(e) => setRoomNo(e.target.value)}
-            className="border-blue-200 focus:border-blue-400"
-          />
+        <Select 
+          value={roomNo} 
+          onValueChange={setRoomNo}
+          disabled={!selectedHall || availableRoomNumbers.length === 0}
+        >
+          <SelectTrigger className="border-blue-200 focus:border-blue-400">
+            <SelectValue placeholder="Select Room Number" />
+          </SelectTrigger>
+          <SelectContent>
+            {availableRoomNumbers.length > 0 ? (
+              availableRoomNumbers.map((room) => (
+                <SelectItem key={room} value={room}>
+                  {room}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="none" disabled>
+                {selectedHall ? "No rooms available" : "Select a hall first"}
+              </SelectItem>
+            )}
+          </SelectContent>
+        </Select>
 
-          <Input
-            placeholder="Floor Number"
-            value={floorNo}
-            onChange={(e) => setFloorNo(e.target.value)}
-            className="border-blue-200 focus:border-blue-400"
-          />
-        </div>
+        <Input
+          placeholder="Floor Number"
+          value={floorNo}
+          onChange={(e) => setFloorNo(e.target.value)}
+          className="border-blue-200 focus:border-blue-400"
+        />
 
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-2">
@@ -219,7 +259,10 @@ export const CenterDetails = ({
           ))}
         </div>
         {availableHalls.length === 0 && (
-          <p className="text-xs text-amber-600 mt-2">All halls have been removed. Refresh the page to reset.</p>
+          <div className="flex items-center text-xs text-amber-600 mt-2">
+            <RefreshCw className="h-3 w-3 mr-1" />
+            <p>All halls have been removed. Refresh the page to reset.</p>
+          </div>
         )}
       </div>
     </div>
