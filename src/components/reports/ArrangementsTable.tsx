@@ -1,3 +1,4 @@
+
 import { 
   Table, 
   TableBody, 
@@ -7,7 +8,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Edit, Loader2, PlusCircle, Trash2 } from "lucide-react";
+import { AlertCircle, Edit, Eye, Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { SeatingArrangement, formatDepartmentsWithYears, mapRoomToHallId } from "@/utils/reportUtils";
 import { DetailedReportView } from "./DetailedReportView";
 import { SeatingGridPreview } from "./SeatingGridPreview";
@@ -35,6 +36,10 @@ export function ArrangementsTable({
 
   const editSeatingPlan = (arrangementId: string) => {
     navigate(`/seating?edit=${arrangementId}`);
+  };
+
+  const viewSeatingPlan = (arrangementId: string) => {
+    navigate(`/seating-view?id=${arrangementId}`);
   };
 
   if (isLoading) {
@@ -113,8 +118,19 @@ export function ArrangementsTable({
                   <Button 
                     variant="outline" 
                     size="icon" 
+                    className="h-8 w-8 text-green-600 hover:bg-green-50"
+                    onClick={() => viewSeatingPlan(arrangement.id)}
+                    title="View Seating Plan"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
                     className="h-8 w-8 text-blue-600 hover:bg-blue-50"
                     onClick={() => editSeatingPlan(arrangement.id)}
+                    title="Edit Seating Plan"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -125,6 +141,7 @@ export function ArrangementsTable({
                       size="icon" 
                       className="h-8 w-8 text-destructive hover:bg-destructive/10"
                       onClick={() => onRemoveArrangement(arrangement.id)}
+                      title="Delete Seating Plan"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
