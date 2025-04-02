@@ -152,7 +152,10 @@ export const CenterDetails = ({
           <SelectContent>
             {examCenters.map((center) => (
               <SelectItem key={center.id} value={center.name}>
-                {center.name}
+                <div className="flex flex-col">
+                  <span className="font-medium">{center.name}</span>
+                  <span className="text-xs text-muted-foreground">Code: {center.code}</span>
+                </div>
               </SelectItem>
             ))}
           </SelectContent>
@@ -181,7 +184,15 @@ export const CenterDetails = ({
             ) : (
               availableHalls.map((hall) => (
                 <SelectItem key={hall.id} value={hall.id}>
-                  {hall.name} (Capacity: {hall.capacity})
+                  <div className="flex flex-col">
+                    <div className="flex items-center">
+                      <span className="font-medium">{hall.name}</span>
+                      <Badge variant="outline" className="ml-2 text-xs bg-primary/10">
+                        {hall.roomNumbers?.length || 0} rooms
+                      </Badge>
+                    </div>
+                    <span className="text-xs text-muted-foreground">Capacity: {hall.capacity} seats</span>
+                  </div>
                 </SelectItem>
               ))
             )}
@@ -200,7 +211,12 @@ export const CenterDetails = ({
             {availableRoomNumbers.length > 0 ? (
               availableRoomNumbers.map((room) => (
                 <SelectItem key={room} value={room}>
-                  {room}
+                  <div className="flex items-center">
+                    <span className="font-medium">{room}</span>
+                    <Badge className="ml-2 text-xs">
+                      {availableHalls.find(h => h.id === selectedHall)?.name || ''}
+                    </Badge>
+                  </div>
                 </SelectItem>
               ))
             ) : (

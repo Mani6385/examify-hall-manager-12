@@ -141,7 +141,10 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
               availableHalls.map((hall) => (
                 <SelectItem key={hall.id} value={hall.id} className="flex justify-between">
                   <div className="flex items-center justify-between w-full">
-                    <span>{hall.name} - Capacity: {hall.capacity}</span>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{hall.name}</span>
+                      <span className="text-xs text-muted-foreground">Capacity: {hall.capacity} seats</span>
+                    </div>
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -169,7 +172,12 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
               <SelectItem value="">All Rooms</SelectItem>
               {roomNumbers[selectedHall].map((room) => (
                 <SelectItem key={room} value={room}>
-                  {room}
+                  <div className="flex items-center">
+                    <span className="font-medium">{room}</span>
+                    <Badge variant="outline" className="ml-2 text-xs bg-primary/10 text-primary">
+                      {getHallNameById(selectedHall)}
+                    </Badge>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
