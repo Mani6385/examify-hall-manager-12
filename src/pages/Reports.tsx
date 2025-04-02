@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/dashboard/Layout";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +14,6 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ChevronLeft, ChevronRight, PlusCircle, RefreshCw } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 const mockArrangements: SeatingArrangement[] = [
   {
@@ -59,7 +57,6 @@ const Reports = () => {
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [selectedHall, setSelectedHall] = useState<string>("all");
   const [useFallbackData, setUseFallbackData] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchSeatingArrangements = async () => {
     console.log("Fetching seating arrangements...");
@@ -178,7 +175,6 @@ const Reports = () => {
     const currentIndex = uniqueHallIds.indexOf(selectedHall);
     if (currentIndex > 0) {
       setSelectedHall(uniqueHallIds[currentIndex - 1]);
-      setCurrentPage(1);
     }
   };
   
@@ -186,19 +182,12 @@ const Reports = () => {
     const currentIndex = uniqueHallIds.indexOf(selectedHall);
     if (currentIndex < uniqueHallIds.length - 1) {
       setSelectedHall(uniqueHallIds[currentIndex + 1]);
-      setCurrentPage(1);
     }
   };
 
   const filteredArrangements = filterArrangementsByHall(displayData, selectedHall);
   
-  const itemsPerPage = 1;
-  const totalPages = Math.ceil(filteredArrangements.length / itemsPerPage);
-  
-  const currentArrangements = filteredArrangements.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const currentArrangements = filteredArrangements;
 
   const handleRetry = useCallback(() => {
     setUseFallbackData(false);
@@ -344,8 +333,6 @@ const Reports = () => {
     navigate('/seating');
   };
 
-  const currentArrangement = currentArrangements.length > 0 ? currentArrangements[0] : null;
-
   if (isError && !useFallbackData) {
     return (
       <Layout>
@@ -451,37 +438,6 @@ const Reports = () => {
             className="bg-gradient-indigo text-white"
           />
         </div>
-
-        {selectedHall !== "all" && filteredArrangements.length > 1 && (
-          <Pagination className="my-4">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious 
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                />
-              </PaginationItem>
-              
-              {Array.from({ length: totalPages }).map((_, i) => (
-                <PaginationItem key={i}>
-                  <PaginationLink 
-                    isActive={currentPage === i + 1}
-                    onClick={() => setCurrentPage(i + 1)}
-                  >
-                    {i + 1}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-              
-              <PaginationItem>
-                <PaginationNext 
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        )}
 
         <HallReportsCard
           selectedHall={selectedHall}
