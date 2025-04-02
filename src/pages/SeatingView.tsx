@@ -11,6 +11,8 @@ import { ArrowLeft, Download, Loader2, Printer } from "lucide-react";
 import { VisualSeatingChart } from "@/components/seating/VisualSeatingChart";
 import { generatePdfReport } from "@/components/reports/PdfExport";
 import { generateExcelReport } from "@/components/reports/ExcelExport";
+import { Seat } from "@/utils/studentUtils";
+import { DepartmentConfig } from "@/utils/departmentUtils";
 
 const SeatingView = () => {
   const [searchParams] = useSearchParams();
@@ -187,12 +189,22 @@ const SeatingView = () => {
   }
 
   // Transform seating assignments to the format expected by VisualSeatingChart
-  const seats = arrangement.seating_assignments.map(assignment => ({
-    id: assignment.id,
+  const seats: Seat[] = arrangement.seating_assignments.map(assignment => ({
+    id: parseInt(assignment.id.split('-')[0], 16) || 0, // Convert string id to number
     seatNo: assignment.seat_no,
     regNo: assignment.reg_no || '',
     studentName: assignment.student_name || '',
     department: assignment.department || ''
+  }));
+
+  // Transform department configs to match the DepartmentConfig type from departmentUtils
+  const departmentConfigs: DepartmentConfig[] = arrangement.department_configs.map(config => ({
+    id: config.id,
+    department: config.department,
+    startRegNo: config.start_reg_no,
+    endRegNo: config.end_reg_no,
+    prefix: config.prefix,
+    year: config.year || undefined
   }));
 
   return (
@@ -275,7 +287,7 @@ const SeatingView = () => {
               seats={seats}
               rows={arrangement.rows}
               cols={arrangement.columns}
-              departments={arrangement.department_configs}
+              departments={departmentConfigs}
             />
           </CardContent>
         </Card>
