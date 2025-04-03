@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { HallSelect } from "./HallSelect";
+import { HallSelect } from "./hall-select";
 import { ReportButtons } from "./ReportButtons";
 import { ArrangementsTable } from "./ArrangementsTable";
 import { SeatingArrangement } from "@/utils/reportUtils";
