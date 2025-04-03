@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { X, Info, Building2 } from "lucide-react";
+import { X, Info, Building2, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Hall, DEFAULT_HALLS, removeHall, getHallNameById } from "@/utils/hallUtils";
 import { 
@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface HallSelectProps {
   selectedHall: string;
@@ -28,6 +29,7 @@ interface HallSelectProps {
 export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
   const [availableHalls, setAvailableHalls] = useState<Hall[]>(DEFAULT_HALLS);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchHalls = async () => {
@@ -89,6 +91,20 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
     // Remove the hall from available halls
     const updatedHalls = removeHall(availableHalls, id);
     setAvailableHalls(updatedHalls);
+    
+    // Show a toast notification
+    toast({
+      title: "Hall Removed",
+      description: `${getHallNameById(id)} has been removed from the selection.`,
+    });
+  };
+
+  const handleResetHalls = () => {
+    setAvailableHalls(DEFAULT_HALLS);
+    toast({
+      title: "Halls Reset",
+      description: "All halls have been restored to defaults.",
+    });
   };
 
   return (
@@ -169,9 +185,19 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
         </div>
         
         {availableHalls.length === 0 && (
-          <div className="flex items-center justify-center py-2 text-amber-600 text-sm">
-            <Info className="h-4 w-4 mr-2" />
-            <span>All halls have been removed. Refresh the page to reset.</span>
+          <div className="flex flex-col items-center justify-center py-2 space-y-2">
+            <div className="flex items-center text-amber-600 text-sm">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              <span>All halls have been removed.</span>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleResetHalls} 
+              className="text-xs"
+            >
+              Reset Halls
+            </Button>
           </div>
         )}
       </CardContent>

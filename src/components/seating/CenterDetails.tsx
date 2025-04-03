@@ -3,10 +3,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Loader2, Building2, DoorClosed } from "lucide-react";
+import { X, Loader2, Building2, DoorClosed, AlertCircle, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Hall, removeHall, getRoomNumbersByHallId } from "@/utils/hallUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface CenterDetailsProps {
   centerName: string;
@@ -48,6 +49,7 @@ export const CenterDetails = ({
   const [availableHalls, setAvailableHalls] = useState<Hall[]>(initialHalls);
   const [isLoadingHalls, setIsLoadingHalls] = useState(false);
   const [roomNumbers, setRoomNumbers] = useState<string[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchHalls = async () => {
@@ -125,6 +127,21 @@ export const CenterDetails = ({
     // Remove the hall from available halls
     const updatedHalls = removeHall(availableHalls, hallId);
     setAvailableHalls(updatedHalls);
+    
+    // Show toast notification
+    const hallName = availableHalls.find(h => h.id === hallId)?.name || 'Hall';
+    toast({
+      title: "Hall Removed",
+      description: `${hallName} has been removed from available halls.`,
+    });
+  };
+
+  const handleResetHalls = () => {
+    setAvailableHalls(initialHalls);
+    toast({
+      title: "Halls Reset",
+      description: "All halls have been restored to defaults.",
+    });
   };
 
   return (
@@ -277,7 +294,21 @@ export const CenterDetails = ({
           ))}
         </div>
         {availableHalls.length === 0 && (
-          <p className="text-xs text-amber-600 mt-2">All halls have been removed. Refresh the page to reset.</p>
+          <div className="flex flex-col items-center justify-center py-2 space-y-2">
+            <div className="flex items-center text-amber-600 text-sm">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              <span>All halls have been removed.</span>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleResetHalls} 
+              className="text-xs flex items-center"
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Reset Halls
+            </Button>
+          </div>
         )}
       </div>
 
