@@ -1,10 +1,11 @@
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, Building2, DoorClosed } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Hall, removeHall } from "@/utils/hallUtils";
+import { Hall, removeHall, getRoomNumbersByHallId } from "@/utils/hallUtils";
 import { supabase } from "@/integrations/supabase/client";
 
 interface CenterDetailsProps {
@@ -46,6 +47,7 @@ export const CenterDetails = ({
 }: CenterDetailsProps) => {
   const [availableHalls, setAvailableHalls] = useState<Hall[]>(initialHalls);
   const [isLoadingHalls, setIsLoadingHalls] = useState(false);
+  const [roomNumbers, setRoomNumbers] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchHalls = async () => {
@@ -62,11 +64,13 @@ export const CenterDetails = ({
           // If there's an error, use provided halls
           setAvailableHalls(initialHalls);
         } else if (data && data.length > 0) {
-          // Map classes data to Hall interface
+          // Map classes data to Hall interface with room numbers
           const mappedHalls: Hall[] = data.map((item, index) => ({
             id: item.id,
             name: item.name || `Hall ${index + 1}`,
-            capacity: parseInt(item.capacity) || 30
+            capacity: parseInt(item.capacity) || 30,
+            // Add sample room numbers based on the hall name
+            roomNumbers: generateSampleRooms(item.name || `Hall ${index + 1}`, index + 1)
           }));
           setAvailableHalls(mappedHalls);
         } else {
@@ -84,12 +88,38 @@ export const CenterDetails = ({
     fetchHalls();
   }, [initialHalls]);
 
+  // Update room numbers when hall selection changes
+  useEffect(() => {
+    if (selectedHall) {
+      const selectedHallRooms = availableHalls.find(h => h.id === selectedHall)?.roomNumbers || [];
+      setRoomNumbers(selectedHallRooms);
+      
+      // Auto-select the first room if available and no room is currently selected
+      if (selectedHallRooms.length > 0 && (!roomNo || !selectedHallRooms.includes(roomNo))) {
+        setRoomNo(selectedHallRooms[0]);
+      }
+    } else {
+      setRoomNumbers([]);
+    }
+  }, [selectedHall, availableHalls]);
+
+  // Generate sample room numbers for a hall
+  const generateSampleRooms = (hallName: string, index: number): string[] => {
+    const prefix = hallName.charAt(0).toUpperCase();
+    const roomCount = 3 + index; // Each hall gets a different number of rooms
+    
+    return Array.from({ length: roomCount }, (_, i) => 
+      `${prefix}${index}${String(i + 1).padStart(2, '0')}`
+    );
+  };
+
   const handleRemoveHall = (hallId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
     // If the hall being removed is currently selected, reset selection
     if (selectedHall === hallId) {
       handleHallSelect("");
+      setRoomNo("");
     }
     
     // Remove the hall from available halls
@@ -99,7 +129,10 @@ export const CenterDetails = ({
 
   return (
     <div className="space-y-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100 shadow-sm">
-      <h3 className="font-semibold text-blue-800">Examination Center Details</h3>
+      <h3 className="font-semibold text-blue-800 flex items-center">
+        <Building2 className="h-5 w-5 mr-2 text-blue-600" />
+        Examination Center Details
+      </h3>
       <div className="grid grid-cols-2 gap-4">
         <Select 
           value={centerName} 
@@ -132,9 +165,14 @@ export const CenterDetails = ({
 
         <Select 
           value={selectedHall} 
-          onValueChange={handleHallSelect}
+          onValueChange={(value) => {
+            handleHallSelect(value);
+            // Reset room when hall changes
+            setRoomNo("");
+          }}
         >
-          <SelectTrigger className="border-blue-200 focus:border-blue-400">
+          <SelectTrigger className="border-blue-200 focus:border-blue-400 flex items-center">
+            <Building2 className="h-4 w-4 mr-2 text-blue-500" />
             <SelectValue placeholder="Select Hall" />
           </SelectTrigger>
           <SelectContent>
@@ -146,28 +184,48 @@ export const CenterDetails = ({
             ) : (
               availableHalls.map((hall) => (
                 <SelectItem key={hall.id} value={hall.id}>
-                  {hall.name} (Capacity: {hall.capacity})
+                  <div>
+                    <span className="font-medium">{hall.name}</span>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      (Capacity: {hall.capacity}, Rooms: {hall.roomNumbers?.length || 0})
+                    </span>
+                  </div>
                 </SelectItem>
               ))
             )}
           </SelectContent>
         </Select>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            placeholder="Room Number"
-            value={roomNo}
-            onChange={(e) => setRoomNo(e.target.value)}
-            className="border-blue-200 focus:border-blue-400"
-          />
+        <Select
+          value={roomNo}
+          onValueChange={setRoomNo}
+          disabled={!selectedHall || roomNumbers.length === 0}
+        >
+          <SelectTrigger className="border-blue-200 focus:border-blue-400 flex items-center">
+            <DoorClosed className="h-4 w-4 mr-2 text-blue-500" />
+            <SelectValue placeholder="Select Room" />
+          </SelectTrigger>
+          <SelectContent>
+            {roomNumbers.length === 0 ? (
+              <SelectItem value="no-rooms" disabled>
+                {selectedHall ? "No rooms available" : "Select a hall first"}
+              </SelectItem>
+            ) : (
+              roomNumbers.map((room) => (
+                <SelectItem key={room} value={room}>
+                  {room}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
 
-          <Input
-            placeholder="Floor Number"
-            value={floorNo}
-            onChange={(e) => setFloorNo(e.target.value)}
-            className="border-blue-200 focus:border-blue-400"
-          />
-        </div>
+        <Input
+          placeholder="Floor Number"
+          value={floorNo}
+          onChange={(e) => setFloorNo(e.target.value)}
+          className="border-blue-200 focus:border-blue-400"
+        />
 
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-2">
@@ -222,6 +280,24 @@ export const CenterDetails = ({
           <p className="text-xs text-amber-600 mt-2">All halls have been removed. Refresh the page to reset.</p>
         )}
       </div>
+
+      {selectedHall && roomNumbers.length > 0 && (
+        <div className="mt-2">
+          <p className="text-xs text-gray-500 mb-2">Available Rooms in {availableHalls.find(h => h.id === selectedHall)?.name}:</p>
+          <div className="flex flex-wrap gap-2">
+            {roomNumbers.map((room) => (
+              <Badge 
+                key={room}
+                variant="outline" 
+                className={`${roomNo === room ? 'bg-blue-100 border-blue-300' : 'bg-background'} cursor-pointer`}
+                onClick={() => setRoomNo(room)}
+              >
+                {room}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

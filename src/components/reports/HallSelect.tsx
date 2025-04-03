@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { X, Info } from "lucide-react";
+import { X, Info, Building2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Hall, DEFAULT_HALLS, removeHall, getHallNameById } from "@/utils/hallUtils";
 import { 
@@ -44,11 +44,13 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
           // If there's an error, use default halls
           setAvailableHalls(DEFAULT_HALLS);
         } else if (data && data.length > 0) {
-          // Map classes data to Hall interface
+          // Map classes data to Hall interface with room numbers
           const mappedHalls: Hall[] = data.map((item, index) => ({
             id: item.id || String(index + 1),
             name: item.name || `Hall ${index + 1}`,
-            capacity: parseInt(item.capacity) || 30
+            capacity: parseInt(item.capacity) || 30,
+            // Add sample room numbers based on the hall name
+            roomNumbers: generateSampleRooms(item.name || `Hall ${index + 1}`, index + 1)
           }));
           setAvailableHalls(mappedHalls);
         } else {
@@ -66,6 +68,16 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
     fetchHalls();
   }, []);
 
+  // Generate sample room numbers for a hall
+  const generateSampleRooms = (hallName: string, index: number): string[] => {
+    const prefix = hallName.charAt(0).toUpperCase();
+    const roomCount = 3 + index; // Each hall gets a different number of rooms
+    
+    return Array.from({ length: roomCount }, (_, i) => 
+      `${prefix}${index}${String(i + 1).padStart(2, '0')}`
+    );
+  };
+
   const handleRemoveHall = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
@@ -82,7 +94,10 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
   return (
     <Card className="bg-white">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-medium">Hall Selection</CardTitle>
+        <CardTitle className="text-lg font-medium flex items-center">
+          <Building2 className="h-5 w-5 mr-2 text-primary" />
+          Hall Selection
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Select value={selectedHall} onValueChange={setSelectedHall}>
@@ -99,7 +114,12 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
               availableHalls.map((hall) => (
                 <SelectItem key={hall.id} value={hall.id} className="flex justify-between">
                   <div className="flex items-center justify-between w-full">
-                    <span>{hall.name} - Capacity: {hall.capacity}</span>
+                    <div>
+                      <span className="font-medium">{hall.name}</span>
+                      <span className="text-sm text-muted-foreground ml-2">
+                        (Capacity: {hall.capacity}, Rooms: {hall.roomNumbers?.length || 0})
+                      </span>
+                    </div>
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -140,6 +160,7 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
                   <div className="text-xs">
                     <p className="font-semibold">{hall.name}</p>
                     <p>Capacity: {hall.capacity} seats</p>
+                    <p>Room Numbers: {hall.roomNumbers?.join(", ") || "None"}</p>
                   </div>
                 </TooltipContent>
               </Tooltip>

@@ -1,5 +1,5 @@
 
-import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils } from './hallUtils';
+import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils, getRoomNumbersByHallId } from './hallUtils';
 
 // Use the halls from hallUtils
 export const HALLS = DEFAULT_HALLS;
@@ -48,23 +48,38 @@ export interface SeatingArrangement {
 
 // Helper function to map room number to hall ID
 export const mapRoomToHallId = (roomNo: string): string => {
-  // For room numbers that start with 'G' like G13, G14, etc.
-  if (roomNo.startsWith('G')) {
-    return '1'; // Map to Hall A
+  if (!roomNo) return '1'; // Default to Hall A if no room number provided
+  
+  // Check if the room number exists in any of the default halls
+  for (const hall of DEFAULT_HALLS) {
+    if (hall.roomNumbers && hall.roomNumbers.includes(roomNo)) {
+      return hall.id;
+    }
   }
   
-  // For numerical room numbers, use the first digit
-  const firstDigit = roomNo.charAt(0);
-  if (/^\d+$/.test(firstDigit)) {
-    // For rooms starting with 1, map to Hall A
-    // For rooms starting with 2, map to Hall B
-    // For all others, map to Hall C
-    return firstDigit === '1' ? '1' : 
-           firstDigit === '2' ? '2' : '3';
+  // If no match found, use prefix matching
+  const firstChar = roomNo.charAt(0).toUpperCase();
+  switch (firstChar) {
+    case 'A':
+      return '1'; // Hall A
+    case 'B':
+      return '2'; // Hall B
+    case 'C':
+      return '3'; // Hall C
+    default:
+      // For numerical room numbers, use the first digit
+      const firstDigit = roomNo.charAt(0);
+      if (/^\d+$/.test(firstDigit)) {
+        // For rooms starting with 1, map to Hall A
+        // For rooms starting with 2, map to Hall B
+        // For all others, map to Hall C
+        return firstDigit === '1' ? '1' : 
+               firstDigit === '2' ? '2' : '3';
+      }
+      
+      // Default to Hall C for any other format
+      return '3';
   }
-  
-  // Default to Hall C for any other format
-  return '3';
 };
 
 // Helper function to filter arrangements by hall
@@ -124,3 +139,6 @@ export const formatDepartmentsWithYears = (arrangement: SeatingArrangement): str
     .map(item => formatDepartmentWithYear(item.department, item.year))
     .join(', ');
 };
+
+// Get available room numbers for a hall ID
+export const getRoomNumbers = getRoomNumbersByHallId;
