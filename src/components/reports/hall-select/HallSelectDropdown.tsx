@@ -9,6 +9,12 @@ import {
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Hall } from "@/utils/hallUtils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface HallSelectDropdownProps {
   selectedHall: string;

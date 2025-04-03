@@ -1,4 +1,3 @@
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +54,6 @@ export const CenterDetails = ({
     const fetchHalls = async () => {
       setIsLoadingHalls(true);
       try {
-        // Try to fetch classes and map them to halls
         const { data, error } = await supabase
           .from('classes')
           .select('*')
@@ -63,20 +61,16 @@ export const CenterDetails = ({
         
         if (error) {
           console.error("Error fetching classes:", error);
-          // If there's an error, use provided halls
           setAvailableHalls(initialHalls);
         } else if (data && data.length > 0) {
-          // Map classes data to Hall interface with room numbers
           const mappedHalls: Hall[] = data.map((item, index) => ({
             id: item.id,
             name: item.name || `Hall ${index + 1}`,
             capacity: parseInt(item.capacity) || 30,
-            // Add sample room numbers based on the hall name
             roomNumbers: generateSampleRooms(item.name || `Hall ${index + 1}`, index + 1)
           }));
           setAvailableHalls(mappedHalls);
         } else {
-          // If no data, use provided halls
           setAvailableHalls(initialHalls);
         }
       } catch (error) {
@@ -90,13 +84,11 @@ export const CenterDetails = ({
     fetchHalls();
   }, [initialHalls]);
 
-  // Update room numbers when hall selection changes
   useEffect(() => {
     if (selectedHall) {
       const selectedHallRooms = availableHalls.find(h => h.id === selectedHall)?.roomNumbers || [];
       setRoomNumbers(selectedHallRooms);
       
-      // Auto-select the first room if available and no room is currently selected
       if (selectedHallRooms.length > 0 && (!roomNo || !selectedHallRooms.includes(roomNo))) {
         setRoomNo(selectedHallRooms[0]);
       }
@@ -105,11 +97,9 @@ export const CenterDetails = ({
     }
   }, [selectedHall, availableHalls]);
 
-  // Generate sample room numbers for a hall
   const generateSampleRooms = (hallName: string, index: number): string[] => {
     const prefix = hallName.charAt(0).toUpperCase();
-    const roomCount = 3 + index; // Each hall gets a different number of rooms
-    
+    const roomCount = 3 + index;
     return Array.from({ length: roomCount }, (_, i) => 
       `${prefix}${index}${String(i + 1).padStart(2, '0')}`
     );
@@ -118,21 +108,41 @@ export const CenterDetails = ({
   const handleRemoveHall = (hallId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // If the hall being removed is currently selected, reset selection
     if (selectedHall === hallId) {
       handleHallSelect("");
       setRoomNo("");
     }
     
-    // Remove the hall from available halls
     const updatedHalls = removeHall(availableHalls, hallId);
     setAvailableHalls(updatedHalls);
     
-    // Show toast notification
     const hallName = availableHalls.find(h => h.id === hallId)?.name || 'Hall';
     toast({
       title: "Hall Removed",
       description: `${hallName} has been removed from available halls.`,
+    });
+  };
+
+  const handleRemoveRoom = (room: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (roomNo === room) {
+      setRoomNo("");
+    }
+    
+    const updatedHalls = availableHalls.map(hall => {
+      if (hall.id === selectedHall && hall.roomNumbers) {
+        const updatedRooms = hall.roomNumbers.filter(r => r !== room);
+        return { ...hall, roomNumbers: updatedRooms };
+      }
+      return hall;
+    });
+    
+    setAvailableHalls(updatedHalls);
+    
+    toast({
+      title: "Room Removed",
+      description: `Room ${room} has been removed from ${availableHalls.find(h => h.id === selectedHall)?.name || 'the hall'}.`,
     });
   };
 
@@ -184,7 +194,6 @@ export const CenterDetails = ({
           value={selectedHall} 
           onValueChange={(value) => {
             handleHallSelect(value);
-            // Reset room when hall changes
             setRoomNo("");
           }}
         >
@@ -229,8 +238,18 @@ export const CenterDetails = ({
               </SelectItem>
             ) : (
               roomNumbers.map((room) => (
-                <SelectItem key={room} value={room}>
-                  {room}
+                <SelectItem key={room} value={room} className="flex justify-between">
+                  <div className="flex items-center justify-between w-full">
+                    <span>{room}</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-5 w-5 p-0 ml-2 hover:bg-red-100 rounded-full"
+                      onClick={(e) => handleRemoveRoom(room, e)}
+                    >
+                      <X className="h-3 w-3 text-red-500" />
+                    </Button>
+                  </div>
                 </SelectItem>
               ))
             )}
@@ -324,6 +343,14 @@ export const CenterDetails = ({
                 onClick={() => setRoomNo(room)}
               >
                 {room}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-4 w-4 p-0 ml-1 hover:bg-red-100 rounded-full"
+                  onClick={(e) => handleRemoveRoom(room, e)}
+                >
+                  <X className="h-2 w-2 text-red-500" />
+                </Button>
               </Badge>
             ))}
           </div>
