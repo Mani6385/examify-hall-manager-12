@@ -9,9 +9,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { X, Info } from "lucide-react";
+import { X, Info, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Hall, DEFAULT_HALLS, removeHall, getHallNameById } from "@/utils/hallUtils";
+import { Hall, DEFAULT_HALLS, removeHall, getHallNameById, addDefaultHall, resetHalls } from "@/utils/hallUtils";
 import { 
   Tooltip,
   TooltipContent,
@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface HallSelectProps {
   selectedHall: string;
@@ -28,6 +29,8 @@ interface HallSelectProps {
 export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
   const [availableHalls, setAvailableHalls] = useState<Hall[]>(DEFAULT_HALLS);
   const [isLoading, setIsLoading] = useState(false);
+  const [removedHalls, setRemovedHalls] = useState<Hall[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchHalls = async () => {
@@ -74,10 +77,49 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
       setSelectedHall("all");
     }
     
+    // Store the removed hall
+    const hallToRemove = availableHalls.find(h => h.id === id);
+    if (hallToRemove) {
+      setRemovedHalls(prev => [...prev, hallToRemove]);
+    }
+    
     // Remove the hall from available halls
     const updatedHalls = removeHall(availableHalls, id);
     setAvailableHalls(updatedHalls);
+    
+    toast({
+      title: "Hall Removed",
+      description: `${getHallNameById(id)} has been removed from the selection.`
+    });
   };
+
+  const handleAddHall = (hallId: string) => {
+    // Add the hall back to available halls
+    const updatedHalls = addDefaultHall(availableHalls, hallId);
+    setAvailableHalls(updatedHalls);
+    
+    // Remove it from the removed halls list
+    setRemovedHalls(prev => prev.filter(h => h.id !== hallId));
+    
+    toast({
+      title: "Hall Added",
+      description: `${getHallNameById(hallId)} has been added back to the selection.`
+    });
+  };
+
+  const handleResetHalls = () => {
+    setAvailableHalls(resetHalls());
+    setRemovedHalls([]);
+    toast({
+      title: "Halls Reset",
+      description: "All halls have been restored to default."
+    });
+  };
+
+  // Get the list of default halls that are currently removed
+  const missingDefaultHalls = DEFAULT_HALLS.filter(
+    defaultHall => !availableHalls.some(hall => hall.id === defaultHall.id)
+  );
 
   return (
     <Card className="bg-white">
@@ -147,10 +189,50 @@ export function HallSelect({ selectedHall, setSelectedHall }: HallSelectProps) {
           ))}
         </div>
         
+        {missingDefaultHalls.length > 0 && (
+          <div className="mt-2">
+            <p className="text-xs text-gray-500 mb-2">Add removed halls:</p>
+            <div className="flex flex-wrap gap-2">
+              {missingDefaultHalls.map((hall) => (
+                <Badge 
+                  key={hall.id}
+                  variant="outline" 
+                  className="bg-gray-100 cursor-pointer hover:bg-gray-200"
+                  onClick={() => handleAddHall(hall.id)}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  {hall.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        
         {availableHalls.length === 0 && (
           <div className="flex items-center justify-center py-2 text-amber-600 text-sm">
             <Info className="h-4 w-4 mr-2" />
-            <span>All halls have been removed. Refresh the page to reset.</span>
+            <span>All halls have been removed.</span>
+            <Button
+              variant="link"
+              size="sm"
+              className="pl-1 text-blue-600"
+              onClick={handleResetHalls}
+            >
+              Reset halls
+            </Button>
+          </div>
+        )}
+        
+        {availableHalls.length > 0 && availableHalls.length < DEFAULT_HALLS.length && (
+          <div className="flex justify-end mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={handleResetHalls}
+            >
+              Reset to default halls
+            </Button>
           </div>
         )}
       </CardContent>

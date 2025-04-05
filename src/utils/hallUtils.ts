@@ -68,3 +68,20 @@ export const updateHall = (halls: Hall[], id: string, updates: Partial<Hall>): H
     hall.id === id ? { ...hall, ...updates } : hall
   );
 };
+
+// Reset all halls back to default
+export const resetHalls = (): Hall[] => {
+  return [...DEFAULT_HALLS];
+};
+
+// Add a specific default hall if it's not already in the list
+export const addDefaultHall = (halls: Hall[], hallId: string): Hall[] => {
+  const defaultHall = DEFAULT_HALLS.find(h => h.id === hallId);
+  if (!defaultHall) return halls;
+  
+  // Check if hall already exists in the list
+  const hallExists = halls.some(h => h.id === hallId);
+  if (hallExists) return halls;
+  
+  return [...halls, defaultHall];
+};
