@@ -9,6 +9,7 @@ import Students from "./pages/Students";
 import Teachers from "./pages/Teachers";
 import Classes from "./pages/Classes";
 import Seating from "./pages/Seating";
+import SeatingView from "./pages/SeatingView";
 import Subjects from "./pages/Subjects";
 import Exams from "./pages/Exams";
 import ExamAttendance from "./pages/ExamAttendance";
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/teachers" element={<Teachers />} />
           <Route path="/classes" element={<Classes />} />
           <Route path="/seating" element={<Seating />} />
+          <Route path="/seating-view" element={<SeatingView />} />
           <Route path="/subjects" element={<Subjects />} />
           <Route path="/exams" element={<Exams />} />
           <Route path="/exam-attendance" element={<ExamAttendance />} />
@@ -41,4 +43,3 @@ const App = () => (
 );
 
 export default App;
-

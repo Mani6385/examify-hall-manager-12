@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { SeatingArrangement, getHallNameById } from "@/utils/reportUtils";
+import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears } from "@/utils/reportUtils";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 
@@ -79,15 +79,8 @@ export function ConsolidatedReportsCard({
   // Count total rooms
   const totalRooms = arrangements.length;
 
-  // Calculate departments
-  const departments = new Set<string>();
-  arrangements.forEach(arr => {
-    arr.seating_assignments.forEach(assignment => {
-      if (assignment.department) {
-        departments.add(assignment.department);
-      }
-    });
-  });
+  // Display departments and years information
+  const deptYearInfo = arrangements.map(arr => formatDepartmentsWithYears(arr));
 
   return (
     <Card>
@@ -189,21 +182,31 @@ export function ConsolidatedReportsCard({
                   <tr>
                     <th className="p-2 text-left">S.No</th>
                     <th className="p-2 text-left">Room No</th>
-                    <th className="p-2 text-left">Class</th>
+                    <th className="p-2 text-left">Department</th>
+                    <th className="p-2 text-left">Year</th>
                     <th className="p-2 text-left">Seats (Reg. Numbers)</th>
                     <th className="p-2 text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {arrangements.slice(0, 3).map((arr, index) => {
-                    // Group students by department
-                    const deptGroups = new Map<string, any[]>();
+                    // Group students by department with year information
+                    const deptGroups = new Map<string, {students: any[], year: string | null}>();
                     arr.seating_assignments.forEach(assignment => {
-                      const dept = assignment.department || 'Unassigned';
-                      if (!deptGroups.has(dept)) {
-                        deptGroups.set(dept, []);
+                      if (!assignment.department) return;
+                      
+                      // Find matching department config
+                      const deptConfig = arr.department_configs.find(
+                        config => config.department === assignment.department
+                      );
+                      
+                      const key = assignment.department || 'Unassigned';
+                      const year = deptConfig?.year || null;
+                      
+                      if (!deptGroups.has(key)) {
+                        deptGroups.set(key, {students: [], year});
                       }
-                      deptGroups.get(dept)?.push(assignment);
+                      deptGroups.get(key)?.students.push(assignment);
                     });
                     
                     return (
@@ -216,7 +219,12 @@ export function ConsolidatedReportsCard({
                           ))}
                         </td>
                         <td className="p-2">
-                          {Array.from(deptGroups.entries()).map(([dept, students]) => {
+                          {Array.from(deptGroups.entries()).map(([dept, {year}]) => (
+                            <div key={dept} className="mb-1 font-medium">{year || 'N/A'}</div>
+                          ))}
+                        </td>
+                        <td className="p-2">
+                          {Array.from(deptGroups.entries()).map(([dept, {students}]) => {
                             // Sort students by reg_no
                             students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
                             
@@ -246,7 +254,7 @@ export function ConsolidatedReportsCard({
                   })}
                   {arrangements.length > 3 && (
                     <tr className="border-t">
-                      <td colSpan={5} className="p-2 text-center text-muted-foreground">
+                      <td colSpan={6} className="p-2 text-center text-muted-foreground">
                         + {arrangements.length - 3} more rooms
                       </td>
                     </tr>
@@ -255,7 +263,7 @@ export function ConsolidatedReportsCard({
               </table>
             </div>
             <div className="text-xs text-muted-foreground mt-2 text-right">
-              PDF and Excel reports will include complete student lists with registration numbers
+              PDF and Excel reports will include complete student lists with registration numbers, departments, and year information
             </div>
           </div>
         </div>
