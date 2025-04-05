@@ -79,9 +79,6 @@ export function ConsolidatedReportsCard({
   // Count total rooms
   const totalRooms = arrangements.length;
 
-  // Display departments and years information
-  const deptYearInfo = arrangements.map(arr => formatDepartmentsWithYears(arr));
-
   return (
     <Card>
       <CardHeader>
@@ -176,7 +173,7 @@ export function ConsolidatedReportsCard({
           
           <div className="bg-muted/20 p-4 rounded-lg mt-2">
             <h3 className="text-sm font-semibold mb-2">Preview of Report Format</h3>
-            <div className="border rounded overflow-hidden">
+            <div className="border rounded-md overflow-hidden shadow-sm">
               <table className="w-full text-xs">
                 <thead className="bg-primary text-primary-foreground">
                   <tr>
@@ -209,8 +206,16 @@ export function ConsolidatedReportsCard({
                       deptGroups.get(key)?.students.push(assignment);
                     });
                     
+                    // If there are no groups, create a default one
+                    if (deptGroups.size === 0 && arr.seating_assignments.length > 0) {
+                      deptGroups.set('Unassigned', {
+                        students: arr.seating_assignments,
+                        year: null
+                      });
+                    }
+                    
                     return (
-                      <tr key={arr.id} className="border-t">
+                      <tr key={arr.id} className="border-t hover:bg-muted/30">
                         <td className="p-2">{index + 1}</td>
                         <td className="p-2 font-medium">{arr.room_no}</td>
                         <td className="p-2">
@@ -243,7 +248,7 @@ export function ConsolidatedReportsCard({
                             
                             return (
                               <div key={dept} className="mb-1 truncate max-w-[250px]">
-                                {regDisplay}
+                                {regDisplay || 'N/A'}
                               </div>
                             );
                           })}
@@ -253,17 +258,37 @@ export function ConsolidatedReportsCard({
                     );
                   })}
                   {arrangements.length > 3 && (
-                    <tr className="border-t">
+                    <tr className="border-t bg-muted/20">
                       <td colSpan={6} className="p-2 text-center text-muted-foreground">
                         + {arrangements.length - 3} more rooms
                       </td>
                     </tr>
                   )}
+                  {arrangements.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-4 text-center text-muted-foreground">
+                        No seating arrangements available to preview
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
+                <tfoot className="bg-muted/30 border-t">
+                  <tr>
+                    <td colSpan={5} className="p-2 text-right font-medium">Total Students:</td>
+                    <td className="p-2 text-right font-bold">{totalStudents}</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
-            <div className="text-xs text-muted-foreground mt-2 text-right">
-              PDF and Excel reports will include complete student lists with registration numbers, departments, and year information
+            <div className="text-xs text-muted-foreground mt-3 space-y-1">
+              <p className="flex items-center">
+                <FileText className="h-3 w-3 mr-1" /> 
+                PDF report includes complete student lists with registration numbers and year information
+              </p>
+              <p className="flex items-center">
+                <FileSpreadsheet className="h-3 w-3 mr-1" />
+                Excel report provides detailed department/year breakdowns for attendance tracking
+              </p>
             </div>
           </div>
         </div>
