@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ReportButtons } from "./ReportButtons";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, BarChart, FileSpreadsheet, Users, FileText, Table, Download } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
