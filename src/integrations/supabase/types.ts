@@ -49,7 +49,6 @@ export type Database = {
           prefix: string
           start_reg_no: string
           updated_at: string
-          year: string | null
         }
         Insert: {
           arrangement_id?: string | null
@@ -60,7 +59,6 @@ export type Database = {
           prefix: string
           start_reg_no: string
           updated_at?: string
-          year?: string | null
         }
         Update: {
           arrangement_id?: string | null
@@ -71,7 +69,6 @@ export type Database = {
           prefix?: string
           start_reg_no?: string
           updated_at?: string
-          year?: string | null
         }
         Relationships: [
           {

@@ -7,13 +7,12 @@ import { HallReportsCard } from "@/components/reports/HallReportsCard";
 import { ConsolidatedReportsCard } from "@/components/reports/ConsolidatedReportsCard";
 import { generateExcelReport } from "@/components/reports/ExcelExport";
 import { generatePdfReport } from "@/components/reports/PdfExport";
-import { filterArrangementsByHall, SeatingArrangement, getHallNameById, mapRoomToHallId } from "@/utils/reportUtils";
+import { filterArrangementsByHall, SeatingArrangement, getHallNameById } from "@/utils/reportUtils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ChevronLeft, ChevronRight, PlusCircle, RefreshCw } from "lucide-react";
-import { StatCard } from "@/components/dashboard/StatCard";
+import { AlertCircle, PlusCircle, RefreshCw } from "lucide-react";
 
 const mockArrangements: SeatingArrangement[] = [
   {
@@ -23,30 +22,12 @@ const mockArrangements: SeatingArrangement[] = [
     rows: 5,
     columns: 5,
     seating_assignments: Array(10).fill(null).map((_, i) => ({
-      id: `seat-${i+1}`,
+      id: `mock-assignment-${i}`,
       seat_no: `${i % 2 === 0 ? 'A' : 'B'}${Math.floor(i/2) + 1}`,
       reg_no: `10${i+1}`,
       department: i % 2 === 0 ? "Computer Science" : "Electronics",
       student_name: `Student ${i+1}`
-    })),
-    department_configs: [
-      {
-        id: "mock-config-1",
-        department: "Computer Science",
-        start_reg_no: "101",
-        end_reg_no: "105",
-        prefix: "A",
-        year: "I Year"
-      },
-      {
-        id: "mock-config-2", 
-        department: "Electronics",
-        start_reg_no: "106",
-        end_reg_no: "110",
-        prefix: "B",
-        year: "II Year"
-      }
-    ]
+    }))
   }
 ];
 
@@ -75,14 +56,6 @@ const Reports = () => {
             reg_no,
             department,
             student_name
-          ),
-          department_configs (
-            id,
-            department,
-            start_reg_no,
-            end_reg_no,
-            prefix,
-            year
           )
         `)
         .order('room_no');
@@ -92,23 +65,9 @@ const Reports = () => {
         throw error;
       }
       
-      const transformedData = data?.map(arr => ({
-        ...arr,
-        seating_assignments: arr.seating_assignments || [],
-        department_configs: (arr.department_configs || []).map(config => ({
-          ...config,
-          id: config.id,
-          department: config.department,
-          start_reg_no: config.start_reg_no,
-          end_reg_no: config.end_reg_no,
-          prefix: config.prefix,
-          year: config.year || null
-        }))
-      })) || [];
+      console.log("Fetched seating arrangements:", data);
       
-      console.log("Fetched seating arrangements:", transformedData);
-      
-      if (!transformedData || transformedData.length === 0) {
+      if (!data || data.length === 0) {
         toast({
           title: "No seating arrangements found",
           description: "Please create seating arrangements first in the Seating page.",
@@ -116,7 +75,7 @@ const Reports = () => {
         });
       }
       
-      return transformedData as SeatingArrangement[];
+      return data as SeatingArrangement[];
     } catch (error) {
       console.error("Failed to fetch seating arrangements:", error);
       toast({
@@ -149,45 +108,7 @@ const Reports = () => {
 
   const displayData = useFallbackData ? mockArrangements : allSeatingArrangements;
 
-  const getUniqueHallIds = (): string[] => {
-    const hallIds = new Set<string>();
-    
-    hallIds.add('all');
-    
-    displayData.forEach(arrangement => {
-      let hallId = arrangement.hall_id;
-      
-      if (!hallId) {
-        hallId = mapRoomToHallId(arrangement.room_no);
-        arrangement.hall_id = hallId;
-        arrangement.hall_name = getHallNameById(hallId);
-      }
-      
-      hallIds.add(hallId);
-    });
-    
-    return Array.from(hallIds);
-  };
-  
-  const uniqueHallIds = getUniqueHallIds();
-  
-  const handlePreviousHall = () => {
-    const currentIndex = uniqueHallIds.indexOf(selectedHall);
-    if (currentIndex > 0) {
-      setSelectedHall(uniqueHallIds[currentIndex - 1]);
-    }
-  };
-  
-  const handleNextHall = () => {
-    const currentIndex = uniqueHallIds.indexOf(selectedHall);
-    if (currentIndex < uniqueHallIds.length - 1) {
-      setSelectedHall(uniqueHallIds[currentIndex + 1]);
-    }
-  };
-
   const filteredArrangements = filterArrangementsByHall(displayData, selectedHall);
-  
-  const currentArrangements = filteredArrangements;
 
   const handleRetry = useCallback(() => {
     setUseFallbackData(false);
@@ -382,67 +303,57 @@ const Reports = () => {
           </Button>
         </div>
 
-        <div className="flex justify-between items-center bg-white/80 backdrop-blur-sm rounded-lg p-4 shadow-sm border border-gray-100">
-          <Button 
-            variant="outline" 
-            onClick={handlePreviousHall}
-            disabled={uniqueHallIds.indexOf(selectedHall) === 0}
-          >
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            Previous Hall
-          </Button>
-          
-          <div className="text-center">
-            <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-              {getHallNameById(selectedHall)}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {selectedHall === "all" 
-                ? "All examination halls" 
-                : `Hall ID: ${selectedHall} (${roomCount} rooms, ${studentCount} students)`}
-            </p>
-          </div>
-          
-          <Button 
-            variant="outline" 
-            onClick={handleNextHall}
-            disabled={uniqueHallIds.indexOf(selectedHall) === uniqueHallIds.length - 1}
-          >
-            Next Hall
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard 
-            title="Rooms" 
-            value={roomCount} 
-            icon={PlusCircle}
-            description="Total examination rooms" 
-            className="bg-gradient-blue text-white"
-          />
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Selected Hall</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{getHallNameById(selectedHall)}</div>
+              <p className="text-xs text-muted-foreground">
+                {selectedHall === "all" ? "All examination halls" : `Hall ID: ${selectedHall}`}
+              </p>
+            </CardContent>
+          </Card>
           
-          <StatCard 
-            title="Students" 
-            value={studentCount} 
-            icon={PlusCircle}
-            description="Total assigned students" 
-            className="bg-gradient-purple text-white"
-          />
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Rooms & Students</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{roomCount} Rooms</div>
+              <p className="text-xs text-muted-foreground">
+                {studentCount} Students Assigned
+              </p>
+            </CardContent>
+          </Card>
           
-          <StatCard 
-            title="Departments" 
-            value={departments.size} 
-            icon={PlusCircle}
-            description="Unique departments" 
-            className="bg-gradient-indigo text-white"
-          />
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Departments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{departments.size}</div>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {Array.from(departments).slice(0, 3).map(dept => (
+                  <Badge key={dept} variant="outline" className="text-xs">
+                    {dept}
+                  </Badge>
+                ))}
+                {departments.size > 3 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{departments.size - 3} more
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <HallReportsCard
           selectedHall={selectedHall}
           setSelectedHall={setSelectedHall}
-          filteredArrangements={currentArrangements}
+          filteredArrangements={filteredArrangements}
           isLoading={isLoading}
           isLoadingPdf={isLoadingPdf}
           isLoadingExcel={isLoadingExcel}

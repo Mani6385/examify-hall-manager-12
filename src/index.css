@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 246 80% 60%;
+    --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -32,7 +33,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
   }
 
   .dark {
@@ -70,29 +71,8 @@
   * {
     @apply border-border;
   }
-  
-  html {
-    @apply scroll-smooth;
-  }
-  
   body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
-    background: linear-gradient(135deg, #f5f7fa 0%, #e8edf5 100%);
-  }
-  
-  /* Improve scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full hover:bg-gray-400 transition-colors;
+    @apply bg-background text-foreground;
   }
 }
 
@@ -104,31 +84,6 @@
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-/* Glass card effect */
-.glass-card {
-  @apply bg-white/70 backdrop-blur-sm border border-white/50 shadow-sm;
-}
-
-/* Gradient border */
-.gradient-border {
-  position: relative;
-  border-radius: var(--radius);
-}
-
-.gradient-border::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: calc(var(--radius) + 1px);
-  padding: 1px;
-  background: linear-gradient(to right, #8b5cf6, #6366f1);
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
 }
 
 /* Print styles */
@@ -163,37 +118,4 @@
   .print\:mb-8 {
     margin-bottom: 2rem !important;
   }
-}
-
-/* Colorful backgrounds */
-.bg-gradient-purple {
-  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
-}
-
-.bg-gradient-blue {
-  background: linear-gradient(135deg, #93c5fd 0%, #3b82f6 100%);
-}
-
-.bg-gradient-pink {
-  background: linear-gradient(135deg, #f9a8d4 0%, #ec4899 100%);
-}
-
-.bg-gradient-orange {
-  background: linear-gradient(135deg, #fdba74 0%, #f97316 100%);
-}
-
-.bg-gradient-green {
-  background: linear-gradient(135deg, #86efac 0%, #22c55e 100%);
-}
-
-.bg-gradient-indigo {
-  background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 100%);
-}
-
-.bg-gradient-subtle-improved {
-  background: linear-gradient(135deg, #f0f4ff 0%, #e0eaff 50%, #dbeafe 100%);
-}
-
-.text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600;
 }

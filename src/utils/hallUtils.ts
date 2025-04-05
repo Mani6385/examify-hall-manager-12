@@ -3,29 +3,13 @@ export interface Hall {
   id: string;
   name: string;
   capacity: number;
-  roomNumbers?: string[]; // Add room numbers as an optional property
 }
 
 // Define some default halls since we don't have a halls table in the database
 export const DEFAULT_HALLS: Hall[] = [
-  { 
-    id: '1', 
-    name: 'Hall A', 
-    capacity: 30,
-    roomNumbers: ['A101', 'A102', 'A103', 'A104', 'A105']
-  },
-  { 
-    id: '2', 
-    name: 'Hall B', 
-    capacity: 40,
-    roomNumbers: ['B201', 'B202', 'B203', 'B204', 'B205', 'B206']
-  },
-  { 
-    id: '3', 
-    name: 'Hall C', 
-    capacity: 50,
-    roomNumbers: ['C301', 'C302', 'C303', 'C304', 'C305', 'C306', 'C307']
-  }
+  { id: '1', name: 'Hall A', capacity: 30 },
+  { id: '2', name: 'Hall B', capacity: 40 },
+  { id: '3', name: 'Hall C', capacity: 50 }
 ];
 
 // Helper function to get hall by ID
@@ -38,12 +22,6 @@ export const getHallNameById = (hallId: string): string => {
   if (!hallId || hallId === "all") return 'All Halls';
   const hall = DEFAULT_HALLS.find(h => h.id === hallId);
   return hall ? hall.name : 'Unknown Hall';
-};
-
-// Helper function to get room numbers for a hall
-export const getRoomNumbersByHallId = (hallId: string): string[] => {
-  const hall = DEFAULT_HALLS.find(h => h.id === hallId);
-  return hall?.roomNumbers || [];
 };
 
 // Generate a unique ref ID for the printable section
@@ -65,28 +43,4 @@ export const printElement = (elementId: string) => {
   
   // Reload the page to restore all event listeners
   window.location.reload();
-};
-
-// Filter halls and return a new array without the removed hall
-export const removeHall = (halls: Hall[], hallIdToRemove: string): Hall[] => {
-  return halls.filter(hall => hall.id !== hallIdToRemove);
-};
-
-// Get available halls (excluding removed ones)
-export const getAvailableHalls = (): Hall[] => {
-  return [...DEFAULT_HALLS];
-};
-
-// Create a new hall
-export const createHall = (halls: Hall[], name: string, capacity: number, roomNumbers?: string[]): Hall[] => {
-  const newId = (Math.max(...halls.map(h => parseInt(h.id))) + 1).toString();
-  const newHall: Hall = { id: newId, name, capacity, roomNumbers };
-  return [...halls, newHall];
-};
-
-// Update a hall
-export const updateHall = (halls: Hall[], id: string, updates: Partial<Hall>): Hall[] => {
-  return halls.map(hall => 
-    hall.id === id ? { ...hall, ...updates } : hall
-  );
 };

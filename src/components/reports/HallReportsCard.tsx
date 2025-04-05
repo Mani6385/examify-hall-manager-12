@@ -1,11 +1,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { HallSelect } from "./hall-select";
+import { HallSelect } from "./HallSelect";
 import { ReportButtons } from "./ReportButtons";
 import { ArrangementsTable } from "./ArrangementsTable";
 import { SeatingArrangement } from "@/utils/reportUtils";
 import { useToast } from "@/hooks/use-toast";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Grid, RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -82,7 +82,7 @@ export function HallReportsCard({
 
   return (
     <Card>
-      <CardHeader className="pb-4">
+      <CardHeader>
         <div className="flex items-center gap-2">
           <Grid className="h-5 w-5 text-primary" />
           <div>
@@ -94,8 +94,8 @@ export function HallReportsCard({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-5">
+        <div className="mb-6">
+          <div className="flex items-center gap-4 mb-4">
             <HallSelect 
               selectedHall={selectedHall} 
               setSelectedHall={setSelectedHall} 

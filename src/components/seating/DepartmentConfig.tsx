@@ -118,11 +118,6 @@ export const DepartmentConfiguration = ({
               }`}>
                 {dept.prefix} Series
               </span>
-              {dept.year && (
-                <span className="ml-2 px-2 py-1 rounded-md text-sm bg-gray-100 text-gray-700">
-                  {dept.year}
-                </span>
-              )}
             </h3>
             <Button
               variant="outline"
@@ -133,7 +128,7 @@ export const DepartmentConfiguration = ({
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Select 
               value={dept.department} 
               onValueChange={(value) => updateDepartment(dept.id, 'department', value)}
@@ -154,22 +149,6 @@ export const DepartmentConfiguration = ({
                 ))}
               </SelectContent>
             </Select>
-            
-            <Select 
-              value={dept.year || ""} 
-              onValueChange={(value) => updateDepartment(dept.id, 'year', value)}
-            >
-              <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                <SelectValue placeholder="Select year" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="I Year">I Year</SelectItem>
-                <SelectItem value="II Year">II Year</SelectItem>
-                <SelectItem value="III Year">III Year</SelectItem>
-                <SelectItem value="IV Year">IV Year</SelectItem>
-              </SelectContent>
-            </Select>
-            
             <Input
               placeholder="Start Reg No"
               value={dept.startRegNo}

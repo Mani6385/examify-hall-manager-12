@@ -151,8 +151,8 @@ export function DetailedReportView({ arrangement }: DetailedReportViewProps) {
                     {arrangement.seating_assignments.length > 0 ? (
                       arrangement.seating_assignments
                         .sort((a, b) => sortSeatNumbers(a.seat_no, b.seat_no))
-                        .map((assignment, index) => (
-                          <TableRow key={`seat-${index}-${assignment.seat_no}`}>
+                        .map((assignment) => (
+                          <TableRow key={assignment.id}>
                             <TableCell className="font-medium">{assignment.seat_no}</TableCell>
                             <TableCell>{assignment.student_name || 'N/A'}</TableCell>
                             <TableCell>{assignment.reg_no || 'N/A'}</TableCell>
