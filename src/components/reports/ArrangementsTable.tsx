@@ -10,8 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Edit, Eye, Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { SeatingArrangement, formatDepartmentsWithYears, mapRoomToHallId } from "@/utils/reportUtils";
-import { DetailedReportView } from "./DetailedReportView";
-import { SeatingGridPreview } from "./SeatingGridPreview";
 import { useNavigate } from "react-router-dom";
 import { getHallNameById } from "@/utils/hallUtils";
 
@@ -112,9 +110,6 @@ export function ArrangementsTable({
               <TableCell>{arrangement.seating_assignments.length}</TableCell>
               <TableCell>
                 <div className="flex space-x-2">
-                  <SeatingGridPreview arrangement={arrangement} />
-                  <DetailedReportView arrangement={arrangement} />
-                  
                   <Button 
                     variant="outline" 
                     size="icon" 
