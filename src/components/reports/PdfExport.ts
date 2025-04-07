@@ -1,4 +1,3 @@
-
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, getDepartmentsWithYears, formatYearDisplay } from '@/utils/reportUtils';
@@ -142,10 +141,10 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
         // Skip if no students
         if (students.length === 0) return;
         
-        // Sort students by registration number
+        // Sort students by registration number for better grouping
         students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
         
-        // Format registration numbers to show ranges (exactly like in the image)
+        // Format registration numbers to show ranges more clearly
         let regNosFormatted = "";
         if (students.length > 0) {
           // Group consecutive registration numbers
@@ -162,7 +161,7 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
             }
             
             // Check if this reg_no is consecutive with the previous one
-            // For the image format, we'll simplify the check for consecutive numbers
+            // For PDF format, simplify the check for consecutive numbers
             const prevNumeric = parseInt(currentGroup.end.replace(/\D/g, ''));
             const currNumeric = parseInt(currentRegNo.replace(/\D/g, ''));
             
@@ -181,42 +180,26 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
             }
           });
           
-          // Format the groups to match the image exactly
+          // Format the groups more clearly with proper range notation
           regNosFormatted = groups.map(group => {
             if (group.start === group.end) {
               return group.start;
             } else {
-              // Use just a dash between start and end numbers, as shown in image
+              // Use double dash between start and end numbers for better visibility
               return `${group.start}--${group.end}`;
             }
-          }).join(',');
-          
-          // Add additional individual numbers separated by comma if needed (like in the image)
-          const individualNumbers = students
-            .filter(student => {
-              const regNo = student.reg_no || '';
-              // Add logic here to identify individual numbers that should be listed separately
-              return false; // This is a placeholder - implement actual logic based on requirements
-            })
-            .map(student => student.reg_no);
-          
-          if (individualNumbers.length > 0) {
-            if (regNosFormatted) {
-              regNosFormatted += "," + individualNumbers.join(',');
-            } else {
-              regNosFormatted = individualNumbers.join(',');
-            }
-          }
+          }).join(', ');
         }
         
         // Create a row for this department with formatted year in Roman numerals
         // Format exactly like in the image (I BCA, II CS, etc.)
+        const formattedClass = formatYearDisplay(year) + " " + deptKey;
+        
         const row = [
           firstDeptInRoom ? (index + 1).toString() : '',  // S.No
           firstDeptInRoom ? arrangement.room_no : '',     // Room No
-          formatYearDisplay(year) + " " + deptKey,        // Class with year prefix (like "II BCA" in image)
-          "",                                            // This column is removed as per image
-          regNosFormatted,                               // Registration Numbers (start-end format)
+          formattedClass,                                // Class with year prefix
+          regNosFormatted,                               // Registration Numbers clearly formatted
           firstDeptInRoom ? arrangement.seating_assignments.length.toString() : '' // Total for the room
         ];
         
@@ -227,13 +210,13 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
     
     // Add an empty row between rooms for better readability
     if (index < arrangements.length - 1) {
-      tableData.push(['', '', '', '', '', '']);
+      tableData.push(['', '', '', '', '']);
     }
   });
   
-  // Add the consolidated table with headers matching the image
+  // Add the consolidated table with headers matching the requested format
   autoTable(doc, {
-    head: [['S.NO', 'ROOM NO', 'CLASS', 'SEATS', 'TOTAL']], // Headers exactly as in image
+    head: [['S.NO', 'ROOM NO', 'CLASS', 'SEATS', 'TOTAL']], // Headers as requested
     body: tableData,
     startY: 40,
     styles: {
