@@ -1,4 +1,3 @@
-
 import { DEFAULT_HALLS, getHallNameById as getHallNameByIdFromUtils, Hall, removeHall as removeHallFromUtils } from './hallUtils';
 
 // Use the halls from hallUtils
@@ -97,10 +96,47 @@ export const getHallNameById = getHallNameByIdFromUtils;
 // Remove hall by ID - reusing from hallUtils
 export const removeHall = removeHallFromUtils;
 
+// Format year to display as Roman numeral with "Year" text
+export const formatYearDisplay = (year: string | null): string => {
+  if (!year) return 'N/A';
+  
+  // If year is already in the correct format (e.g. "I Year"), return it
+  if (year.includes('Year')) {
+    return year;
+  }
+  
+  // Otherwise, convert numeric year to Roman numeral if needed
+  const yearValue = parseInt(year);
+  if (!isNaN(yearValue)) {
+    let romanNumeral = '';
+    
+    switch (yearValue) {
+      case 1:
+        romanNumeral = 'I';
+        break;
+      case 2: 
+        romanNumeral = 'II';
+        break;
+      case 3:
+        romanNumeral = 'III';
+        break;
+      case 4:
+        romanNumeral = 'IV';
+        break;
+      default:
+        romanNumeral = yearValue.toString();
+    }
+    
+    return `${romanNumeral} Year`;
+  }
+  
+  return year;
+};
+
 // Helper function to format department and year information consistently
 export const formatDepartmentWithYear = (department: string, year?: string | null): string => {
   if (!department) return 'Not specified';
-  return year ? `${department} (${year})` : department;
+  return year ? `${department} (${formatYearDisplay(year)})` : department;
 };
 
 // Helper function to extract department and year from seating arrangement
