@@ -1,6 +1,7 @@
+
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
-import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, getDepartmentsWithYears } from '@/utils/reportUtils';
+import { SeatingArrangement, getHallNameById, formatDepartmentsWithYears, getDepartmentsWithYears, formatYearDisplay } from '@/utils/reportUtils';
 
 // Extend the jsPDF type to include the lastAutoTable property
 declare module 'jspdf' {
@@ -176,12 +177,12 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
           }).join(', ');
         }
         
-        // Create a row for this department
+        // Create a row for this department with formatted year in Roman numerals
         const row = [
           firstDeptInRoom ? (index + 1).toString() : '',  // S.No
           firstDeptInRoom ? arrangement.room_no : '',     // Room No
           deptKey,                                        // Class (Dept)
-          year || "N/A",                                  // Year (added)
+          formatYearDisplay(year),                        // Format year as Roman numeral
           regNosFormatted,                                // Registration Numbers (start-end format)
           firstDeptInRoom ? students.length.toString() : '' // Total for the room
         ];
@@ -292,10 +293,10 @@ function addRoomDetailClassWise(doc: jsPDF, arrangement: SeatingArrangement, sta
       const chunk = students.slice(i, i + chunkSize);
       const row = chunk.map(student => `${student.seat_no}: ${student.reg_no}`);
       
-      // Add year information for the first row of each department
+      // Add year information for the first row of each department with proper formatting
       tableData.push([
         i === 0 ? dept : '', 
-        i === 0 ? (year || 'N/A') : '',
+        i === 0 ? formatYearDisplay(year) : '',  // Format year as Roman numeral
         ...row
       ]);
     }
@@ -514,7 +515,7 @@ function addStudentListTable(doc: jsPDF, arrangement: SeatingArrangement) {
     assignment.student_name || 'Unassigned',
     assignment.reg_no || 'N/A',
     assignment.department || 'N/A',
-    studentYears.get(assignment.id) || 'N/A', // Added year column
+    formatYearDisplay(studentYears.get(assignment.id) || null), // Format year as Roman numeral
   ]);
   
   autoTable(doc, {
