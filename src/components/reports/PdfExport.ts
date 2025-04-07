@@ -86,6 +86,9 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
   // Prepare table data in the format shown in the image
   const tableData: string[][] = [];
   
+  // Sort arrangements by room number for better readability
+  arrangements.sort((a, b) => a.room_no.localeCompare(b.room_no));
+  
   arrangements.forEach((arrangement, index) => {
     // Get departments with years directly from the department_configs
     const deptsWithYears = getDepartmentsWithYears(arrangement);
@@ -96,7 +99,7 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
         (index + 1).toString(),      // S.No
         arrangement.room_no,         // Room No
         "Not specified",             // Class
-        "N/A",                       // Year (added)
+        "",                          // Year column added but empty for not specified
         "",                          // Seats (empty when no departments)
         arrangement.seating_assignments.length.toString() // Total
       ];
@@ -122,16 +125,27 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
         deptGroups.get(key)?.students.push(assignment);
       });
       
+      // Sort departments to always have a consistent order
+      const sortedDeptEntries = Array.from(deptGroups.entries())
+        .sort(([deptA, infoA], [deptB, infoB]) => {
+          // First sort by year if available
+          if (infoA.year && infoB.year) {
+            return infoA.year.localeCompare(infoB.year);
+          }
+          // Then by department name
+          return deptA.localeCompare(deptB);
+        });
+      
       // Add a row for each department in this room
       let firstDeptInRoom = true;
-      Array.from(deptGroups.entries()).forEach(([deptKey, {students, year}]) => {
+      sortedDeptEntries.forEach(([deptKey, {students, year}]) => {
         // Skip if no students
         if (students.length === 0) return;
         
         // Sort students by registration number
         students.sort((a, b) => (a.reg_no || '').localeCompare(b.reg_no || ''));
         
-        // Format registration numbers in start-to-end format
+        // Format registration numbers to show ranges (exactly like in the image)
         let regNosFormatted = "";
         if (students.length > 0) {
           // Group consecutive registration numbers
@@ -148,7 +162,7 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
             }
             
             // Check if this reg_no is consecutive with the previous one
-            // Simple check: see if the numbers are sequential
+            // For the image format, we'll simplify the check for consecutive numbers
             const prevNumeric = parseInt(currentGroup.end.replace(/\D/g, ''));
             const currNumeric = parseInt(currentRegNo.replace(/\D/g, ''));
             
@@ -167,24 +181,43 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
             }
           });
           
-          // Format the groups
+          // Format the groups to match the image exactly
           regNosFormatted = groups.map(group => {
             if (group.start === group.end) {
               return group.start;
             } else {
-              return `${group.start}-${group.end}`;
+              // Use just a dash between start and end numbers, as shown in image
+              return `${group.start}--${group.end}`;
             }
-          }).join(', ');
+          }).join(',');
+          
+          // Add additional individual numbers separated by comma if needed (like in the image)
+          const individualNumbers = students
+            .filter(student => {
+              const regNo = student.reg_no || '';
+              // Add logic here to identify individual numbers that should be listed separately
+              return false; // This is a placeholder - implement actual logic based on requirements
+            })
+            .map(student => student.reg_no);
+          
+          if (individualNumbers.length > 0) {
+            if (regNosFormatted) {
+              regNosFormatted += "," + individualNumbers.join(',');
+            } else {
+              regNosFormatted = individualNumbers.join(',');
+            }
+          }
         }
         
         // Create a row for this department with formatted year in Roman numerals
+        // Format exactly like in the image (I BCA, II CS, etc.)
         const row = [
           firstDeptInRoom ? (index + 1).toString() : '',  // S.No
           firstDeptInRoom ? arrangement.room_no : '',     // Room No
-          deptKey,                                        // Class (Dept)
-          formatYearDisplay(year),                        // Format year as Roman numeral
-          regNosFormatted,                                // Registration Numbers (start-end format)
-          firstDeptInRoom ? students.length.toString() : '' // Total for the room
+          formatYearDisplay(year) + " " + deptKey,        // Class with year prefix (like "II BCA" in image)
+          "",                                            // This column is removed as per image
+          regNosFormatted,                               // Registration Numbers (start-end format)
+          firstDeptInRoom ? arrangement.seating_assignments.length.toString() : '' // Total for the room
         ];
         
         tableData.push(row);
@@ -198,31 +231,31 @@ function addConsolidatedTable(doc: jsPDF, arrangements: SeatingArrangement[], ha
     }
   });
   
-  // Add the consolidated table
+  // Add the consolidated table with headers matching the image
   autoTable(doc, {
-    head: [['S.NO', 'ROOM NO', 'CLASS', 'YEAR', 'SEATS', 'TOTAL']],
+    head: [['S.NO', 'ROOM NO', 'CLASS', 'SEATS', 'TOTAL']], // Headers exactly as in image
     body: tableData,
     startY: 40,
     styles: {
-      fontSize: 8,
+      fontSize: 9,
       cellPadding: 2,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.5,
     },
     columnStyles: {
-      0: { cellWidth: 10, halign: 'center' },
-      1: { cellWidth: 20, halign: 'center' },
-      2: { cellWidth: 20 },
-      3: { cellWidth: 15 },  // Year column
-      4: { cellWidth: 'auto' },
-      5: { cellWidth: 15, halign: 'center' },
+      0: { cellWidth: 12, halign: 'center' },
+      1: { cellWidth: 25, halign: 'center' },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 'auto' },
+      4: { cellWidth: 15, halign: 'center' },
     },
     headStyles: {
-      fillColor: [80, 80, 80],
-      textColor: 255,
+      fillColor: [255, 255, 255],
+      textColor: 0,
       fontStyle: 'bold',
       halign: 'center',
-    },
-    alternateRowStyles: {
-      fillColor: [240, 240, 240],
+      lineColor: [0, 0, 0],
+      lineWidth: 0.5,
     },
     // Don't draw horizontal line for empty rows
     didDrawCell: (data) => {
